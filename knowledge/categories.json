@@ -3,7 +3,9 @@
     { "id": "linux", "name": "Linux", "description": "Arquivos, diretórios, permissões, discos e sistema" },
     { "id": "text", "name": "Texto", "description": "Buscar, filtrar, contar e transformar texto" },
     { "id": "shell", "name": "Shell", "description": "Pipes, redirecionamentos, variáveis, aspas e expansões" },
-    { "id": "processes", "name": "Processos", "description": "Listar, monitorar, priorizar e encerrar processos" },
+    { "id": "processes", "name": "Processos", "description": "Listar, monitorar, priorizar, encerrar e agendar processos" },
+    { "id": "packages", "name": "Pacotes", "description": "Instalar, atualizar e remover programas (apt, dnf)" },
+    { "id": "editors", "name": "Editores e sessões", "description": "vim, nano e tmux: editar arquivos e manter sessões abertas" },
     { "id": "regex", "name": "Regex", "description": "Expressões regulares: sintaxe, análise e padrões prontos" },
     { "id": "networking", "name": "Redes", "description": "Comandos de rede: interfaces, rotas, sockets, DNS e HTTP" },
     { "id": "network-concepts", "name": "Conceitos de rede", "description": "TCP/IP, portas, sockets, DNS, sub-redes e NAT" },
@@ -11,6 +13,8 @@
     { "id": "http", "name": "HTTP e TLS", "description": "Métodos, status, cabeçalhos, HTTPS e certificados" },
     { "id": "ssh", "name": "SSH", "description": "Acesso remoto, chaves, agentes e túneis" },
     { "id": "git", "name": "Git", "description": "Controle de versão: histórico, branches e desfazer alterações" },
-    { "id": "docker", "name": "Docker", "description": "Containers, imagens, logs, redes e volumes" }
+    { "id": "docker", "name": "Docker", "description": "Containers, imagens, logs, redes e volumes" },
+    { "id": "wsl", "name": "WSL", "description": "Linux no Windows: arquivos, rede e integração com o Windows" },
+    { "id": "errors", "name": "Mensagens de erro", "description": "Cole a mensagem de erro: causa provável e como resolver" }
   ]
 }

@@ -37,7 +37,10 @@
         { "command": "ip addr", "description": "Todos os endereços" },
         { "command": "ip -br -4 addr", "description": "Só IPv4, resumido" },
         { "command": "ip addr show eth0", "description": "Uma interface" },
-        { "command": "sudo ip addr add 192.168.1.50/24 dev eth0", "description": "Adiciona um IP (temporário, some no reboot)" }
+        { "command": "sudo ip addr add 192.168.1.50/24 dev eth0", "description": "Adiciona um IP (temporário, some no reboot)" },
+        { "command": "ip -4 -br addr show scope global", "description": "Só IPs globais, resumido" },
+        { "command": "sudo ip addr flush dev eth0", "description": "Remove todos os IPs da interface" },
+        { "command": "hostname -I", "description": "Todos os IPs da máquina em uma linha" }
       ],
       "related": ["interface", "cidr", "ipv4", "ipv6", "my-ip"]
     },
@@ -54,7 +57,10 @@
       "examples": [
         { "command": "ip route", "description": "Rotas e gateway padrão" },
         { "command": "ip route get 8.8.8.8", "description": "Por qual interface e gateway um destino sai" },
-        { "command": "sudo ip route add 10.10.0.0/16 via 192.168.1.1", "description": "Rota estática (temporária)" }
+        { "command": "sudo ip route add 10.10.0.0/16 via 192.168.1.1", "description": "Rota estática (temporária)" },
+        { "command": "ip -6 route", "description": "Rotas IPv6" },
+        { "command": "sudo ip route del 10.10.0.0/16", "description": "Remove uma rota" },
+        { "command": "ip route show default", "description": "Só a rota padrão" }
       ],
       "related": ["gateway", "route", "traceroute", "subnet"]
     },
@@ -70,7 +76,10 @@
       "examples": [
         { "command": "ip -br link", "description": "Estado de cada interface" },
         { "command": "sudo ip link set eth0 up", "description": "Ativa a interface" },
-        { "command": "ip -s link show eth0", "description": "Pacotes, erros e descartes" }
+        { "command": "ip -s link show eth0", "description": "Pacotes, erros e descartes" },
+        { "command": "sudo ip link set eth0 down", "description": "Desativa a interface" },
+        { "command": "sudo ip link set dev eth0 mtu 1400", "description": "Ajusta o MTU (VPNs e túneis)" },
+        { "command": "ip link show eth0 | grep ether", "description": "Endereço MAC" }
       ],
       "related": ["interface", "ip-addr"]
     },
@@ -84,7 +93,10 @@
       "aliases": ["ip n", "ip neighbour", "tabela arp", "mac dos vizinhos"],
       "tags": ["rede", "arp"],
       "examples": [
-        { "command": "ip neigh", "description": "Vizinhos conhecidos e estado (REACHABLE, STALE, FAILED)" }
+        { "command": "ip neigh", "description": "Vizinhos conhecidos e estado (REACHABLE, STALE, FAILED)" },
+        { "command": "sudo ip neigh flush dev eth0", "description": "Limpa a tabela de vizinhos da interface" },
+        { "command": "ip -s neigh", "description": "Com estatísticas de uso" },
+        { "command": "ip neigh show 192.168.1.1", "description": "MAC do gateway" }
       ],
       "related": ["arp-protocol", "arp", "gateway"]
     },
@@ -227,12 +239,16 @@
       "tags": ["rede", "rotas", "diagnóstico"],
       "options": [
         { "short": "-n", "description": "Não resolve nomes" },
-        { "short": "-p", "arg": "PORTA", "description": "Porta UDP inicial" }
+        { "short": "-p", "arg": "PORTA", "description": "Porta UDP inicial" },
+        { "short": "-b", "description": "Mostra nome e IP" }
       ],
-      "arguments": [{ "name": "HOST", "kind": "host", "description": "Destino" }],
+      "arguments": [
+        { "name": "HOST", "kind": "host", "description": "Destino" }
+      ],
       "examples": [
         { "command": "tracepath {{host:example.com}}", "description": "Saltos e pmtu" },
-        { "command": "tracepath -n 1.1.1.1", "description": "Sem DNS reverso" }
+        { "command": "tracepath -n 1.1.1.1", "description": "Sem DNS reverso" },
+        { "command": "tracepath -n -p 443 {{host:example.com}}", "description": "Porta inicial 443" }
       ],
       "related": ["traceroute", "ping"]
     },
@@ -382,7 +398,9 @@
       "install": "Mesmo pacote do dig: dnsutils (Debian/Ubuntu) ou bind-utils (Fedora/RHEL).",
       "aliases": ["consultar dns", "resolver nome"],
       "tags": ["rede", "dns"],
-      "options": [{ "long": "-type", "arg": "TIPO", "description": "Tipo de registro (use -type=MX)" }],
+      "options": [
+        { "long": "-type", "arg": "TIPO", "description": "Tipo de registro (use -type=MX)" }
+      ],
       "arguments": [
         { "name": "NOME", "kind": "host", "description": "Nome a consultar" },
         { "name": "SERVIDOR", "kind": "host", "description": "Servidor DNS a usar" }
@@ -390,7 +408,9 @@
       "examples": [
         { "command": "nslookup {{host:example.com}}", "description": "Resolve o nome" },
         { "command": "nslookup -type=MX {{host:example.com}}", "description": "Registros MX" },
-        { "command": "nslookup {{host:example.com}} 1.1.1.1", "description": "Usando outro servidor" }
+        { "command": "nslookup {{host:example.com}} 1.1.1.1", "description": "Usando outro servidor" },
+        { "command": "nslookup -type=TXT {{host:example.com}}", "description": "Registros TXT (SPF, verificações)" },
+        { "command": "nslookup 8.8.8.8", "description": "Consulta reversa" }
       ],
       "related": ["dig", "host", "dns"]
     },
@@ -404,7 +424,8 @@
       "tags": ["rede", "dns"],
       "options": [
         { "short": "-t", "arg": "TIPO", "description": "Tipo de registro" },
-        { "short": "-a", "description": "Todos os registros, detalhado" }
+        { "short": "-a", "description": "Todos os registros, detalhado" },
+        { "short": "-v", "description": "Detalhado, como o dig" }
       ],
       "arguments": [
         { "name": "NOME", "kind": "host", "description": "Nome ou IP" },
@@ -413,7 +434,9 @@
       "examples": [
         { "command": "host {{host:example.com}}", "description": "Endereços e servidores de e-mail" },
         { "command": "host -t MX {{host:example.com}}", "description": "Só MX" },
-        { "command": "host 8.8.8.8", "description": "Reverso" }
+        { "command": "host 8.8.8.8", "description": "Reverso" },
+        { "command": "host -t TXT {{host:example.com}}", "description": "Registros TXT" },
+        { "command": "host {{host:example.com}} 1.1.1.1", "description": "Usa outro servidor DNS" }
       ],
       "related": ["dig", "nslookup", "dns"]
     },
@@ -452,7 +475,9 @@
         { "command": "getent hosts {{host:example.com}}", "description": "Resolve como qualquer programa resolveria" },
         { "command": "getent ahosts {{host:example.com}}", "description": "Todos os endereços (IPv4 e IPv6)" },
         { "command": "getent passwd $USER", "description": "Sua linha em /etc/passwd" },
-        { "command": "getent services 443", "description": "Nome do serviço de uma porta" }
+        { "command": "getent services 443", "description": "Nome do serviço de uma porta" },
+        { "command": "getent group docker", "description": "Membros do grupo docker" },
+        { "command": "getent hosts localhost", "description": "Como localhost resolve (IPv4 e IPv6)" }
       ],
       "related": ["dig", "dns", "localhost"]
     },
@@ -466,11 +491,13 @@
       "tags": ["rede", "arp", "legado"],
       "options": [
         { "short": "-n", "description": "Não resolve nomes" },
-        { "short": "-a", "description": "Estilo BSD" }
+        { "short": "-a", "description": "Estilo BSD" },
+        { "short": "-d", "arg": "HOST", "description": "Remove uma entrada" }
       ],
       "examples": [
         { "command": "arp -n", "description": "Tabela ARP" },
-        { "command": "ip neigh", "description": "Alternativa moderna" }
+        { "command": "ip neigh", "description": "Alternativa moderna" },
+        { "command": "sudo arp -d 192.168.1.20", "description": "Esquece o MAC de um IP" }
       ],
       "related": ["arp-protocol", "ip-neigh"]
     },
@@ -482,10 +509,15 @@
       "install": "Pacote net-tools (legado). Equivalente moderno: ip route.",
       "aliases": ["tabela de rotas", "gateway padrão"],
       "tags": ["rede", "rotas", "legado"],
-      "options": [{ "short": "-n", "description": "Endereços numéricos" }],
+      "options": [
+        { "short": "-n", "description": "Endereços numéricos" },
+        { "short": "-e", "description": "Formato estendido" }
+      ],
       "examples": [
         { "command": "route -n", "description": "Rotas (0.0.0.0 = rota padrão)" },
-        { "command": "ip route", "description": "Alternativa moderna" }
+        { "command": "ip route", "description": "Alternativa moderna" },
+        { "command": "sudo route add default gw 192.168.1.1", "description": "Define o gateway padrão (legado)" },
+        { "command": "sudo ip route add default via 192.168.1.1", "description": "O mesmo com ip" }
       ],
       "related": ["ip-route", "gateway"]
     },
@@ -529,7 +561,10 @@
       "examples": [
         { "command": "openssl s_client -connect {{host:example.com}}:443 -servername {{host:example.com}}", "description": "Handshake TLS e certificados" },
         { "command": "openssl x509 -in cert.pem -noout -text", "description": "Lê um certificado" },
-        { "command": "openssl rand -hex 32", "description": "32 bytes aleatórios em hex (segredos)" }
+        { "command": "openssl rand -hex 32", "description": "32 bytes aleatórios em hex (segredos)" },
+        { "command": "echo | openssl s_client -connect {{host:example.com}}:443 -servername {{host:example.com}} 2>/dev/null | openssl x509 -noout -dates", "description": "Validade do certificado de um site" },
+        { "command": "openssl req -x509 -newkey rsa:2048 -nodes -keyout key.pem -out cert.pem -days 365 -subj '/CN=localhost'", "description": "Certificado autoassinado para testes" },
+        { "command": "openssl dgst -sha256 arquivo.iso", "description": "Hash de um arquivo" }
       ],
       "related": ["openssl-s-client", "openssl-x509", "tls", "certificado", "https"]
     },
@@ -794,6 +829,90 @@
         { "title": "Como o sistema resolve", "command": "getent hosts {{host:example.com}}", "why": "Inclui /etc/hosts: uma entrada antiga lá sobrepõe o DNS." }
       ],
       "related": ["dig", "getent", "dns", "network-troubleshooting"]
+    },
+    {
+      "name": "ufw",
+      "kind": "command",
+      "summary": "Firewall simples do Ubuntu: libera e bloqueia portas",
+      "description": "Uma interface amigável para as regras do iptables/nftables. Antes de ativar em um servidor remoto, libere o SSH para não se trancar do lado de fora.",
+      "usage": "sudo ufw [enable | disable | status | allow | deny | delete] ...",
+      "aliases": ["firewall ubuntu", "liberar porta no firewall", "abrir porta", "bloquear porta", "uncomplicated firewall"],
+      "tags": ["firewall", "segurança", "portas"],
+      "examples": [
+        { "command": "sudo ufw status verbose", "description": "Estado e regras" },
+        { "command": "sudo ufw allow OpenSSH", "description": "Libera o SSH (faça antes do enable)" },
+        { "command": "sudo ufw allow {{port:8080}}/tcp", "description": "Libera uma porta TCP" },
+        { "command": "sudo ufw allow from 192.168.1.0/24 to any port 5432", "description": "Libera só para uma rede" },
+        { "command": "sudo ufw enable", "description": "Ativa o firewall" },
+        { "command": "sudo ufw status numbered", "description": "Regras numeradas" },
+        { "command": "sudo ufw delete 3", "description": "Remove a regra 3" }
+      ],
+      "related": ["iptables", "nft", "firewall", "open-firewall-port"],
+      "warnings": ["Em servidor remoto, rode ufw allow OpenSSH antes de ufw enable."]
+    },
+    {
+      "name": "iptables",
+      "kind": "command",
+      "summary": "Regras de firewall e NAT do kernel (formato clássico)",
+      "description": "Distribuições atuais usam nftables por baixo (iptables-nft); os comandos continuam funcionando. As regras somem no reboot se não forem salvas (iptables-save, netfilter-persistent).",
+      "usage": "sudo iptables [-t TABELA] -A|-I|-D CADEIA REGRA -j AÇÃO",
+      "aliases": ["regras de firewall", "iptables rules", "nat linux", "port forwarding linux", "bloquear ip"],
+      "tags": ["firewall", "segurança", "nat"],
+      "options": [
+        { "short": "-L", "long": "--list", "description": "Lista as regras" },
+        { "short": "-n", "long": "--numeric", "description": "Sem resolver nomes" },
+        { "short": "-v", "long": "--verbose", "description": "Contadores de pacotes e interfaces" },
+        { "short": "-A", "long": "--append", "arg": "CADEIA", "description": "Acrescenta uma regra no fim da cadeia" },
+        { "short": "-I", "long": "--insert", "arg": "CADEIA", "description": "Insere no início (tem prioridade)" },
+        { "short": "-D", "long": "--delete", "arg": "CADEIA", "description": "Remove uma regra" },
+        { "short": "-t", "long": "--table", "arg": "TABELA", "description": "filter (padrão), nat ou mangle" },
+        { "short": "-p", "long": "--protocol", "arg": "PROTOCOLO", "description": "tcp, udp, icmp" },
+        { "long": "--dport", "arg": "PORTA", "description": "Porta de destino" },
+        { "short": "-s", "long": "--source", "arg": "ENDEREÇO", "description": "Origem" },
+        { "short": "-j", "long": "--jump", "arg": "AÇÃO", "description": "ACCEPT, DROP, REJECT, DNAT..." }
+      ],
+      "examples": [
+        { "command": "sudo iptables -L -n -v", "description": "Regras com contadores" },
+        { "command": "sudo iptables -A INPUT -p tcp --dport {{port:8080}} -j ACCEPT", "description": "Aceita uma porta" },
+        { "command": "sudo iptables -I INPUT -s 203.0.113.7 -j DROP", "description": "Bloqueia um IP" },
+        { "command": "sudo iptables -t nat -L -n -v", "description": "Regras de NAT (Docker cria várias)" },
+        { "command": "sudo iptables-save > regras.v4", "description": "Salva as regras em arquivo" }
+      ],
+      "related": ["nft", "ufw", "firewall", "nat"]
+    },
+    {
+      "name": "nft",
+      "kind": "command",
+      "summary": "Ferramenta do nftables, o firewall atual do Linux",
+      "usage": "sudo nft [OPÇÕES] COMANDO",
+      "aliases": ["nftables", "firewall moderno"],
+      "tags": ["firewall", "segurança"],
+      "options": [
+        { "short": "-a", "long": "--handle", "description": "Mostra os handles, para apagar regras" },
+        { "short": "-f", "long": "--file", "arg": "ARQUIVO", "description": "Carrega regras de um arquivo" }
+      ],
+      "examples": [
+        { "command": "sudo nft list ruleset", "description": "Todas as regras" },
+        { "command": "sudo nft add rule inet filter input tcp dport {{port:8080}} accept", "description": "Aceita uma porta (a tabela e a cadeia precisam existir)" },
+        { "command": "sudo nft -a list chain inet filter input", "description": "Regras com handles" }
+      ],
+      "related": ["iptables", "ufw", "firewall"]
+    },
+    {
+      "id": "open-firewall-port",
+      "name": "Liberar uma porta no firewall",
+      "kind": "recipe",
+      "summary": "Deixar um serviço acessível de fora da máquina",
+      "aliases": ["liberar porta no firewall", "abrir porta", "porta bloqueada pelo firewall", "open port firewall", "allow port"],
+      "tags": ["firewall", "portas"],
+      "steps": [
+        { "title": "O serviço escuta?", "command": "sudo ss -ltnp | grep ':{{port:8080}}'", "why": "Se escuta em 127.0.0.1, o firewall não é o problema: mude o bind para 0.0.0.0." },
+        { "title": "Ubuntu (ufw)", "command": "sudo ufw allow {{port:8080}}/tcp", "why": "Cria a regra e mantém depois do reboot." },
+        { "title": "Fedora/RHEL (firewalld)", "command": "sudo firewall-cmd --add-port={{port:8080}}/tcp --permanent && sudo firewall-cmd --reload", "why": "--permanent grava; --reload aplica." },
+        { "title": "Sem gerenciador", "command": "sudo iptables -I INPUT -p tcp --dport {{port:8080}} -j ACCEPT", "why": "Vale até o reboot, a menos que as regras sejam salvas." },
+        { "title": "Teste de outra máquina", "command": "nc -vz {{host:servidor}} {{port:8080}}", "why": "Na nuvem, confira também o security group ou o firewall do provedor." }
+      ],
+      "related": ["ufw", "iptables", "firewall", "connection-timeout"]
     }
   ]
 }

@@ -42,6 +42,10 @@ pub struct App {
     /// Height of the main area at the last render, for paging.
     pub viewport: u16,
     pub quit: bool,
+    /// Opened from the shell (Alt+H): Esc hands the line back to the shell.
+    pub widget: bool,
+    /// Widget mode: the user left with Esc, so the line should be used.
+    pub accepted: bool,
 }
 
 impl App {
@@ -59,9 +63,17 @@ impl App {
             details: Vec::new(),
             viewport: 20,
             quit: false,
+            widget: false,
+            accepted: false,
         };
         app.update_preview();
         app
+    }
+
+    /// Shell-integration mode (see [`App::accepted`]).
+    pub fn widget(mut self) -> Self {
+        self.widget = true;
+        self
     }
 
     pub fn mode(&self) -> Mode {
@@ -103,7 +115,10 @@ impl App {
     fn handle_search(&mut self, action: Action) {
         let before = self.editor.text().to_string();
         match action {
-            Action::Back => self.quit = true,
+            Action::Back => {
+                self.accepted = self.widget;
+                self.quit = true;
+            }
             Action::Insert(c) => self.editor.insert(c),
             Action::Paste(s) => self.editor.insert_str(&s),
             Action::Backspace => self.editor.backspace(),
@@ -287,6 +302,23 @@ mod tests {
         assert_eq!(a.selected, a.suggestions().len() - 1);
         a.handle(Action::Up);
         assert_eq!(a.selected, a.suggestions().len() - 2);
+    }
+
+    #[test]
+    fn widget_accepts_on_esc_and_cancels_on_ctrl_c() {
+        let mut a = app("grep").widget();
+        type_text(&mut a, " -r");
+        a.handle(Action::Back);
+        assert!(a.quit && a.accepted);
+        assert_eq!(a.editor.text(), "grep -r");
+
+        let mut a = app("grep").widget();
+        a.handle(Action::Quit);
+        assert!(a.quit && !a.accepted);
+
+        let mut a = app("grep");
+        a.handle(Action::Back);
+        assert!(a.quit && !a.accepted, "fora do widget, Esc só sai");
     }
 
     #[test]

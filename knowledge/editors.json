@@ -1,0 +1,140 @@
+{
+  "category": "editors",
+  "entries": [
+    {
+      "name": "vim",
+      "kind": "command",
+      "summary": "Editor de texto modal do terminal (vi melhorado)",
+      "description": "O vim tem modos: no normal, as teclas são comandos; i entra no modo de inserção para digitar; Esc volta ao normal. Comandos com : são digitados no modo normal.",
+      "usage": "vim [ARQUIVO...]",
+      "aliases": ["vi", "editor", "editar arquivo no terminal", "como sair do vim", "sair do vim", "nvim", "neovim"],
+      "tags": ["editor", "terminal"],
+      "options": [
+        { "short": "-R", "description": "Somente leitura" },
+        { "short": "-d", "description": "Compara arquivos lado a lado (vimdiff)" }
+      ],
+      "examples": [
+        { "command": "vim config.yml", "description": "Abre o arquivo" },
+        { "command": "vim +42 app.py", "description": "Abre na linha 42" },
+        { "command": "vim -d a.txt b.txt", "description": "Diferenças lado a lado" },
+        { "command": "sudo vim /etc/hosts", "description": "Arquivo do sistema (ou sudoedit /etc/hosts)" }
+      ],
+      "sections": [
+        {
+          "title": "Essencial",
+          "rows": [
+            ["i", "inserir texto (Esc volta ao modo normal)"],
+            [":w", "salvar"],
+            [":q", "sair"],
+            [":wq ou ZZ", "salvar e sair"],
+            [":q!", "sair descartando as alterações"],
+            ["u / Ctrl+R", "desfazer / refazer"],
+            ["dd / yy / p", "apagar linha / copiar linha / colar"],
+            ["/texto e n", "procurar e ir para a próxima ocorrência"],
+            [":%s/a/b/g", "trocar a por b no arquivo inteiro"],
+            ["gg / G / :42", "início / fim / linha 42"],
+            [":set number", "mostra números de linha"]
+          ]
+        }
+      ],
+      "related": ["exit-vim", "nano", "sed"]
+    },
+    {
+      "id": "exit-vim",
+      "name": "Sair do vim",
+      "kind": "recipe",
+      "summary": "Salvar e sair, ou sair sem salvar, quando o vim não obedece",
+      "aliases": ["como sair do vim", "sair do vim", "sair do vi", "vim travado", "exit vim", "quit vim", "git abriu o vim"],
+      "tags": ["editor", "vim"],
+      "steps": [
+        { "title": "Volte ao modo normal", "why": "Aperte Esc (duas vezes, por garantia)." },
+        { "title": "Salvar e sair", "why": "Digite :wq e Enter (ou ZZ)." },
+        { "title": "Sair sem salvar", "why": "Digite :q! e Enter." },
+        { "title": "Mensagem de commit do Git", "why": "Escreva a mensagem, depois Esc e :wq. Para cancelar o commit, saia com :cq." },
+        { "title": "Nunca mais", "command": "git config --global core.editor nano", "why": "O Git passa a abrir o nano. Para outros programas: export EDITOR=nano no ~/.bashrc." }
+      ],
+      "related": ["vim", "nano"]
+    },
+    {
+      "name": "nano",
+      "kind": "command",
+      "summary": "Editor de texto simples do terminal, com atalhos na tela",
+      "description": "Os atalhos aparecem no rodapé: ^ significa Ctrl e M- significa Alt.",
+      "usage": "nano [OPÇÕES] [ARQUIVO]",
+      "aliases": ["editor simples", "editar arquivo", "como sair do nano", "pico"],
+      "tags": ["editor", "terminal"],
+      "options": [
+        { "short": "-l", "long": "--linenumbers", "description": "Números de linha" },
+        { "short": "-m", "long": "--mouse", "description": "Suporte a mouse" },
+        { "short": "-B", "long": "--backup", "description": "Guarda um backup ao salvar" }
+      ],
+      "examples": [
+        { "command": "nano ~/.bashrc", "description": "Edita o .bashrc" },
+        { "command": "nano +20 script.sh", "description": "Abre na linha 20" },
+        { "command": "sudo nano /etc/hosts", "description": "Arquivo do sistema" }
+      ],
+      "sections": [
+        {
+          "title": "Atalhos",
+          "rows": [
+            ["Ctrl+O", "salvar (Enter confirma o nome)"],
+            ["Ctrl+X", "sair (pergunta se quer salvar)"],
+            ["Ctrl+W", "procurar"],
+            ["Ctrl+\\", "procurar e substituir"],
+            ["Ctrl+K / Ctrl+U", "recortar linha / colar"],
+            ["Alt+U / Alt+E", "desfazer / refazer"],
+            ["Ctrl+_", "ir para uma linha"]
+          ]
+        }
+      ],
+      "related": ["vim"]
+    },
+    {
+      "name": "tmux",
+      "kind": "command",
+      "summary": "Sessões de terminal que sobrevivem à desconexão, com janelas e painéis",
+      "description": "Os atalhos começam com o prefixo Ctrl+B: aperte Ctrl+B, solte, e aperte a tecla. Se a conexão SSH cair, a sessão continua no servidor: é só voltar com tmux attach.",
+      "usage": "tmux [new -s NOME | ls | attach -t NOME | kill-session -t NOME]",
+      "install": "Debian/Ubuntu: sudo apt install tmux.",
+      "aliases": ["sessão persistente", "manter sessão ssh", "screen", "multiplexador de terminal", "dividir terminal", "terminal multiplexer"],
+      "tags": ["terminal", "ssh", "sessões"],
+      "examples": [
+        { "command": "tmux new -s trabalho", "description": "Nova sessão chamada trabalho" },
+        { "command": "tmux ls", "description": "Sessões abertas" },
+        { "command": "tmux attach -t trabalho", "description": "Volta para a sessão" },
+        { "command": "tmux kill-session -t trabalho", "description": "Encerra a sessão" }
+      ],
+      "sections": [
+        {
+          "title": "Atalhos (depois de Ctrl+B)",
+          "rows": [
+            ["d", "desanexa: sai e deixa tudo rodando"],
+            ["c", "nova janela"],
+            ["n / p", "próxima / anterior janela"],
+            ["%", "divide na vertical"],
+            ["\"", "divide na horizontal"],
+            ["setas", "muda de painel"],
+            ["[", "modo de rolagem (q sai)"],
+            ["x", "fecha o painel"]
+          ]
+        }
+      ],
+      "related": ["nohup", "disown", "ssh", "keep-running-after-logout"]
+    },
+    {
+      "id": "keep-running-after-logout",
+      "name": "Manter um comando rodando depois de sair",
+      "kind": "recipe",
+      "summary": "Tarefas longas que não podem morrer quando o SSH cai ou o terminal fecha",
+      "aliases": ["processo morre ao fechar terminal", "rodar em segundo plano depois de sair", "ssh caiu e o processo morreu", "keep process running"],
+      "tags": ["processos", "ssh"],
+      "steps": [
+        { "title": "Antes de começar: tmux", "command": "tmux new -s tarefa", "why": "Rode o comando dentro da sessão; Ctrl+B d desanexa e tmux attach -t tarefa volta." },
+        { "title": "Sem tmux: nohup", "command": "nohup ./tarefa.sh > tarefa.log 2>&1 &", "why": "Ignora o SIGHUP do terminal e grava a saída em arquivo." },
+        { "title": "Já está rodando", "command": "disown -h %1", "why": "Depois de Ctrl+Z e bg, impede que o job receba SIGHUP ao sair." },
+        { "title": "Para sempre", "command": "systemctl status nome", "why": "Serviços de verdade devem virar uma unidade do systemd." }
+      ],
+      "related": ["tmux", "nohup", "disown", "systemd-unit"]
+    }
+  ]
+}

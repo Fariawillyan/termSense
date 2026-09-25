@@ -67,10 +67,11 @@
         { "short": "-i", "long": "--in-place", "description": "Edita o arquivo no lugar (-i.bak guarda backup)" },
         { "short": "-E", "long": "--regexp-extended", "description": "Usa regex estendida" },
         { "short": "-n", "long": "--quiet", "description": "Não imprime linhas automaticamente (use com p)" },
-        { "short": "-e", "long": "--expression", "arg": "SCRIPT", "description": "Adiciona um comando ao script" }
+        { "short": "-e", "long": "--expression", "arg": "SCRIPT", "kind": "sed", "description": "Adiciona um comando ao script" },
+        { "short": "-s", "long": "--separate", "description": "Trata cada arquivo separadamente" }
       ],
       "arguments": [
-        { "name": "SCRIPT", "kind": "text", "description": "Comandos sed, ex.: 's/antigo/novo/g'" },
+        { "name": "SCRIPT", "kind": "sed", "description": "Comandos sed, ex.: 's/antigo/novo/g'" },
         { "name": "ARQUIVO", "kind": "path", "description": "Arquivos (sem arquivo: stdin)", "repeat": true }
       ],
       "examples": [
@@ -78,7 +79,12 @@
         { "command": "sed -i.bak 's/localhost/127.0.0.1/g' app.conf", "description": "Altera o arquivo, guardando app.conf.bak" },
         { "command": "sed -n '10,20p' arquivo.txt", "description": "Imprime só as linhas 10 a 20" },
         { "command": "sed '/^#/d' config.ini", "description": "Remove linhas de comentário" },
-        { "command": "sed -E 's/([0-9]{4})-([0-9]{2})-([0-9]{2})/\\3\\/\\2\\/\\1/' datas.txt", "description": "Reordena datas com grupos de captura" }
+        { "command": "sed -E 's/([0-9]{4})-([0-9]{2})-([0-9]{2})/\\3\\/\\2\\/\\1/' datas.txt", "description": "Reordena datas com grupos de captura" },
+        { "command": "sed -n '/ERROR/p' app.log", "description": "Imprime só as linhas com ERROR (como grep)" },
+        { "command": "sed '1d' dados.csv", "description": "Remove a primeira linha (cabeçalho)" },
+        { "command": "sed -i '/^$/d' lista.txt", "description": "Apaga as linhas vazias do arquivo" },
+        { "command": "sed 's/\\r$//' windows.txt", "description": "Remove o CR do fim de linha do Windows" },
+        { "command": "sed 's|/usr/local|/opt|g' paths.txt", "description": "Outro delimitador quando o texto tem /" }
       ],
       "related": ["grep", "awk", "regex", "tr"]
     },
@@ -92,10 +98,11 @@
       "tags": ["texto", "colunas"],
       "options": [
         { "short": "-F", "arg": "SEPARADOR", "description": "Separador de campos (padrão: espaços)" },
-        { "short": "-v", "arg": "VAR=VALOR", "description": "Define uma variável" }
+        { "short": "-v", "arg": "VAR=VALOR", "description": "Define uma variável" },
+        { "short": "-f", "arg": "ARQUIVO", "description": "Lê o programa de um arquivo" }
       ],
       "arguments": [
-        { "name": "PROGRAMA", "kind": "text", "description": "Programa awk, ex.: '{print $1}'" },
+        { "name": "PROGRAMA", "kind": "awk", "description": "Programa awk, ex.: '{print $1}'" },
         { "name": "ARQUIVO", "kind": "path", "description": "Arquivos (sem arquivo: stdin)", "repeat": true }
       ],
       "examples": [
@@ -103,7 +110,12 @@
         { "command": "awk -F: '{print $1}' /etc/passwd", "description": "Usuários do sistema" },
         { "command": "awk '{s += $5} END {print s}' dados.txt", "description": "Soma a quinta coluna" },
         { "command": "awk '$9 >= 500' access.log", "description": "Linhas com status HTTP 5xx" },
-        { "command": "ps aux | awk '$3 > 50 {print $2, $11}'", "description": "PID e comando de processos acima de 50% de CPU" }
+        { "command": "ps aux | awk '$3 > 50 {print $2, $11}'", "description": "PID e comando de processos acima de 50% de CPU" },
+        { "command": "awk 'NR == 5' arquivo.txt", "description": "Só a quinta linha" },
+        { "command": "awk '{print $NF}' arquivo.txt", "description": "Último campo de cada linha" },
+        { "command": "awk -F, 'NR > 1 {s += $3} END {print s / (NR - 1)}' dados.csv", "description": "Média da terceira coluna, pulando o cabeçalho" },
+        { "command": "awk '!visto[$0]++' lista.txt", "description": "Remove linhas repetidas mantendo a ordem" },
+        { "command": "awk '{c[$1]++} END {for (ip in c) print c[ip], ip}' access.log", "description": "Conta ocorrências por valor" }
       ],
       "related": ["cut", "sed", "grep", "sort"]
     },
@@ -203,12 +215,15 @@
       "tags": ["texto"],
       "options": [
         { "short": "-d", "long": "--delete", "description": "Remove os caracteres de CONJUNTO1" },
-        { "short": "-s", "long": "--squeeze-repeats", "description": "Junta repetições em uma só" }
+        { "short": "-s", "long": "--squeeze-repeats", "description": "Junta repetições em uma só" },
+        { "short": "-c", "long": "--complement", "description": "Usa o complemento de CONJUNTO1 (tudo menos ele)" }
       ],
       "examples": [
         { "command": "echo 'olá' | tr 'a-z' 'A-Z'", "description": "Converte para maiúsculas (ASCII)" },
         { "command": "tr -d '\\r' < windows.txt > unix.txt", "description": "Remove CR de arquivos do Windows" },
-        { "command": "echo $PATH | tr ':' '\\n'", "description": "Um diretório do PATH por linha" }
+        { "command": "echo $PATH | tr ':' '\\n'", "description": "Um diretório do PATH por linha" },
+        { "command": "tr -s ' ' < arquivo.txt", "description": "Espaços repetidos viram um só" },
+        { "command": "tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 16", "description": "16 caracteres aleatórios" }
       ],
       "related": ["sed", "cut"]
     },
@@ -219,11 +234,18 @@
       "usage": "tee [OPÇÕES] ARQUIVO...",
       "aliases": ["salvar e mostrar", "duplicar saída", "gravar saída em arquivo"],
       "tags": ["shell", "pipe", "redirecionamento"],
-      "options": [{ "short": "-a", "long": "--append", "description": "Acrescenta em vez de sobrescrever" }],
-      "arguments": [{ "name": "ARQUIVO", "kind": "path", "description": "Arquivos de destino", "repeat": true }],
+      "options": [
+        { "short": "-a", "long": "--append", "description": "Acrescenta em vez de sobrescrever" },
+        { "short": "-p", "description": "Continua mesmo se uma saída falhar (pipes fechados)" }
+      ],
+      "arguments": [
+        { "name": "ARQUIVO", "kind": "path", "description": "Arquivos de destino", "repeat": true }
+      ],
       "examples": [
         { "command": "make 2>&1 | tee build.log", "description": "Vê a saída e guarda em arquivo" },
-        { "command": "echo 'nameserver 1.1.1.1' | sudo tee -a /etc/resolv.conf", "description": "Escreve em arquivo de root (sudo echo > não funciona)" }
+        { "command": "echo 'nameserver 1.1.1.1' | sudo tee -a /etc/resolv.conf", "description": "Escreve em arquivo de root (sudo echo > não funciona)" },
+        { "command": "comando | tee -a historico.log", "description": "Acrescenta ao log em vez de sobrescrever" },
+        { "command": "comando | tee saida.txt | grep ERRO", "description": "Guarda tudo e continua filtrando" }
       ],
       "related": ["redirect", "pipe", "stdout"]
     },
@@ -293,6 +315,228 @@
         { "command": "awk '{print $1}' access.log | sort | uniq -c | sort -rn | head", "description": "IPs com mais requisições" }
       ],
       "related": ["grep", "wc", "uniq", "sort", "awk"]
+    },
+    {
+      "name": "jq",
+      "kind": "command",
+      "summary": "Filtra, formata e transforma JSON na linha de comando",
+      "description": "O filtro descreve um caminho no JSON: .campo, .lista[], .a.b. Filtros se encadeiam com | como no shell. Use aspas simples em volta do filtro.",
+      "usage": "jq [OPÇÕES] FILTRO [ARQUIVO...]",
+      "install": "Debian/Ubuntu: sudo apt install jq. Fedora: sudo dnf install jq.",
+      "aliases": ["json", "formatar json", "pretty print json", "extrair campo json", "ler json", "parse json", "filtrar json"],
+      "tags": ["json", "texto", "api"],
+      "options": [
+        { "short": "-r", "long": "--raw-output", "description": "Textos sem aspas (para usar em scripts)" },
+        { "short": "-c", "long": "--compact-output", "description": "Um JSON por linha, sem formatação" },
+        { "short": "-s", "long": "--slurp", "description": "Junta toda a entrada em um array" },
+        { "short": "-e", "long": "--exit-status", "description": "Exit code 1 se o resultado for false ou null" },
+        { "short": "-S", "long": "--sort-keys", "description": "Ordena as chaves" },
+        { "short": "-n", "long": "--null-input", "description": "Não lê entrada (para construir JSON)" },
+        { "long": "--arg", "arg": "NOME VALOR", "description": "Passa uma variável de texto ($NOME no filtro)" }
+      ],
+      "arguments": [
+        { "name": "FILTRO", "kind": "text", "description": "Expressão jq, ex.: '.items[].name'" },
+        { "name": "ARQUIVO", "kind": "path", "description": "Arquivos JSON (sem arquivo: stdin)", "repeat": true }
+      ],
+      "examples": [
+        { "command": "jq . dados.json", "description": "Formata e colore" },
+        { "command": "curl -s https://api.github.com/repos/jqlang/jq | jq '.stargazers_count'", "description": "Um campo da resposta de uma API" },
+        { "command": "jq -r '.[].name' usuarios.json", "description": "O campo de cada item de uma lista, sem aspas" },
+        { "command": "jq '.[] | select(.idade > 30)' usuarios.json", "description": "Filtra itens" },
+        { "command": "jq -r '.[] | [.nome, .email] | @csv' usuarios.json", "description": "Converte para CSV" },
+        { "command": "jq 'length' lista.json", "description": "Quantidade de itens" },
+        { "command": "docker inspect app | jq '.[0].State'", "description": "Parte do JSON do docker inspect" },
+        { "command": "jq -n --arg nome Ana '{nome: $nome}'", "description": "Monta um JSON com segurança (escapa aspas)" }
+      ],
+      "sections": [
+        {
+          "title": "Filtros",
+          "rows": [
+            [".", "o documento inteiro"],
+            [".campo", "um campo"],
+            [".a.b", "campo aninhado"],
+            [".[]", "cada item de um array"],
+            [".[0]", "o primeiro item"],
+            ["select(COND)", "mantém só o que satisfaz a condição"],
+            ["map(F)", "aplica F a cada item"],
+            ["keys", "as chaves de um objeto"],
+            ["|", "encadeia filtros"]
+          ]
+        }
+      ],
+      "related": ["curl", "grep", "awk"]
+    },
+    {
+      "name": "printf",
+      "kind": "command",
+      "summary": "Imprime texto formatado, de forma mais previsível que o echo",
+      "usage": "printf FORMATO [ARGUMENTOS...]",
+      "aliases": ["formatar texto", "imprimir formatado", "casas decimais", "zeros à esquerda"],
+      "tags": ["texto", "shell"],
+      "examples": [
+        { "command": "printf '%s\\n' \"$HOME\"", "description": "Texto seguido de quebra de linha" },
+        { "command": "printf '%-10s %5d\\n' maria 42", "description": "Colunas alinhadas" },
+        { "command": "printf '%.2f\\n' 3.14159", "description": "Duas casas decimais" },
+        { "command": "printf '%03d\\n' 7", "description": "Zeros à esquerda: 007" },
+        { "command": "printf '%s\\n' a b c", "description": "O formato se repete para cada argumento" }
+      ],
+      "sections": [
+        {
+          "title": "Formatos",
+          "rows": [
+            ["%s", "texto"],
+            ["%d", "inteiro"],
+            ["%f %.2f", "decimal"],
+            ["%x", "hexadecimal"],
+            ["%-10s", "texto alinhado à esquerda em 10 colunas"],
+            ["\\n \\t", "quebra de linha, tabulação"]
+          ]
+        }
+      ],
+      "related": ["echo", "awk"]
+    },
+    {
+      "name": "column",
+      "kind": "command",
+      "summary": "Organiza texto em colunas alinhadas",
+      "usage": "column [OPÇÕES] [ARQUIVO...]",
+      "aliases": ["alinhar colunas", "formatar tabela", "ver csv no terminal"],
+      "tags": ["texto", "tabela"],
+      "options": [
+        { "short": "-t", "long": "--table", "description": "Monta uma tabela a partir das colunas" },
+        { "short": "-s", "long": "--separator", "arg": "SEPARADOR", "description": "Separador de colunas da entrada" },
+        { "short": "-o", "long": "--output-separator", "arg": "TEXTO", "description": "Separador na saída" }
+      ],
+      "examples": [
+        { "command": "mount | column -t", "description": "Saída de mount legível" },
+        { "command": "column -s, -t < dados.csv", "description": "CSV alinhado no terminal" },
+        { "command": "column -s: -t /etc/passwd", "description": "Usuários do sistema em colunas" }
+      ],
+      "related": ["cut", "awk", "paste"]
+    },
+    {
+      "name": "paste",
+      "kind": "command",
+      "summary": "Junta linhas de arquivos lado a lado, ou todas em uma linha",
+      "usage": "paste [OPÇÕES] ARQUIVO...",
+      "aliases": ["juntar linhas", "juntar arquivos lado a lado", "linhas para uma lista"],
+      "tags": ["texto"],
+      "options": [
+        { "short": "-d", "long": "--delimiters", "arg": "LISTA", "description": "Separador (padrão: tab)" },
+        { "short": "-s", "long": "--serial", "description": "Junta as linhas de cada arquivo em uma só" }
+      ],
+      "examples": [
+        { "command": "paste nomes.txt idades.txt", "description": "Coluna de um arquivo ao lado da do outro" },
+        { "command": "paste -sd, lista.txt", "description": "As linhas viram uma lista separada por vírgulas" },
+        { "command": "seq 5 | paste -sd+ | bc", "description": "Soma 1+2+3+4+5" }
+      ],
+      "related": ["cut", "column", "comm"]
+    },
+    {
+      "name": "comm",
+      "kind": "command",
+      "summary": "Compara dois arquivos ordenados: o que é só de um, só do outro ou comum",
+      "description": "A saída tem três colunas: linhas só do primeiro, só do segundo e dos dois. -1, -2 e -3 escondem colunas. Os arquivos precisam estar ordenados.",
+      "usage": "comm [-123] ARQUIVO1 ARQUIVO2",
+      "aliases": ["linhas em comum", "diferença entre listas", "comparar listas", "interseção"],
+      "tags": ["texto", "comparação"],
+      "options": [
+        { "short": "-1", "description": "Esconde as linhas só do primeiro arquivo" },
+        { "short": "-2", "description": "Esconde as linhas só do segundo arquivo" },
+        { "short": "-3", "description": "Esconde as linhas comuns" }
+      ],
+      "examples": [
+        { "command": "comm -12 <(sort a.txt) <(sort b.txt)", "description": "Linhas presentes nos dois" },
+        { "command": "comm -23 <(sort a.txt) <(sort b.txt)", "description": "Linhas só em a.txt" }
+      ],
+      "related": ["diff", "sort", "uniq", "process-substitution"]
+    },
+    {
+      "name": "tac",
+      "kind": "command",
+      "summary": "Mostra um arquivo de trás para frente, da última linha para a primeira",
+      "usage": "tac [ARQUIVO...]",
+      "aliases": ["inverter linhas", "cat ao contrário", "reverse lines"],
+      "tags": ["texto"],
+      "examples": [
+        { "command": "tac app.log | grep -m1 ERROR", "description": "O último erro do log" },
+        { "command": "history | tac | head", "description": "Comandos mais recentes primeiro" }
+      ],
+      "related": ["cat", "tail"]
+    },
+    {
+      "name": "nl",
+      "kind": "command",
+      "summary": "Numera as linhas de um arquivo",
+      "usage": "nl [OPÇÕES] [ARQUIVO...]",
+      "aliases": ["numerar linhas", "número da linha"],
+      "tags": ["texto"],
+      "options": [
+        { "short": "-b", "long": "--body-numbering", "arg": "ESTILO", "description": "a numera todas as linhas; t (padrão) só as não vazias" },
+        { "short": "-w", "long": "--number-width", "arg": "N", "description": "Largura do número" }
+      ],
+      "examples": [
+        { "command": "nl script.sh", "description": "Numera as linhas com conteúdo" },
+        { "command": "nl -ba config.ini", "description": "Numera inclusive as linhas vazias" },
+        { "command": "cat -n arquivo.txt", "description": "Alternativa com o cat" }
+      ],
+      "related": ["cat", "wc"]
+    },
+    {
+      "name": "seq",
+      "kind": "command",
+      "summary": "Gera sequências de números",
+      "usage": "seq [OPÇÕES] [INÍCIO [PASSO]] FIM",
+      "aliases": ["sequência de números", "contar de 1 a 10", "range"],
+      "tags": ["texto", "shell"],
+      "options": [
+        { "short": "-w", "long": "--equal-width", "description": "Mesma largura, com zeros à esquerda" },
+        { "short": "-s", "long": "--separator", "arg": "TEXTO", "description": "Separador (padrão: quebra de linha)" }
+      ],
+      "examples": [
+        { "command": "seq 5", "description": "1 a 5" },
+        { "command": "seq 0 10 100", "description": "De 0 a 100, de 10 em 10" },
+        { "command": "seq -w 1 10", "description": "01, 02, ... 10" },
+        { "command": "for i in $(seq 1 3); do echo \"$i\"; done", "description": "Em um laço (no bash, {1..3} também serve)" }
+      ],
+      "related": ["for", "printf"]
+    },
+    {
+      "name": "base64",
+      "kind": "command",
+      "summary": "Codifica e decodifica Base64",
+      "usage": "base64 [OPÇÕES] [ARQUIVO]",
+      "aliases": ["codificar base64", "decodificar base64", "decode base64", "encode"],
+      "tags": ["texto", "codificação"],
+      "options": [
+        { "short": "-d", "long": "--decode", "description": "Decodifica" },
+        { "short": "-w", "long": "--wrap", "arg": "N", "description": "Quebra a saída a cada N caracteres (-w0: sem quebra)" }
+      ],
+      "examples": [
+        { "command": "echo -n 'usuario:senha' | base64", "description": "Valor de um cabeçalho Basic Auth (-n evita a quebra de linha)" },
+        { "command": "echo 'dXN1YXJpbzpzZW5oYQ==' | base64 -d", "description": "Decodifica" },
+        { "command": "base64 -w0 imagem.png > imagem.b64", "description": "Arquivo inteiro em uma linha" }
+      ],
+      "related": ["sha256sum", "openssl"],
+      "warnings": ["Base64 não é criptografia: qualquer um decodifica."]
+    },
+    {
+      "name": "dos2unix",
+      "kind": "command",
+      "summary": "Converte fim de linha do Windows (CRLF) para o do Linux (LF)",
+      "usage": "dos2unix [OPÇÕES] ARQUIVO...",
+      "install": "Debian/Ubuntu: sudo apt install dos2unix. Sem instalar: sed -i 's/\\r$//' arquivo.",
+      "aliases": ["crlf para lf", "remover ^M", "converter fim de linha", "unix2dos"],
+      "tags": ["texto", "wsl", "windows"],
+      "options": [
+        { "short": "-n", "long": "--newfile", "arg": "SAÍDA", "description": "Grava em outro arquivo em vez de alterar o original" }
+      ],
+      "examples": [
+        { "command": "dos2unix script.sh", "description": "Corrige o arquivo no lugar" },
+        { "command": "sed -i 's/\\r$//' script.sh", "description": "O mesmo sem o dos2unix" },
+        { "command": "file script.sh", "description": "Mostra 'with CRLF line terminators' se ainda houver CR" }
+      ],
+      "related": ["crlf", "sed", "tr", "file"]
     }
   ]
 }

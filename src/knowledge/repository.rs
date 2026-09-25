@@ -25,6 +25,7 @@ impl Repository {
             entries,
             categories,
             warnings,
+            ..
         } = loaded;
         let mut by_id = HashMap::with_capacity(entries.len());
         let mut commands = HashMap::new();
@@ -170,64 +171,6 @@ mod tests {
     }
 
     #[test]
-    fn every_reference_resolves() {
-        let repo = repo();
-        for e in repo.entries() {
-            for r in &e.related {
-                assert!(
-                    repo.get(r).is_some(),
-                    "{}: related '{}' não existe",
-                    e.id,
-                    r
-                );
-            }
-            if let Some(p) = &e.parent {
-                assert!(repo.get(p).is_some(), "{}: parent '{}' não existe", e.id, p);
-            }
-            assert!(
-                repo.category(&e.category).is_some(),
-                "{}: categoria '{}' não declarada",
-                e.id,
-                e.category
-            );
-        }
-    }
-
-    #[test]
-    fn entries_are_well_formed() {
-        let repo = repo();
-        for e in repo.entries() {
-            assert!(
-                !e.summary.ends_with('.'),
-                "{}: resumo não deve terminar com ponto",
-                e.id
-            );
-            assert!(
-                !e.related.contains(&e.id),
-                "{}: relacionado a si mesmo",
-                e.id
-            );
-            for o in &e.options {
-                assert!(
-                    o.short.is_some() || o.long.is_some(),
-                    "{}: opção sem flag",
-                    e.id
-                );
-                for flag in o.short.iter().chain(&o.long) {
-                    assert!(flag.starts_with('-'), "{}: flag '{}' sem hífen", e.id, flag);
-                }
-            }
-            if e.kind == EntryKind::Recipe {
-                assert!(
-                    !e.examples.is_empty() || !e.steps.is_empty(),
-                    "{}: receita sem comandos",
-                    e.id
-                );
-            }
-        }
-    }
-
-    #[test]
     fn spec_required_knowledge_exists() {
         let repo = repo();
         let required = [
@@ -366,6 +309,42 @@ mod tests {
             "exit-code",
             "process-substitution",
             "subshell",
+            // Shell grammar and builtins
+            "if",
+            "for",
+            "while",
+            "case",
+            "double-bracket",
+            "test-bracket",
+            "test",
+            "shell-function",
+            "arithmetic",
+            "heredoc",
+            "parameter-expansion",
+            "special-variables",
+            "read",
+            "set",
+            // Tools, packages, editors, WSL
+            "jq",
+            "rsync",
+            "crontab",
+            "cron-syntax",
+            "apt",
+            "dpkg",
+            "dnf",
+            "vim",
+            "nano",
+            "tmux",
+            "ufw",
+            "wslpath",
+            "crlf",
+            "git-reflog",
+            "docker-compose-up",
+            // Error messages
+            "error-command-not-found",
+            "error-permission-denied",
+            "error-ssh-publickey",
+            "error-no-space",
         ];
         for id in required {
             assert!(repo.get(id).is_some(), "falta a entrada '{id}'");

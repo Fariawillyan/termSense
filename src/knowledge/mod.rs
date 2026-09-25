@@ -4,6 +4,7 @@ pub mod loader;
 pub mod model;
 pub mod repository;
 pub mod template;
+pub mod validate;
 
 pub use model::{ArgKind, Argument, CommandOption, Entry, EntryKind, Example};
 pub use repository::Repository;

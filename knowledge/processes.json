@@ -137,71 +137,92 @@
     {
       "name": "jobs",
       "kind": "command",
+      "builtin": true,
       "summary": "Lista os jobs (tarefas em segundo plano) do shell atual",
-      "description": "Ctrl+Z suspende o processo em primeiro plano; bg continua em segundo plano; fg traz de volta. Jobs pertencem ao shell: somem ao fechá-lo, a menos que use nohup ou disown.",
+      "description": "Ctrl+Z pausa o comando em primeiro plano e o transforma em job; bg continua em segundo plano e fg traz de volta. %1, %2 são os números dos jobs; %+ é o mais recente.",
       "usage": "jobs [-l]",
       "aliases": ["tarefas em segundo plano", "background jobs", "processos do terminal"],
       "tags": ["processos", "shell", "builtin"],
-      "options": [{ "short": "-l", "description": "Inclui o PID" }],
+      "options": [
+        { "short": "-l", "description": "Inclui o PID" },
+        { "short": "-p", "description": "Só os PIDs" },
+        { "short": "-r", "description": "Só os que estão rodando" },
+        { "short": "-s", "description": "Só os parados" }
+      ],
       "examples": [
         { "command": "sleep 100 &", "description": "Inicia em segundo plano" },
-        { "command": "jobs -l", "description": "Lista jobs com PID" }
+        { "command": "jobs -l", "description": "Lista jobs com PID" },
+        { "command": "kill %1", "description": "Encerra o job 1" },
+        { "command": "jobs -p | xargs kill", "description": "Encerra todos os jobs deste terminal" }
       ],
       "related": ["fg", "bg", "nohup", "kill"]
     },
     {
       "name": "fg",
       "kind": "command",
+      "builtin": true,
       "summary": "Traz um job para o primeiro plano",
       "usage": "fg [%JOB]",
       "aliases": ["primeiro plano", "foreground"],
       "tags": ["processos", "shell", "builtin"],
       "examples": [
         { "command": "fg", "description": "Traz o job mais recente" },
-        { "command": "fg %2", "description": "Traz o job 2" }
+        { "command": "fg %2", "description": "Traz o job 2" },
+        { "command": "fg %vim", "description": "Traz o job cujo comando começa com vim" },
+        { "command": "%1", "description": "Atalho para fg %1" }
       ],
       "related": ["bg", "jobs"]
     },
     {
       "name": "bg",
       "kind": "command",
+      "builtin": true,
       "summary": "Continua um job suspenso em segundo plano",
       "usage": "bg [%JOB]",
       "aliases": ["segundo plano", "background", "continuar em background"],
       "tags": ["processos", "shell", "builtin"],
       "examples": [
         { "command": "bg", "description": "Depois de Ctrl+Z, continua rodando em segundo plano" },
-        { "command": "bg %1", "description": "Continua o job 1" }
+        { "command": "bg %1", "description": "Continua o job 1" },
+        { "command": "comando &", "description": "Já inicia em segundo plano" },
+        { "command": "bg %+", "description": "Continua o job mais recente" }
       ],
       "related": ["fg", "jobs", "nohup"]
     },
     {
       "name": "nohup",
       "kind": "command",
+      "wrapper": true,
       "summary": "Executa um comando imune ao fechamento do terminal",
       "description": "Ignora o SIGHUP enviado quando a sessão termina. A saída vai para nohup.out se não for redirecionada. Para serviços de verdade, prefira systemd.",
       "usage": "nohup COMANDO [ARGUMENTOS]",
-      "wrapper": true,
       "aliases": ["rodar depois de fechar o terminal", "manter processo rodando", "background permanente"],
       "tags": ["processos", "sinais"],
       "examples": [
         { "command": "nohup ./servidor > servidor.log 2>&1 &", "description": "Roda em segundo plano, com log, mesmo após sair" },
-        { "command": "nohup python treino.py &", "description": "Saída em nohup.out" }
+        { "command": "nohup python treino.py &", "description": "Saída em nohup.out" },
+        { "command": "nohup ./script.sh &> saida.log &", "description": "stdout e stderr no mesmo arquivo" },
+        { "command": "tmux new -s tarefa", "description": "Alternativa: uma sessão que dá para retomar" }
       ],
-      "related": ["jobs", "bg", "signals", "systemctl"]
+      "related": ["jobs", "bg", "signals", "systemctl", "disown", "tmux"]
     },
     {
       "name": "nice",
       "kind": "command",
-      "summary": "Inicia um comando com prioridade de CPU ajustada",
-      "description": "Niceness vai de -20 (maior prioridade) a 19 (menor). Usuários comuns só podem aumentar o valor (ser mais 'gentis').",
-      "usage": "nice [-n AJUSTE] COMANDO",
       "wrapper": true,
+      "summary": "Inicia um comando com prioridade de CPU ajustada",
+      "description": "Vai de -20 (mais prioridade) a 19 (menos). Usuários comuns só podem diminuir a própria prioridade; aumentar exige root.",
+      "usage": "nice [-n AJUSTE] COMANDO",
       "aliases": ["prioridade de processo", "baixa prioridade", "priority"],
       "tags": ["processos", "cpu", "desempenho"],
-      "options": [{ "short": "-n", "long": "--adjustment", "arg": "N", "description": "Ajuste de prioridade (padrão 10)" }],
+      "options": [
+        { "short": "-n", "long": "--adjustment", "arg": "N", "description": "Ajuste de prioridade (padrão 10)" }
+      ],
       "examples": [
-        { "command": "nice -n 19 tar -czf backup.tar.gz /home", "description": "Backup sem atrapalhar o resto" }
+        { "command": "nice -n 19 tar -czf backup.tar.gz /home", "description": "Backup sem atrapalhar o resto" },
+        { "command": "nice -n 10 make -j4", "description": "Compila com prioridade menor" },
+        { "command": "ps -o pid,ni,comm -p 1234", "description": "Prioridade (NI) de um processo" },
+        { "command": "ionice -c3 rsync -a origem/ destino/", "description": "Prioridade de disco (ociosa), para cópias grandes" }
       ],
       "related": ["renice", "top", "ps"]
     },
@@ -243,7 +264,7 @@
         { "command": "systemctl --failed", "description": "O que falhou" },
         { "command": "systemctl list-units --type=service --state=running", "description": "Serviços rodando" }
       ],
-      "related": ["journalctl", "ps", "nohup"]
+      "related": ["journalctl", "ps", "nohup", "systemd-unit"]
     },
     {
       "name": "journalctl",
@@ -276,6 +297,9 @@
       "description": "Um processo pode tratar ou ignorar a maioria dos sinais, exceto SIGKILL e SIGSTOP.",
       "aliases": ["signals", "sigterm", "sigkill", "sighup", "sigint", "ctrl+c"],
       "tags": ["processos"],
+      "examples": [
+        { "command": "kill -l", "description": "Lista todos os sinais" }
+      ],
       "sections": [
         {
           "title": "Mais comuns",
@@ -289,8 +313,7 @@
           ]
         }
       ],
-      "examples": [{ "command": "kill -l", "description": "Lista todos os sinais" }],
-      "related": ["kill", "pkill", "nohup", "process"]
+      "related": ["kill", "pkill", "nohup", "process", "trap", "timeout"]
     },
     {
       "id": "process",
@@ -363,6 +386,161 @@
         { "command": "sudo fuser -k {{port:8080}}/tcp", "description": "Alternativa com fuser" }
       ],
       "related": ["ss", "lsof", "kill", "porta"]
+    },
+    {
+      "name": "crontab",
+      "kind": "command",
+      "summary": "Edita e lista as tarefas agendadas do cron do seu usuário",
+      "description": "Cada linha tem cinco campos de tempo e um comando. Digite um agendamento (ex.: */5 * * * *) no TermSense para ver o que ele significa.",
+      "usage": "crontab [-e | -l | -r] [-u USUÁRIO] [ARQUIVO]",
+      "aliases": ["agendar tarefa", "cron", "agendamento", "rodar todo dia", "tarefa agendada", "schedule job", "cron job", "executar periodicamente"],
+      "tags": ["agendamento", "processos", "cron"],
+      "options": [
+        { "short": "-e", "description": "Edita o crontab (abre o $EDITOR)" },
+        { "short": "-l", "description": "Lista as tarefas" },
+        { "short": "-r", "description": "Apaga TODAS as suas tarefas (sem confirmação)" },
+        { "short": "-u", "arg": "USUÁRIO", "description": "Crontab de outro usuário (root)" }
+      ],
+      "examples": [
+        { "command": "crontab -e", "description": "Edita as suas tarefas" },
+        { "command": "crontab -l", "description": "Lista as tarefas" },
+        { "command": "sudo crontab -u www-data -l", "description": "Tarefas de outro usuário" },
+        { "command": "crontab -l > crontab.bak", "description": "Backup antes de editar" },
+        { "command": "ls /etc/cron.d /etc/cron.daily", "description": "Tarefas do sistema" }
+      ],
+      "related": ["cron-syntax", "schedule-task", "systemctl", "journalctl"],
+      "warnings": ["-r fica ao lado do -e no teclado e apaga tudo sem perguntar: faça backup com crontab -l."]
+    },
+    {
+      "id": "cron-syntax",
+      "name": "Sintaxe do cron",
+      "kind": "concept",
+      "summary": "Os cinco campos de um agendamento: minuto, hora, dia do mês, mês e dia da semana",
+      "description": "Digite o agendamento (ex.: 0 3 * * 1) ou cron seguido dele para ver a explicação campo a campo.",
+      "aliases": ["expressão cron", "cron expression", "* * * * *", "campos do cron", "crontab format", "@daily", "@reboot"],
+      "tags": ["agendamento", "cron"],
+      "examples": [
+        { "command": "*/5 * * * * /opt/app/verifica.sh", "description": "A cada 5 minutos" },
+        { "command": "0 3 * * * /opt/backup.sh >> /tmp/backup.log 2>&1", "description": "Todo dia às 03:00, com log" },
+        { "command": "0 9-18 * * 1-5 /opt/relatorio.sh", "description": "De hora em hora, das 9h às 18h, em dias úteis" },
+        { "command": "@reboot /opt/app/iniciar.sh", "description": "Ao ligar a máquina" }
+      ],
+      "sections": [
+        {
+          "title": "Campos",
+          "rows": [
+            ["minuto", "0-59"],
+            ["hora", "0-23"],
+            ["dia do mês", "1-31"],
+            ["mês", "1-12 ou jan-dec"],
+            ["dia da semana", "0-7 ou sun-sat (0 e 7 = domingo)"]
+          ]
+        },
+        {
+          "title": "Operadores",
+          "rows": [
+            ["*", "qualquer valor"],
+            ["*/N", "a cada N"],
+            ["A-B", "intervalo"],
+            ["A,B,C", "lista"],
+            ["@hourly @daily @weekly @monthly @reboot", "atalhos"]
+          ]
+        }
+      ],
+      "related": ["crontab", "schedule-task", "date"]
+    },
+    {
+      "id": "schedule-task",
+      "name": "Agendar uma tarefa",
+      "kind": "recipe",
+      "summary": "Rodar um comando periodicamente com cron ou com um timer do systemd",
+      "aliases": ["agendar tarefa", "agendar comando", "rodar todo dia", "executar de hora em hora", "tarefa periódica", "schedule task", "rodar script automaticamente"],
+      "tags": ["agendamento", "cron", "systemd"],
+      "steps": [
+        { "title": "Teste o comando", "command": "/bin/bash /opt/tarefa.sh", "why": "Rode com caminho absoluto: o cron não tem o seu PATH nem o seu diretório atual." },
+        { "title": "Abra o crontab", "command": "crontab -e", "why": "Uma linha por tarefa: cinco campos de tempo e o comando." },
+        { "title": "Adicione a linha", "command": "0 2 * * * /opt/tarefa.sh >> /tmp/tarefa.log 2>&1", "why": "Todo dia às 02:00, guardando a saída para depurar." },
+        { "title": "Confira", "command": "crontab -l", "why": "A tarefa foi salva?" },
+        { "title": "Veja se rodou", "command": "grep CRON /var/log/syslog", "why": "Debian/Ubuntu; em outras distribuições: journalctl -u cron ou -u crond." },
+        { "title": "Alternativa com systemd", "command": "systemctl list-timers", "why": "Timers do systemd registram logs no journal e recuperam execuções perdidas (Persistent=true)." }
+      ],
+      "related": ["crontab", "cron-syntax", "systemctl", "systemd-unit"]
+    },
+    {
+      "id": "systemd-unit",
+      "name": "Unidade do systemd",
+      "kind": "concept",
+      "summary": "Arquivo que descreve um serviço, timer ou montagem gerenciado pelo systemd",
+      "description": "Serviços ficam em /etc/systemd/system/NOME.service. Depois de criar ou editar, rode systemctl daemon-reload.",
+      "aliases": ["service file", "arquivo .service", "criar serviço", "systemd service", "timer do systemd", "unit file"],
+      "tags": ["systemd", "serviços"],
+      "examples": [
+        { "command": "systemctl cat nginx", "description": "Mostra o arquivo da unidade" },
+        { "command": "sudo systemctl edit nginx", "description": "Cria um override sem mexer no original" },
+        { "command": "sudo systemctl daemon-reload", "description": "Relê as unidades depois de editar" },
+        { "command": "systemctl list-timers", "description": "Timers agendados" }
+      ],
+      "sections": [
+        { "title": "Exemplo: /etc/systemd/system/app.service", "text": "[Unit]\nDescription=Minha aplicação\nAfter=network.target\n\n[Service]\nUser=app\nWorkingDirectory=/opt/app\nExecStart=/opt/app/bin/servidor\nRestart=on-failure\nLimitNOFILE=65535\n\n[Install]\nWantedBy=multi-user.target" },
+        {
+          "title": "Depois",
+          "items": ["sudo systemctl daemon-reload", "sudo systemctl enable --now app", "journalctl -u app -f para ver os logs"]
+        }
+      ],
+      "related": ["systemctl", "journalctl", "schedule-task"]
+    },
+    {
+      "name": "sleep",
+      "kind": "command",
+      "summary": "Espera um tempo antes de continuar",
+      "usage": "sleep NÚMERO[s|m|h|d]",
+      "aliases": ["esperar", "pausar", "aguardar", "delay", "wait"],
+      "tags": ["processos", "script"],
+      "examples": [
+        { "command": "sleep 5", "description": "5 segundos" },
+        { "command": "sleep 0.5", "description": "Meio segundo" },
+        { "command": "sleep 2m", "description": "2 minutos" },
+        { "command": "while true; do date; sleep 60; done", "description": "Repete a cada minuto" }
+      ],
+      "related": ["timeout", "watch", "while"]
+    },
+    {
+      "name": "timeout",
+      "kind": "command",
+      "wrapper": true,
+      "summary": "Roda um comando com tempo limite e o encerra se passar",
+      "description": "Se o tempo estourar, o exit code é 124. Com -k, manda SIGKILL se o programa ignorar o SIGTERM.",
+      "usage": "timeout [OPÇÕES] DURAÇÃO COMANDO",
+      "aliases": ["tempo limite", "limitar tempo de execução", "matar se demorar", "time limit"],
+      "tags": ["processos", "script"],
+      "options": [
+        { "short": "-s", "long": "--signal", "arg": "SINAL", "description": "Sinal enviado ao estourar (padrão TERM)" },
+        { "short": "-k", "long": "--kill-after", "arg": "DURAÇÃO", "description": "Manda KILL se ainda estiver rodando depois disso" },
+        { "long": "--preserve-status", "description": "Devolve o exit code do comando, não 124" }
+      ],
+      "examples": [
+        { "command": "timeout 10 curl -s https://example.com", "description": "Desiste depois de 10 segundos" },
+        { "command": "timeout -k 5 1m ./tarefa.sh", "description": "1 minuto; se não parar, KILL 5 segundos depois" },
+        { "command": "timeout 3 bash -c 'until nc -z db 5432; do sleep 1; done'", "description": "Espera a porta abrir por no máximo 3 segundos" }
+      ],
+      "related": ["sleep", "kill", "signals", "exit-code"]
+    },
+    {
+      "name": "disown",
+      "kind": "command",
+      "builtin": true,
+      "summary": "Desliga um job do shell: ele continua rodando quando o terminal fechar",
+      "usage": "disown [-h] [%JOB]",
+      "aliases": ["desanexar processo", "esqueci o nohup", "manter processo depois de sair"],
+      "tags": ["processos", "shell", "builtin"],
+      "options": [
+        { "short": "-h", "description": "Mantém na lista, mas não envia SIGHUP ao sair" }
+      ],
+      "examples": [
+        { "command": "disown %1", "description": "O job 1 sobrevive ao fechar o terminal" },
+        { "command": "disown -a", "description": "Todos os jobs" }
+      ],
+      "related": ["nohup", "jobs", "bg", "tmux"]
     }
   ]
 }

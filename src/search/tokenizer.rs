@@ -111,6 +111,20 @@ fn lex(line: &str) -> Vec<Token> {
             i += len;
             continue;
         }
+        if line[i..].starts_with("((") {
+            // Arithmetic command `(( i++ ))`: one token, `;` and `<` included.
+            let (len, ok) = balanced(&line[i..], '(', ')');
+            raws.push(Raw {
+                text_start: i,
+                text_end: i + len,
+                value: line[i..i + len].to_string(),
+                op: false,
+                fully_quoted: false,
+                complete: ok,
+            });
+            i += len;
+            continue;
+        }
         raws.push(lex_word(line, &mut i));
     }
     raws.into_iter()
@@ -157,6 +171,10 @@ fn redirect_len(s: &str) -> usize {
     let mut len = 1;
     if b.get(1) == Some(&b'>') || (b[0] == b'<' && b.get(1) == Some(&b'<')) {
         len = 2;
+    }
+    // Here-string `<<<` and tab-stripping here-document `<<-`.
+    if b[0] == b'<' && len == 2 && matches!(b.get(2), Some(b'<' | b'-')) {
+        return 3;
     }
     // >&1, 2>&-, >&2
     if b.get(len) == Some(&b'&') {
@@ -512,10 +530,21 @@ fn has_file_extension(text: &str) -> bool {
 
 /// Lowercases and folds accents: `Conexão` → `conexao`.
 pub fn normalize(text: &str) -> String {
-    text.chars()
-        .flat_map(char::to_lowercase)
-        .map(fold)
-        .collect()
+    let mut out = String::with_capacity(text.len());
+    normalize_into(&mut out, text);
+    out
+}
+
+/// [`normalize`] appending to an existing buffer.
+pub fn normalize_into(out: &mut String, text: &str) {
+    for c in text.chars() {
+        // Most text is ASCII: skip the general Unicode path for it.
+        if c.is_ascii() {
+            out.push(c.to_ascii_lowercase());
+        } else {
+            out.extend(c.to_lowercase().map(fold));
+        }
+    }
 }
 
 fn fold(c: char) -> char {
@@ -535,12 +564,43 @@ fn fold(c: char) -> char {
 /// Splits already-normalized text into search terms, keeping characters that
 /// carry meaning in commands (`-r`, `/24`, `:8080`, `ssh-keygen`).
 pub fn terms(normalized: &str) -> Vec<&str> {
-    normalized
-        .split(|c: char| !(c.is_alphanumeric() || "-_./:@%+#$^".contains(c)))
-        .map(|t| t.trim_end_matches(['.', ':', ',']))
-        .map(|t| t.trim_start_matches(['.', ':']).trim_start_matches('$'))
-        .filter(|t| !t.is_empty() && t.chars().any(char::is_alphanumeric))
-        .collect()
+    let mut out = Vec::new();
+    for_each_term(normalized, |t| out.push(t));
+    out
+}
+
+/// [`terms`] without collecting: the index builder runs this over the whole
+/// knowledge base at startup.
+pub fn for_each_term<'a>(normalized: &'a str, mut f: impl FnMut(&'a str)) {
+    let mut start = None;
+    let mut emit = |raw: &'a str| {
+        // Trims punctuation that only separates (`porta:`, `.env`, `$HOME`).
+        let t = raw
+            .trim_end_matches(['.', ':', ','])
+            .trim_start_matches(['.', ':'])
+            .trim_start_matches('$');
+        if !t.is_empty() && t.chars().any(char::is_alphanumeric) {
+            f(t);
+        }
+    };
+    for (i, c) in normalized.char_indices() {
+        let keep = c.is_alphanumeric()
+            || matches!(
+                c,
+                '-' | '_' | '.' | '/' | ':' | '@' | '%' | '+' | '#' | '$' | '^'
+            );
+        match (keep, start) {
+            (true, None) => start = Some(i),
+            (false, Some(s)) => {
+                emit(&normalized[s..i]);
+                start = None;
+            }
+            _ => {}
+        }
+    }
+    if let Some(s) = start {
+        emit(&normalized[s..]);
+    }
 }
 
 /// Terms minus stop words. Falls back to every term when all are stop words.
@@ -550,19 +610,19 @@ pub fn search_terms(normalized: &str) -> Vec<&str> {
     if filtered.is_empty() { all } else { filtered }
 }
 
+/// Portuguese and English stop words, sorted for binary search.
 const STOPWORDS: &[&str] = &[
-    // pt-BR
-    "a", "o", "as", "os", "um", "uma", "uns", "umas", "de", "da", "do", "das", "dos", "em", "no",
-    "na", "nos", "nas", "com", "para", "pra", "por", "pelo", "pela", "e", "ou", "que", "se", "ao",
-    "aos", "meu", "minha", "meus", "minhas", "como", "qual", "quais", "eu", "me", "esta", "estao",
-    "esse", "essa", "este", "isso", "isto", "sao", "ser", "tem", "ter", "quero", "preciso",
-    "fazer", "algum", "alguma", "todos", "todas", // en
-    "the", "an", "of", "to", "in", "on", "for", "with", "and", "or", "is", "are", "how", "my", "i",
-    "what", "which", "do", "does", "can",
+    "a", "algum", "alguma", "an", "and", "ao", "aos", "are", "as", "can", "com", "como", "da",
+    "das", "de", "do", "does", "dos", "e", "em", "essa", "esse", "esta", "estao", "este", "eu",
+    "fazer", "for", "how", "i", "in", "is", "isso", "isto", "me", "meu", "meus", "minha", "minhas",
+    "my", "na", "nas", "no", "nos", "o", "of", "on", "or", "os", "ou", "para", "pela", "pelo",
+    "por", "pra", "preciso", "quais", "qual", "que", "quero", "sao", "se", "ser", "tem", "ter",
+    "the", "to", "todas", "todos", "um", "uma", "umas", "uns", "what", "which", "with",
 ];
 
+/// Runs for every token while indexing, so it is a binary search.
 pub fn is_stopword(term: &str) -> bool {
-    STOPWORDS.contains(&term)
+    STOPWORDS.binary_search(&term).is_ok()
 }
 
 #[cfg(test)]
@@ -675,6 +735,16 @@ mod tests {
     }
 
     #[test]
+    fn here_strings_and_arithmetic() {
+        let t = kinds("cat <<-EOF; grep x <<< \"$v\"; ((i++)); for ((i=0; i<3; i++))");
+        let texts: Vec<&str> = t.iter().map(|(_, s)| s.as_str()).collect();
+        assert!(texts.contains(&"<<-"), "{texts:?}");
+        assert!(texts.contains(&"<<<"), "{texts:?}");
+        assert!(texts.contains(&"((i++))"), "{texts:?}");
+        assert!(texts.contains(&"((i=0; i<3; i++))"), "{texts:?}");
+    }
+
+    #[test]
     fn assignments_before_command() {
         let t = tokenize("LANG=C sort file");
         assert_eq!(t[0].kind, TokenKind::Assignment);
@@ -686,6 +756,12 @@ mod tests {
         let t = tokenize("rm -- -arquivo");
         assert_eq!(t[1].kind, TokenKind::EndOfOptions);
         assert_eq!(t[2].kind, TokenKind::Word);
+    }
+
+    #[test]
+    fn stopwords_are_sorted() {
+        assert!(STOPWORDS.windows(2).all(|w| w[0] < w[1]));
+        assert!(is_stopword("para") && is_stopword("the") && !is_stopword("porta"));
     }
 
     #[test]

@@ -112,7 +112,7 @@
         { "command": "env | grep -i proxy", "description": "Variáveis de proxy definidas" },
         { "command": "export PATH=\"$HOME/.local/bin:$PATH\"", "description": "Adiciona um diretório ao PATH (coloque no ~/.bashrc para persistir)" }
       ],
-      "related": ["export", "env", "quotes", "subshell"]
+      "related": ["export", "env", "quotes", "subshell", "path-variable", "parameter-expansion"]
     },
     {
       "id": "command-substitution",
@@ -196,7 +196,7 @@
         { "command": "ping -c1 host >/dev/null || echo 'fora do ar'", "description": "Age na falha" },
         { "command": "grep -q ERROR app.log && echo 'há erros'", "description": "grep -q só devolve o código" }
       ],
-      "related": ["stderr", "subshell", "pipe"]
+      "related": ["stderr", "subshell", "pipe", "special-variables", "set", "exit"]
     },
     {
       "id": "process-substitution",
@@ -236,18 +236,23 @@
       "tags": ["shell", "builtin"],
       "options": [
         { "short": "-n", "description": "Não adiciona quebra de linha no final" },
-        { "short": "-e", "description": "Interpreta escapes como \\n e \\t" }
+        { "short": "-e", "description": "Interpreta escapes como \\n e \\t" },
+        { "short": "-E", "description": "Não interpreta escapes (padrão do bash)" }
       ],
       "examples": [
         { "command": "echo \"Olá, $USER\"", "description": "Texto com variável" },
         { "command": "echo -e 'linha1\\nlinha2'", "description": "Quebra de linha com -e" },
-        { "command": "printf '%s\\n' \"$HOME\"", "description": "printf é mais previsível entre sistemas" }
+        { "command": "printf '%s\\n' \"$HOME\"", "description": "printf é mais previsível entre sistemas" },
+        { "command": "echo \"$PATH\"", "description": "Mostra uma variável (as aspas preservam espaços)" },
+        { "command": "echo 'texto' >> notas.txt", "description": "Acrescenta uma linha a um arquivo" },
+        { "command": "echo \"erro\" >&2", "description": "Escreve na saída de erro" }
       ],
       "related": ["stdout", "quotes", "environment-variables"]
     },
     {
       "name": "export",
       "kind": "command",
+      "builtin": true,
       "summary": "Marca variáveis para serem herdadas pelos processos filhos",
       "usage": "export NOME[=VALOR]...",
       "aliases": ["exportar variável", "definir variável de ambiente"],
@@ -258,16 +263,19 @@
       ],
       "examples": [
         { "command": "export JAVA_HOME=/opt/jdk", "description": "Define para os programas executados daqui" },
-        { "command": "export PATH=\"$HOME/.local/bin:$PATH\"", "description": "Prepend no PATH" }
+        { "command": "export PATH=\"$HOME/.local/bin:$PATH\"", "description": "Prepend no PATH" },
+        { "command": "export -p", "description": "Lista as variáveis exportadas" },
+        { "command": "export EDITOR=vim", "description": "Editor usado por git, crontab e outros" },
+        { "command": "VAR=valor comando", "description": "Define a variável só para um comando, sem export" }
       ],
-      "related": ["environment-variables", "env"]
+      "related": ["environment-variables", "env", "path-variable", "source"]
     },
     {
       "name": "env",
       "kind": "command",
+      "wrapper": true,
       "summary": "Mostra o ambiente ou executa um comando com ambiente modificado",
       "usage": "env [OPÇÕES] [NOME=VALOR]... [COMANDO]",
-      "wrapper": true,
       "aliases": ["listar variáveis", "ambiente", "printenv"],
       "tags": ["shell", "variáveis"],
       "options": [
@@ -277,7 +285,8 @@
       "examples": [
         { "command": "env", "description": "Todas as variáveis exportadas" },
         { "command": "env -i bash --norc", "description": "Shell com ambiente limpo" },
-        { "command": "env | sort", "description": "Ambiente em ordem alfabética" }
+        { "command": "env | sort", "description": "Ambiente em ordem alfabética" },
+        { "command": "env | grep -i proxy", "description": "Variáveis de proxy definidas" }
       ],
       "related": ["environment-variables", "export"]
     },
@@ -285,30 +294,597 @@
       "id": "alias",
       "name": "alias",
       "kind": "command",
+      "builtin": true,
       "summary": "Cria atalhos para comandos no shell",
       "usage": "alias [NOME='COMANDO']",
       "aliases": ["atalho de comando", "apelido", "shortcut"],
       "tags": ["shell", "builtin", "produtividade"],
+      "options": [
+        { "short": "-p", "description": "Lista os atalhos em formato reutilizável" }
+      ],
       "examples": [
         { "command": "alias ll='ls -lah'", "description": "Cria o atalho ll (vale para a sessão; salve no ~/.bashrc)" },
         { "command": "alias", "description": "Lista os atalhos" },
-        { "command": "unalias ll", "description": "Remove o atalho" }
+        { "command": "unalias ll", "description": "Remove o atalho" },
+        { "command": "alias gs='git status -sb'", "description": "Atalho para um comando com opções" },
+        { "command": "\\ls", "description": "Ignora o alias e roda o comando original" }
       ],
-      "related": ["history", "environment-variables"]
+      "related": ["history", "environment-variables", "type", "shell-function"]
     },
     {
       "name": "history",
       "kind": "command",
+      "builtin": true,
       "summary": "Mostra o histórico de comandos do shell",
-      "description": "Ctrl+R busca no histórico; !! repete o último comando; !N executa o comando número N.",
+      "description": "Ctrl+R busca no histórico enquanto você digita (Ctrl+R de novo vai para o anterior). O histórico fica em ~/.bash_history quando o shell termina.",
       "usage": "history [N]",
       "aliases": ["comandos anteriores", "histórico", "ctrl+r"],
       "tags": ["shell", "builtin", "produtividade"],
+      "options": [
+        { "short": "-c", "description": "Apaga o histórico da sessão" },
+        { "short": "-d", "arg": "N", "description": "Apaga a entrada N" }
+      ],
       "examples": [
         { "command": "history | grep ssh", "description": "Comandos ssh já usados" },
-        { "command": "history 20", "description": "Últimos 20" }
+        { "command": "history 20", "description": "Últimos 20" },
+        { "command": "!!", "description": "Repete o último comando (sudo !! repete com sudo)" },
+        { "command": "!$", "description": "Último argumento do comando anterior" },
+        { "command": "HISTTIMEFORMAT='%F %T ' history", "description": "Com data e hora" }
       ],
       "related": ["alias", "grep"]
+    },
+    {
+      "id": "if",
+      "name": "if",
+      "kind": "command",
+      "builtin": true,
+      "summary": "Executa comandos conforme o resultado (exit code) de uma condição",
+      "description": "O if não avalia expressões: ele roda um comando e olha o exit code (0 = verdadeiro). Por isso a condição costuma ser um teste ([[ ]] ou [ ]) ou um comando como grep -q.",
+      "usage": "if COMANDO; then COMANDOS; [elif COMANDO; then COMANDOS;] [else COMANDOS;] fi",
+      "aliases": ["condicional", "if then else", "if else bash", "condição no bash", "se então senão", "conditional"],
+      "tags": ["shell", "script", "condição", "builtin"],
+      "examples": [
+        { "command": "if [[ -f app.log ]]; then echo existe; fi", "description": "Testa se o arquivo existe" },
+        { "command": "if grep -q ERROR app.log; then echo 'tem erro'; fi", "description": "Usa o exit code do grep como condição" },
+        { "command": "if [[ $# -lt 1 ]]; then echo 'uso: script ARQUIVO' >&2; exit 1; fi", "description": "Valida os argumentos de um script" },
+        { "command": "if ! command -v docker > /dev/null; then echo 'instale o docker'; fi", "description": "Verifica se um programa existe" },
+        { "command": "[[ -d build ]] && echo existe || echo 'não existe'", "description": "Forma curta com && e || (o || também roda se o echo falhar)" }
+      ],
+      "related": ["double-bracket", "test", "exit-code", "case", "for"]
+    },
+    {
+      "id": "for",
+      "name": "for",
+      "kind": "command",
+      "builtin": true,
+      "summary": "Repete comandos para cada item de uma lista",
+      "description": "A variável recebe um item por vez. A lista pode ser palavras, um glob (*.log), uma expansão de chaves ({1..10}) ou a saída de um comando. Sem in LISTA, percorre os argumentos do script.",
+      "usage": "for NOME in LISTA; do COMANDOS; done",
+      "aliases": ["laço", "loop", "for loop", "for each", "repetir para cada arquivo", "iterar arquivos", "percorrer arquivos", "select"],
+      "tags": ["shell", "script", "laço", "builtin"],
+      "examples": [
+        { "command": "for f in *.log; do gzip \"$f\"; done", "description": "Compacta cada .log" },
+        { "command": "for i in {1..5}; do echo \"item $i\"; done", "description": "Sequência de 1 a 5 (expansão de chaves)" },
+        { "command": "for host in web1 web2 db1; do ssh \"$host\" uptime; done", "description": "O mesmo comando em vários servidores" },
+        { "command": "for ((i = 0; i < 3; i++)); do echo $i; done", "description": "Estilo C, com contador" },
+        { "command": "for arg in \"$@\"; do echo \"$arg\"; done", "description": "Argumentos do script, um por vez" }
+      ],
+      "sections": [
+        {
+          "title": "Cuidados",
+          "items": ["use aspas em \"$f\": nomes com espaço quebram sem elas", "for x in $(cat arquivo) divide por espaços, não por linhas: para linhas, use while read", "se o glob não casar, o laço roda uma vez com o texto literal (*.log); shopt -s nullglob evita"]
+        }
+      ],
+      "related": ["while", "globbing", "seq", "xargs", "find"]
+    },
+    {
+      "id": "while",
+      "name": "while",
+      "kind": "command",
+      "builtin": true,
+      "summary": "Repete comandos enquanto uma condição for verdadeira",
+      "description": "Como o if, a condição é um comando: o laço continua enquanto ele terminar com exit code 0. until é o inverso: repete até a condição dar certo.",
+      "usage": "while COMANDO; do COMANDOS; done  (ou: until COMANDO; do ...; done)",
+      "aliases": ["until", "enquanto", "laço while", "while read", "ler arquivo linha por linha", "loop infinito", "esperar serviço subir"],
+      "tags": ["shell", "script", "laço", "builtin"],
+      "examples": [
+        { "command": "while read -r linha; do echo \"$linha\"; done < arquivo.txt", "description": "Lê um arquivo linha por linha (-r preserva barras invertidas)" },
+        { "command": "while true; do date; sleep 5; done", "description": "Laço infinito (Ctrl+C para parar)" },
+        { "command": "until nc -z localhost 5432; do sleep 1; done", "description": "Espera o PostgreSQL aceitar conexões" },
+        { "command": "ls | while read -r f; do echo \"$f\"; done", "description": "Processa a saída de um comando (o laço roda num subshell)" }
+      ],
+      "related": ["for", "read", "sleep", "exit-code"]
+    },
+    {
+      "id": "case",
+      "name": "case",
+      "kind": "command",
+      "builtin": true,
+      "summary": "Escolhe um bloco de comandos comparando um valor com padrões",
+      "description": "Os padrões são globs (não regex). O primeiro que casar roda até o ;; e o case termina. * no fim funciona como caso padrão.",
+      "usage": "case VALOR in PADRÃO) COMANDOS;; *) COMANDOS;; esac",
+      "aliases": ["switch", "switch case", "escolha", "menu de opções", "esac"],
+      "tags": ["shell", "script", "condição", "builtin"],
+      "examples": [
+        { "command": "case \"$1\" in start) echo iniciando;; stop) echo parando;; *) echo \"uso: $0 start|stop\";; esac", "description": "Trata o argumento de um script" },
+        { "command": "case \"$arquivo\" in *.tar.gz) tar -xzf \"$arquivo\";; *.zip) unzip \"$arquivo\";; esac", "description": "Decide pela extensão" }
+      ],
+      "sections": [
+        {
+          "title": "Padrões",
+          "rows": [
+            ["a|b)", "a ou b"],
+            ["*)", "qualquer coisa (caso padrão)"],
+            ["[yY]*)", "começa com y ou Y"],
+            [";;", "termina o bloco"]
+          ]
+        }
+      ],
+      "related": ["if", "globbing"]
+    },
+    {
+      "id": "double-bracket",
+      "name": "[[",
+      "kind": "command",
+      "builtin": true,
+      "summary": "Teste do bash: compara textos, números, arquivos e regex",
+      "description": "Palavra-chave do bash e do zsh. Diferente do [, não divide palavras (aspas são opcionais à esquerda), aceita && e || dentro, == com glob e =~ com regex. Termina com ]].",
+      "usage": "[[ EXPRESSÃO ]]",
+      "aliases": ["teste bash", "double bracket", "condição", "comparar strings", "comparar números", "testar se arquivo existe", "verificar se diretório existe", "variável vazia", "=~"],
+      "tags": ["shell", "script", "condição", "builtin"],
+      "options": [
+        { "short": "-e", "arg": "ARQUIVO", "description": "O caminho existe (arquivo, diretório, o que for)" },
+        { "short": "-f", "arg": "ARQUIVO", "description": "É um arquivo comum" },
+        { "short": "-d", "arg": "DIRETÓRIO", "description": "É um diretório" },
+        { "short": "-L", "arg": "ARQUIVO", "description": "É um link simbólico" },
+        { "short": "-s", "arg": "ARQUIVO", "description": "Existe e não está vazio" },
+        { "short": "-r", "arg": "ARQUIVO", "description": "Você pode ler" },
+        { "short": "-w", "arg": "ARQUIVO", "description": "Você pode escrever" },
+        { "short": "-x", "arg": "ARQUIVO", "description": "Você pode executar" },
+        { "short": "-z", "arg": "TEXTO", "description": "O texto está vazio" },
+        { "short": "-n", "arg": "TEXTO", "description": "O texto não está vazio" },
+        { "short": "-eq", "description": "Números iguais" },
+        { "short": "-ne", "description": "Números diferentes" },
+        { "short": "-lt", "description": "Menor que (números)" },
+        { "short": "-le", "description": "Menor ou igual (números)" },
+        { "short": "-gt", "description": "Maior que (números)" },
+        { "short": "-ge", "description": "Maior ou igual (números)" },
+        { "short": "-nt", "description": "Arquivo mais novo que o outro" },
+        { "short": "-ot", "description": "Arquivo mais antigo que o outro" },
+        { "short": "-v", "arg": "NOME", "description": "A variável está definida (bash 4.2+)" }
+      ],
+      "examples": [
+        { "command": "[[ -f config.yml ]] && echo existe", "description": "O arquivo existe?" },
+        { "command": "[[ -z \"$VAR\" ]] && echo vazia", "description": "A variável está vazia?" },
+        { "command": "[[ $n -gt 10 ]] && echo grande", "description": "Comparação numérica" },
+        { "command": "[[ $arquivo == *.log ]] && echo log", "description": "Casa com um glob (sem aspas à direita)" },
+        { "command": "[[ $email =~ ^[^@]+@[^@]+$ ]] && echo válido", "description": "Casa com uma regex" },
+        { "command": "[[ -d build && ! -s build/app ]] && echo 'build incompleto'", "description": "Combina condições" }
+      ],
+      "sections": [
+        {
+          "title": "[[ ]] ou [ ]",
+          "items": ["[[ ]] é do bash/zsh: mais seguro e com mais recursos", "[ ] é POSIX (funciona no sh e no dash): use aspas em \"$var\" sempre", "para números use -eq, -lt, -gt...: == e < comparam texto"]
+        }
+      ],
+      "related": ["test-bracket", "test", "if", "regex", "exit-code"]
+    },
+    {
+      "id": "test-bracket",
+      "name": "[",
+      "kind": "command",
+      "summary": "Teste POSIX: o mesmo que test, fechado com ]",
+      "description": "É um comando comum (existe /usr/bin/[): por isso exige espaços em volta e ] como último argumento. Variáveis sem aspas quebram o teste quando estão vazias ou têm espaços.",
+      "usage": "[ EXPRESSÃO ]",
+      "aliases": ["colchetes", "test bracket", "colchete"],
+      "tags": ["shell", "script", "condição"],
+      "options": [
+        { "short": "-e", "arg": "ARQUIVO", "description": "O caminho existe (arquivo, diretório, o que for)" },
+        { "short": "-f", "arg": "ARQUIVO", "description": "É um arquivo comum" },
+        { "short": "-d", "arg": "DIRETÓRIO", "description": "É um diretório" },
+        { "short": "-L", "arg": "ARQUIVO", "description": "É um link simbólico" },
+        { "short": "-s", "arg": "ARQUIVO", "description": "Existe e não está vazio" },
+        { "short": "-r", "arg": "ARQUIVO", "description": "Você pode ler" },
+        { "short": "-w", "arg": "ARQUIVO", "description": "Você pode escrever" },
+        { "short": "-x", "arg": "ARQUIVO", "description": "Você pode executar" },
+        { "short": "-z", "arg": "TEXTO", "description": "O texto está vazio" },
+        { "short": "-n", "arg": "TEXTO", "description": "O texto não está vazio" },
+        { "short": "-eq", "description": "Números iguais" },
+        { "short": "-ne", "description": "Números diferentes" },
+        { "short": "-lt", "description": "Menor que (números)" },
+        { "short": "-le", "description": "Menor ou igual (números)" },
+        { "short": "-gt", "description": "Maior que (números)" },
+        { "short": "-ge", "description": "Maior ou igual (números)" },
+        { "short": "-nt", "description": "Arquivo mais novo que o outro" },
+        { "short": "-ot", "description": "Arquivo mais antigo que o outro" },
+        { "short": "-a", "description": "E lógico (obsoleto: prefira [ ] && [ ])" },
+        { "short": "-o", "description": "OU lógico (obsoleto: prefira [ ] || [ ])" }
+      ],
+      "examples": [
+        { "command": "[ -d /tmp ] && echo ok", "description": "Diretório existe?" },
+        { "command": "[ \"$a\" = \"$b\" ] && echo iguais", "description": "Textos iguais (aspas obrigatórias)" },
+        { "command": "[ \"$#\" -eq 0 ] && echo 'sem argumentos'", "description": "Nenhum argumento recebido" }
+      ],
+      "related": ["test", "double-bracket", "if"]
+    },
+    {
+      "id": "test",
+      "name": "test",
+      "kind": "command",
+      "summary": "Avalia uma condição e devolve o exit code (0 = verdadeira)",
+      "usage": "test EXPRESSÃO",
+      "aliases": ["testar condição", "test command"],
+      "tags": ["shell", "script", "condição"],
+      "options": [
+        { "short": "-e", "arg": "ARQUIVO", "description": "O caminho existe (arquivo, diretório, o que for)" },
+        { "short": "-f", "arg": "ARQUIVO", "description": "É um arquivo comum" },
+        { "short": "-d", "arg": "DIRETÓRIO", "description": "É um diretório" },
+        { "short": "-L", "arg": "ARQUIVO", "description": "É um link simbólico" },
+        { "short": "-s", "arg": "ARQUIVO", "description": "Existe e não está vazio" },
+        { "short": "-r", "arg": "ARQUIVO", "description": "Você pode ler" },
+        { "short": "-w", "arg": "ARQUIVO", "description": "Você pode escrever" },
+        { "short": "-x", "arg": "ARQUIVO", "description": "Você pode executar" },
+        { "short": "-z", "arg": "TEXTO", "description": "O texto está vazio" },
+        { "short": "-n", "arg": "TEXTO", "description": "O texto não está vazio" },
+        { "short": "-eq", "description": "Números iguais" },
+        { "short": "-ne", "description": "Números diferentes" },
+        { "short": "-lt", "description": "Menor que (números)" },
+        { "short": "-le", "description": "Menor ou igual (números)" },
+        { "short": "-gt", "description": "Maior que (números)" },
+        { "short": "-ge", "description": "Maior ou igual (números)" },
+        { "short": "-nt", "description": "Arquivo mais novo que o outro" },
+        { "short": "-ot", "description": "Arquivo mais antigo que o outro" }
+      ],
+      "examples": [
+        { "command": "test -f /etc/hosts && echo sim", "description": "Arquivo existe?" },
+        { "command": "test \"$USER\" = root || echo 'não é root'", "description": "Compara textos" }
+      ],
+      "related": ["test-bracket", "double-bracket", "if", "exit-code"]
+    },
+    {
+      "id": "shell-function",
+      "name": "Funções do shell",
+      "kind": "concept",
+      "summary": "Blocos de comandos com nome, chamados como se fossem comandos",
+      "description": "Recebem argumentos como um script ($1, $2, $@) e devolvem um exit code com return. Para devolver texto, use echo e capture com $(...).",
+      "aliases": ["function", "função bash", "funções", "definir função", "criar função", "return"],
+      "tags": ["shell", "script"],
+      "examples": [
+        { "command": "backup() { tar -czf \"$1.tar.gz\" \"$1\"; }", "description": "Define a função; use: backup pasta" },
+        { "command": "function ola { echo \"Olá, ${1:-mundo}\"; }", "description": "Sintaxe alternativa com function" },
+        { "command": "declare -f", "description": "Lista as funções definidas" },
+        { "command": "unset -f backup", "description": "Remove a função" }
+      ],
+      "sections": [
+        {
+          "title": "Regras",
+          "items": ["$1, $2... são os argumentos da função; $# a quantidade", "local nome=valor cria variáveis que não vazam para fora", "return N define o exit code (0 a 255)", "para valer em todo terminal, coloque no ~/.bashrc"]
+        }
+      ],
+      "related": ["alias", "special-variables", "exit-code", "source"]
+    },
+    {
+      "id": "command-grouping",
+      "name": "Agrupamento { } e ( )",
+      "kind": "concept",
+      "summary": "Agrupa comandos: { } no shell atual, ( ) em um subshell",
+      "aliases": ["chaves", "grupo de comandos", "command group", "{ }"],
+      "tags": ["shell"],
+      "examples": [
+        { "command": "{ date; uptime; } > status.txt", "description": "Uma só saída para vários comandos" },
+        { "command": "(cd /tmp && ls)", "description": "Muda de diretório só dentro do subshell" },
+        { "command": "[[ -f x ]] || { echo 'falta x' >&2; exit 1; }", "description": "Vários comandos depois do ||" }
+      ],
+      "sections": [
+        {
+          "title": "Cuidados",
+          "items": ["{ } exige espaço depois de { e ; (ou quebra de linha) antes de }", "( ) cria um subshell: cd e variáveis não afetam o shell atual"]
+        }
+      ],
+      "related": ["subshell", "redirect"]
+    },
+    {
+      "id": "arithmetic",
+      "name": "Aritmética no shell",
+      "kind": "concept",
+      "summary": "Contas com inteiros: $(( )) devolve o resultado e (( )) testa",
+      "description": "O bash só faz contas com inteiros: 10 / 3 dá 3. Para decimais, use bc ou awk.",
+      "aliases": ["$(( ))", "(( ))", "contas no bash", "somar no bash", "calcular", "let", "expr", "incrementar variável"],
+      "tags": ["shell", "script"],
+      "examples": [
+        { "command": "echo $((2 + 3 * 4))", "description": "Mostra 14" },
+        { "command": "((i++))", "description": "Incrementa i" },
+        { "command": "(( total > 100 )) && echo muito", "description": "Comparação numérica" },
+        { "command": "echo \"scale=2; 10 / 3\" | bc", "description": "Decimais com bc: 3.33" },
+        { "command": "awk 'BEGIN {print 10 / 3}'", "description": "Decimais com awk" }
+      ],
+      "sections": [
+        {
+          "title": "Operadores",
+          "rows": [
+            ["+ - * / %", "soma, subtração, multiplicação, divisão inteira e resto"],
+            ["**", "potência"],
+            ["++ --", "incremento e decremento"],
+            ["== != < > <= >=", "comparações (dentro de (( )))"],
+            ["&& || !", "lógica"]
+          ]
+        }
+      ],
+      "related": ["command-substitution", "double-bracket"]
+    },
+    {
+      "id": "heredoc",
+      "name": "Here-document (<<EOF)",
+      "kind": "concept",
+      "summary": "Passa várias linhas de texto como entrada de um comando",
+      "aliases": ["heredoc", "here document", "<<EOF", "here-string", "<<<", "texto de várias linhas", "escrever arquivo com cat"],
+      "tags": ["shell", "redirecionamento"],
+      "examples": [
+        { "command": "cat <<'EOF' > nota.txt", "description": "Início: as linhas seguintes, até EOF, vão para nota.txt" },
+        { "command": "grep -c erro <<< \"$texto\"", "description": "Here-string: uma linha como entrada" },
+        { "command": "sudo tee /etc/app.conf > /dev/null <<EOF", "description": "Escreve um arquivo que só o root pode alterar" }
+      ],
+      "sections": [
+        { "title": "Exemplo completo", "text": "cat <<EOF > saudacao.txt\nOlá, $USER\nHoje é $(date +%F)\nEOF" },
+        {
+          "title": "Regras",
+          "items": ["<<EOF expande $variáveis e $(...); <<'EOF' (com aspas) mantém o texto literal", "<<-EOF ignora tabs no começo das linhas, para indentar em scripts", "o delimitador final precisa estar sozinho na linha, sem espaços"]
+        }
+      ],
+      "related": ["redirect", "stdin", "quotes", "tee"]
+    },
+    {
+      "id": "parameter-expansion",
+      "name": "Expansão de parâmetros ${ }",
+      "kind": "concept",
+      "summary": "Transforma o valor de variáveis: padrão, cortes, trocas e tamanho",
+      "aliases": ["${var}", "parameter expansion", "valor padrão", "remover extensão", "substring bash", "tamanho da string", "${var:-padrão}", "cortar texto bash"],
+      "tags": ["shell", "variáveis"],
+      "examples": [
+        { "command": "f=relatorio.tar.gz; echo \"${f%%.*}\"", "description": "Mostra relatorio (tira o maior sufixo)" },
+        { "command": "echo \"${PWD##*/}\"", "description": "Nome do diretório atual (como basename)" },
+        { "command": "echo \"${PORTA:-8080}\"", "description": "8080 se PORTA não estiver definida" },
+        { "command": "echo \"${#HOME}\"", "description": "Quantidade de caracteres" }
+      ],
+      "sections": [
+        {
+          "title": "Formas",
+          "rows": [
+            ["${VAR:-padrão}", "valor, ou padrão se vazia"],
+            ["${VAR:=padrão}", "o mesmo, e atribui"],
+            ["${VAR:?msg}", "aborta com msg se vazia"],
+            ["${#VAR}", "tamanho"],
+            ["${VAR#*/}", "tira o menor prefixo que casa"],
+            ["${VAR##*/}", "tira o maior prefixo (basename)"],
+            ["${VAR%.*}", "tira o menor sufixo (remove a extensão)"],
+            ["${VAR%%.*}", "tira o maior sufixo"],
+            ["${VAR/a/b}", "troca a primeira ocorrência"],
+            ["${VAR//a/b}", "troca todas"],
+            ["${VAR:0:5}", "5 caracteres a partir da posição 0"],
+            ["${VAR^^} ${VAR,,}", "maiúsculas, minúsculas"]
+          ]
+        }
+      ],
+      "related": ["environment-variables", "quotes", "basename"]
+    },
+    {
+      "id": "special-variables",
+      "name": "Variáveis especiais ($?, $1, $@)",
+      "kind": "concept",
+      "summary": "Variáveis que o shell define: argumentos, exit code e PIDs",
+      "aliases": ["$?", "$1", "$@", "$#", "$$", "$!", "$0", "argumentos do script", "variáveis especiais", "positional parameters"],
+      "tags": ["shell", "script", "variáveis"],
+      "examples": [
+        { "command": "echo \"recebi $# argumentos: $*\"", "description": "Quantos e quais argumentos" },
+        { "command": "comando; echo $?", "description": "Exit code do comando" },
+        { "command": "sleep 60 & echo \"PID: $!\"", "description": "PID do processo em segundo plano" }
+      ],
+      "sections": [
+        {
+          "title": "Tabela",
+          "rows": [
+            ["$0", "nome do script"],
+            ["$1 … $9, ${10}", "argumentos posicionais"],
+            ["$#", "quantidade de argumentos"],
+            ["\"$@\"", "todos os argumentos, cada um preservado (use com aspas)"],
+            ["$*", "todos os argumentos em uma palavra"],
+            ["$?", "exit code do último comando"],
+            ["$$", "PID do shell"],
+            ["$!", "PID do último processo em segundo plano"],
+            ["$_", "último argumento do comando anterior"]
+          ]
+        }
+      ],
+      "related": ["exit-code", "environment-variables", "shell-function", "set"]
+    },
+    {
+      "id": "shebang",
+      "name": "Shebang (#!)",
+      "kind": "concept",
+      "summary": "Primeira linha de um script: diz qual interpretador executa o arquivo",
+      "description": "Com a shebang e permissão de execução (chmod +x), o script roda como ./script.sh. #!/usr/bin/env bash procura o bash no PATH; #!/bin/sh pede um shell POSIX (no Debian e no Ubuntu é o dash, sem os recursos do bash).",
+      "aliases": ["#!", "#!/bin/bash", "#!/usr/bin/env bash", "interpretador", "script bash", "criar script", "escrever um script"],
+      "tags": ["shell", "script"],
+      "examples": [
+        { "command": "chmod +x script.sh && ./script.sh", "description": "Torna executável e roda" },
+        { "command": "head -n 1 script.sh", "description": "Mostra a shebang" },
+        { "command": "bash script.sh", "description": "Roda com o bash, ignorando a shebang" },
+        { "command": "bash -n script.sh", "description": "Só verifica a sintaxe, sem executar" }
+      ],
+      "sections": [
+        { "title": "Modelo de script", "text": "#!/usr/bin/env bash\nset -euo pipefail\n\nmain() {\n  echo \"Olá, ${1:-mundo}\"\n}\n\nmain \"$@\"" },
+        {
+          "title": "Por quê",
+          "items": ["set -e: para no primeiro comando que falhar", "set -u: erro ao usar variável não definida", "set -o pipefail: o pipeline falha se qualquer parte falhar", "bad interpreter com ^M: o arquivo tem fim de linha do Windows (CRLF); rode dos2unix"]
+        }
+      ],
+      "related": ["set", "chmod", "crlf", "special-variables"]
+    },
+    {
+      "id": "path-variable",
+      "name": "PATH",
+      "kind": "concept",
+      "summary": "Lista de diretórios onde o shell procura os comandos",
+      "description": "Os diretórios são separados por dois-pontos e consultados em ordem: o primeiro executável com o nome certo vence. Para rodar algo fora do PATH, informe o caminho (./script.sh).",
+      "aliases": ["$PATH", "adicionar ao path", "variável path", "onde o shell procura comandos", "path do sistema"],
+      "tags": ["shell", "variáveis"],
+      "examples": [
+        { "command": "echo $PATH | tr ':' '\\n'", "description": "Um diretório por linha" },
+        { "command": "export PATH=\"$HOME/.local/bin:$PATH\"", "description": "Adiciona um diretório na frente (salve no ~/.bashrc para ficar)" },
+        { "command": "type -a python3", "description": "Qual python3 será usado e onde há outros" },
+        { "command": "hash -r", "description": "Esquece caminhos em cache depois de instalar algo" }
+      ],
+      "related": ["environment-variables", "which", "export", "type", "error-command-not-found"]
+    },
+    {
+      "id": "file-descriptors",
+      "name": "Descritores de arquivo (0, 1, 2)",
+      "kind": "concept",
+      "summary": "Números que identificam as entradas e saídas abertas de um processo",
+      "aliases": ["file descriptor", "fd", "descritor", "/dev/fd", "/proc/pid/fd"],
+      "tags": ["shell", "redirecionamento", "processos"],
+      "examples": [
+        { "command": "ls -l /proc/$$/fd", "description": "Descritores abertos pelo shell atual" },
+        { "command": "ls /proc/1234/fd | wc -l", "description": "Quantos o processo 1234 tem abertos" },
+        { "command": "ulimit -n", "description": "Limite de descritores por processo" },
+        { "command": "exec 3> log.txt; echo oi >&3", "description": "Abre o fd 3 para escrita e usa" }
+      ],
+      "sections": [
+        {
+          "title": "Padrão",
+          "rows": [
+            ["0", "stdin: entrada"],
+            ["1", "stdout: saída normal"],
+            ["2", "stderr: erros"],
+            ["3+", "arquivos, sockets e pipes que o programa abrir"]
+          ]
+        }
+      ],
+      "related": ["stdin", "stdout", "stderr", "redirect", "lsof", "ulimit"]
+    },
+    {
+      "id": "read",
+      "name": "read",
+      "kind": "command",
+      "builtin": true,
+      "summary": "Lê uma linha da entrada e guarda em variáveis",
+      "usage": "read [OPÇÕES] [NOME...]",
+      "aliases": ["ler entrada", "perguntar ao usuário", "input do usuário", "ler senha"],
+      "tags": ["shell", "script", "builtin"],
+      "options": [
+        { "short": "-r", "description": "Não interpreta barras invertidas (use sempre)" },
+        { "short": "-p", "arg": "PROMPT", "description": "Mostra um texto antes de ler" },
+        { "short": "-s", "description": "Não mostra o que é digitado (senhas)" },
+        { "short": "-t", "arg": "SEGUNDOS", "description": "Desiste depois do tempo" },
+        { "short": "-n", "arg": "N", "description": "Lê só N caracteres" },
+        { "short": "-a", "arg": "ARRAY", "description": "Guarda as palavras em um array" },
+        { "short": "-d", "arg": "DELIMITADOR", "description": "Lê até o delimitador em vez da quebra de linha" }
+      ],
+      "examples": [
+        { "command": "read -rp 'Seu nome: ' nome", "description": "Pergunta e guarda em $nome" },
+        { "command": "read -rsp 'Senha: ' senha; echo", "description": "Lê sem mostrar na tela" },
+        { "command": "while IFS=, read -r nome idade; do echo \"$nome\"; done < pessoas.csv", "description": "Lê um CSV simples" },
+        { "command": "read -r a b <<< 'um dois'", "description": "Divide um texto em variáveis" }
+      ],
+      "related": ["while", "stdin", "heredoc"]
+    },
+    {
+      "id": "source",
+      "name": "source",
+      "kind": "command",
+      "builtin": true,
+      "summary": "Executa um arquivo no shell atual: variáveis e funções continuam valendo",
+      "description": "Um script comum roda em outro processo e suas variáveis somem ao terminar. Com source (ou o ponto: . arquivo), os comandos rodam no seu shell.",
+      "usage": "source ARQUIVO  (ou: . ARQUIVO)",
+      "aliases": [". arquivo", "recarregar bashrc", "carregar variáveis", "aplicar bashrc", "dot command", "ativar venv"],
+      "tags": ["shell", "builtin"],
+      "examples": [
+        { "command": "source ~/.bashrc", "description": "Aplica as mudanças do .bashrc sem abrir outro terminal" },
+        { "command": "set -a; source .env; set +a", "description": "Exporta as variáveis de um .env" },
+        { "command": "source .venv/bin/activate", "description": "Ativa um ambiente virtual Python" }
+      ],
+      "related": ["export", "environment-variables", "alias", "shell-function"]
+    },
+    {
+      "id": "set",
+      "name": "set",
+      "kind": "command",
+      "builtin": true,
+      "summary": "Liga e desliga opções do shell, como o modo estrito de scripts",
+      "usage": "set [-euxa] [-o OPÇÃO] [-- ARGUMENTOS]",
+      "aliases": ["set -e", "set -x", "pipefail", "modo estrito", "strict mode", "depurar script", "debug bash"],
+      "tags": ["shell", "script", "builtin"],
+      "options": [
+        { "short": "-e", "description": "Sai no primeiro comando que falhar" },
+        { "short": "-u", "description": "Erro ao usar variável não definida" },
+        { "short": "-x", "description": "Mostra cada comando antes de executar (depuração)" },
+        { "short": "-o", "arg": "OPÇÃO", "description": "Liga uma opção pelo nome: pipefail, noclobber, vi" },
+        { "short": "-a", "description": "Exporta toda variável definida a partir daqui" },
+        { "short": "-n", "description": "Lê os comandos sem executar (verifica a sintaxe)" }
+      ],
+      "examples": [
+        { "command": "set -euo pipefail", "description": "Modo estrito para scripts" },
+        { "command": "set -x", "description": "Depura: mostra os comandos (desligue com set +x)" },
+        { "command": "bash -x script.sh", "description": "Depura um script sem editá-lo" },
+        { "command": "set -- a b c", "description": "Redefine os argumentos: $1=a, $2=b, $3=c" }
+      ],
+      "related": ["shebang", "exit-code", "special-variables", "trap"]
+    },
+    {
+      "id": "trap",
+      "name": "trap",
+      "kind": "command",
+      "builtin": true,
+      "summary": "Executa comandos quando o shell recebe um sinal ou termina",
+      "usage": "trap 'COMANDOS' SINAL...",
+      "aliases": ["limpar ao sair", "tratar ctrl+c", "on exit", "cleanup"],
+      "tags": ["shell", "script", "sinais", "builtin"],
+      "options": [
+        { "short": "-p", "description": "Mostra os traps definidos" },
+        { "short": "-l", "description": "Lista os sinais" }
+      ],
+      "examples": [
+        { "command": "trap 'rm -f \"$tmp\"' EXIT", "description": "Apaga o arquivo temporário ao sair, mesmo com erro" },
+        { "command": "trap 'echo interrompido; exit 130' INT", "description": "Trata o Ctrl+C" },
+        { "command": "trap - INT", "description": "Volta ao comportamento padrão" }
+      ],
+      "related": ["signals", "set", "kill"]
+    },
+    {
+      "id": "exit",
+      "name": "exit",
+      "kind": "command",
+      "builtin": true,
+      "summary": "Termina o shell ou o script com um exit code",
+      "usage": "exit [N]",
+      "aliases": ["sair do script", "encerrar script", "sair do terminal"],
+      "tags": ["shell", "script", "builtin"],
+      "examples": [
+        { "command": "exit 1", "description": "Sai indicando erro" },
+        { "command": "exit 0", "description": "Sai indicando sucesso" },
+        { "command": "[[ -f config ]] || { echo 'falta config' >&2; exit 2; }", "description": "Aborta o script se faltar algo" }
+      ],
+      "related": ["exit-code", "set", "trap"]
+    },
+    {
+      "id": "type",
+      "name": "type",
+      "kind": "command",
+      "builtin": true,
+      "summary": "Diz o que um nome é: alias, função, builtin, palavra-chave ou arquivo",
+      "usage": "type [-a] [-t] NOME...",
+      "aliases": ["o que é esse comando", "é alias?", "command -v"],
+      "tags": ["shell", "builtin"],
+      "options": [
+        { "short": "-a", "description": "Todas as definições, na ordem em que o shell as usaria" },
+        { "short": "-t", "description": "Só a categoria: alias, function, builtin, keyword ou file" }
+      ],
+      "examples": [
+        { "command": "type ls", "description": "Mostra se ls é um alias" },
+        { "command": "type -a python3", "description": "Todas as versões no PATH" },
+        { "command": "command -v docker", "description": "Caminho do comando (bom para scripts)" }
+      ],
+      "related": ["which", "alias", "path-variable"]
     }
   ]
 }

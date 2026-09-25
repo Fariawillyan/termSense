@@ -11,30 +11,42 @@
       "tags": ["git", "versionamento"],
       "options": [
         { "short": "-C", "arg": "DIR", "description": "Executa como se estivesse em DIR" },
-        { "long": "--no-pager", "description": "Não usa paginação" }
+        { "long": "--no-pager", "description": "Não usa paginação" },
+        { "short": "-c", "arg": "CHAVE=VALOR", "description": "Configuração só para este comando" },
+        { "long": "--version", "description": "Versão do Git" }
       ],
       "examples": [
         { "command": "git status", "description": "Estado do repositório" },
         { "command": "git log --oneline --graph --all", "description": "Histórico em árvore" },
-        { "command": "git switch -c feature/nova", "description": "Cria e troca de branch" }
+        { "command": "git switch -c feature/nova", "description": "Cria e troca de branch" },
+        { "command": "git -C ~/projeto status", "description": "Roda em outra pasta sem cd" },
+        { "command": "git help rebase", "description": "Manual de um subcomando" }
       ],
       "related": ["git-status", "git-log", "git-undo", "ssh"]
     },
     {
-      "id": "git-status", "name": "git status", "kind": "command", "parent": "git",
+      "id": "git-status",
+      "name": "git status",
+      "kind": "command",
+      "parent": "git",
       "summary": "Mostra arquivos modificados, preparados (staged) e não rastreados",
       "usage": "git status [OPÇÕES]",
       "aliases": ["o que mudou", "arquivos alterados git", "estado do repositório"],
       "tags": ["git"],
       "options": [
         { "short": "-s", "long": "--short", "description": "Formato curto (XY arquivo)" },
-        { "short": "-b", "long": "--branch", "description": "Mostra a branch e se está à frente/atrás" }
+        { "short": "-b", "long": "--branch", "description": "Mostra a branch e se está à frente/atrás" },
+        { "long": "--porcelain", "description": "Formato estável para scripts" },
+        { "short": "-u", "long": "--untracked-files", "arg": "MODO", "description": "no, normal ou all (mostra arquivos dentro de pastas novas)" },
+        { "long": "--ignored", "description": "Mostra também os ignorados" }
       ],
       "examples": [
         { "command": "git status", "description": "Visão completa" },
-        { "command": "git status -sb", "description": "Resumido com a branch" }
+        { "command": "git status -sb", "description": "Resumido com a branch" },
+        { "command": "git status --porcelain", "description": "Para scripts: vazio = nada a commitar" },
+        { "command": "git status --ignored", "description": "Inclui arquivos do .gitignore" }
       ],
-      "related": ["git-diff", "git-add", "git-restore"]
+      "related": ["git-diff", "git-add", "git-restore", "gitignore"]
     },
     {
       "id": "git-add", "name": "git add", "kind": "command", "parent": "git",
@@ -134,50 +146,76 @@
       "related": ["git-switch", "git-merge", "git-create-branch"]
     },
     {
-      "id": "git-switch", "name": "git switch", "kind": "command", "parent": "git",
+      "id": "git-switch",
+      "name": "git switch",
+      "kind": "command",
+      "parent": "git",
       "summary": "Troca de branch (forma moderna do checkout para branches)",
       "usage": "git switch [OPÇÕES] BRANCH",
       "aliases": ["trocar de branch", "mudar de branch", "change branch"],
       "tags": ["git", "branches"],
       "options": [
         { "short": "-c", "long": "--create", "arg": "BRANCH", "description": "Cria a branch e troca para ela" },
-        { "long": "--detach", "description": "Vai para um commit sem branch" }
+        { "long": "--detach", "description": "Vai para um commit sem branch" },
+        { "long": "--discard-changes", "description": "Descarta alterações locais ao trocar" },
+        { "short": "-C", "long": "--force-create", "arg": "BRANCH", "description": "Cria ou recria a branch" }
       ],
       "examples": [
         { "command": "git switch main", "description": "Vai para main" },
         { "command": "git switch -c feature/login", "description": "Cria e troca" },
-        { "command": "git switch -", "description": "Volta para a branch anterior" }
+        { "command": "git switch -", "description": "Volta para a branch anterior" },
+        { "command": "git switch -c feature/x origin/feature/x", "description": "Cria uma branch local a partir da remota" },
+        { "command": "git switch --detach v1.2.0", "description": "Olha uma versão antiga sem criar branch" }
       ],
       "related": ["git-branch", "git-checkout", "git-stash"]
     },
     {
-      "id": "git-checkout", "name": "git checkout", "kind": "command", "parent": "git",
+      "id": "git-checkout",
+      "name": "git checkout",
+      "kind": "command",
+      "parent": "git",
       "summary": "Troca de branch ou restaura arquivos (comando antigo e multifuncional)",
       "description": "Versões recentes dividiram suas funções em git switch (branches) e git restore (arquivos), mais claros.",
       "usage": "git checkout [OPÇÕES] BRANCH | -- ARQUIVO",
       "aliases": ["checkout", "trocar de branch"],
       "tags": ["git", "branches"],
-      "options": [{ "short": "-b", "arg": "BRANCH", "description": "Cria a branch e troca para ela" }],
+      "options": [
+        { "short": "-b", "arg": "BRANCH", "description": "Cria a branch e troca para ela" },
+        { "long": "--ours", "description": "Em conflitos: a sua versão" },
+        { "long": "--theirs", "description": "Em conflitos: a outra versão" }
+      ],
       "examples": [
         { "command": "git checkout -b feature/x", "description": "Cria e troca (equivale a git switch -c)" },
-        { "command": "git checkout -- arquivo.txt", "description": "Descarta alterações do arquivo (equivale a git restore)" }
+        { "command": "git checkout -- arquivo.txt", "description": "Descarta alterações do arquivo (equivale a git restore)" },
+        { "command": "git checkout HEAD~1 -- config.yml", "description": "Recupera um arquivo como estava no commit anterior" },
+        { "command": "git checkout -", "description": "Volta para a branch anterior" },
+        { "command": "git checkout --theirs pacote.lock", "description": "Resolve um conflito ficando com a outra versão" }
       ],
       "related": ["git-switch", "git-restore"]
     },
     {
-      "id": "git-stash", "name": "git stash", "kind": "command", "parent": "git",
+      "id": "git-stash",
+      "name": "git stash",
+      "kind": "command",
+      "parent": "git",
       "summary": "Guarda alterações não commitadas temporariamente e limpa o diretório",
       "usage": "git stash [push | pop | list | apply | drop]",
       "aliases": ["guardar alterações", "salvar temporariamente", "stash"],
       "tags": ["git"],
       "options": [
         { "short": "-u", "long": "--include-untracked", "description": "Inclui arquivos não rastreados" },
-        { "short": "-m", "long": "--message", "arg": "MENSAGEM", "description": "Descrição do stash" }
+        { "short": "-m", "long": "--message", "arg": "MENSAGEM", "description": "Descrição do stash" },
+        { "short": "-p", "long": "--patch", "description": "Escolhe trechos para guardar" },
+        { "short": "-k", "long": "--keep-index", "description": "Mantém o que já está no staging" }
       ],
       "examples": [
         { "command": "git stash -u", "description": "Guarda tudo, inclusive arquivos novos" },
         { "command": "git stash list", "description": "Stashes guardados" },
-        { "command": "git stash pop", "description": "Reaplica o último e remove da lista" }
+        { "command": "git stash pop", "description": "Reaplica o último e remove da lista" },
+        { "command": "git stash push -m 'wip login' src/login.py", "description": "Guarda só um arquivo, com descrição" },
+        { "command": "git stash show -p stash@{1}", "description": "Conteúdo de um stash" },
+        { "command": "git stash apply stash@{1}", "description": "Reaplica sem remover da lista" },
+        { "command": "git stash drop stash@{0}", "description": "Descarta um stash" }
       ],
       "related": ["git-switch", "git-undo"]
     },
@@ -222,68 +260,100 @@
       "related": ["git-restore", "git-revert", "git-undo"]
     },
     {
-      "id": "git-restore", "name": "git restore", "kind": "command", "parent": "git",
+      "id": "git-restore",
+      "name": "git restore",
+      "kind": "command",
+      "parent": "git",
       "summary": "Descarta alterações de arquivos ou tira arquivos do staging",
       "usage": "git restore [--staged] [--source COMMIT] ARQUIVO...",
       "aliases": ["descartar alterações", "desfazer mudanças no arquivo", "unstage arquivo"],
       "tags": ["git", "desfazer"],
       "options": [
         { "short": "-S", "long": "--staged", "description": "Tira do staging (mantém o arquivo)" },
-        { "short": "-s", "long": "--source", "arg": "COMMIT", "description": "Restaura a versão de um commit" }
+        { "short": "-s", "long": "--source", "arg": "COMMIT", "description": "Restaura a versão de um commit" },
+        { "short": "-p", "long": "--patch", "description": "Escolhe trechos para descartar" },
+        { "short": "-W", "long": "--worktree", "description": "Restaura o diretório de trabalho (padrão)" }
       ],
-      "arguments": [{ "name": "ARQUIVO", "kind": "path", "description": "Arquivos", "repeat": true }],
+      "arguments": [
+        { "name": "ARQUIVO", "kind": "path", "description": "Arquivos", "repeat": true }
+      ],
       "examples": [
         { "command": "git restore arquivo.txt", "description": "Descarta alterações não preparadas" },
         { "command": "git restore --staged arquivo.txt", "description": "Tira do staging" },
-        { "command": "git restore --source HEAD~2 arquivo.txt", "description": "Versão de dois commits atrás" }
+        { "command": "git restore --source HEAD~2 arquivo.txt", "description": "Versão de dois commits atrás" },
+        { "command": "git restore .", "description": "Descarta todas as alterações não preparadas" },
+        { "command": "git restore -p arquivo.txt", "description": "Descarta trecho a trecho" }
       ],
       "related": ["git-reset", "git-status", "git-undo"]
     },
     {
-      "id": "git-revert", "name": "git revert", "kind": "command", "parent": "git",
+      "id": "git-revert",
+      "name": "git revert",
+      "kind": "command",
+      "parent": "git",
       "summary": "Cria um novo commit que desfaz um commit anterior",
       "description": "Seguro para commits já enviados: não reescreve o histórico.",
       "usage": "git revert COMMIT",
       "aliases": ["reverter commit", "desfazer commit publicado"],
       "tags": ["git", "desfazer"],
-      "options": [{ "long": "--no-edit", "description": "Usa a mensagem padrão" }],
+      "options": [
+        { "long": "--no-edit", "description": "Usa a mensagem padrão" },
+        { "short": "-n", "long": "--no-commit", "description": "Aplica a reversão sem commitar" },
+        { "short": "-m", "long": "--mainline", "arg": "N", "description": "Para reverter um merge: qual pai manter (1)" }
+      ],
       "examples": [
         { "command": "git revert a1b2c3d", "description": "Desfaz o commit a1b2c3d com um novo commit" },
-        { "command": "git revert HEAD", "description": "Desfaz o último commit" }
+        { "command": "git revert HEAD", "description": "Desfaz o último commit" },
+        { "command": "git revert -m 1 a1b2c3d", "description": "Reverte um commit de merge" },
+        { "command": "git revert HEAD~3..HEAD", "description": "Reverte os três últimos commits" }
       ],
       "related": ["git-reset", "git-undo"]
     },
     {
-      "id": "git-fetch", "name": "git fetch", "kind": "command", "parent": "git",
+      "id": "git-fetch",
+      "name": "git fetch",
+      "kind": "command",
+      "parent": "git",
       "summary": "Baixa commits e branches do remoto sem alterar seu trabalho",
       "usage": "git fetch [REMOTO]",
       "aliases": ["buscar do remoto", "atualizar referências"],
       "tags": ["git", "remoto"],
       "options": [
         { "short": "-p", "long": "--prune", "description": "Remove referências de branches apagadas no remoto" },
-        { "long": "--all", "description": "Todos os remotos" }
+        { "long": "--all", "description": "Todos os remotos" },
+        { "long": "--tags", "description": "Traz também as tags" }
       ],
       "examples": [
         { "command": "git fetch -p", "description": "Atualiza e limpa branches remotas apagadas" },
-        { "command": "git log --oneline HEAD..origin/main", "description": "O que chegou e você ainda não tem" }
+        { "command": "git log --oneline HEAD..origin/main", "description": "O que chegou e você ainda não tem" },
+        { "command": "git fetch origin main", "description": "Só uma branch" },
+        { "command": "git fetch --all -p", "description": "Todos os remotos, limpando branches apagadas" },
+        { "command": "git diff main origin/main", "description": "O que mudou no remoto antes de integrar" }
       ],
-      "related": ["git-pull", "git-merge"]
+      "related": ["git-pull", "git-merge", "git-remote"]
     },
     {
-      "id": "git-pull", "name": "git pull", "kind": "command", "parent": "git",
+      "id": "git-pull",
+      "name": "git pull",
+      "kind": "command",
+      "parent": "git",
       "summary": "Baixa do remoto e integra na branch atual (fetch + merge ou rebase)",
       "usage": "git pull [OPÇÕES] [REMOTO [BRANCH]]",
       "aliases": ["atualizar branch", "puxar alterações", "baixar alterações"],
       "tags": ["git", "remoto"],
       "options": [
         { "long": "--rebase", "description": "Integra com rebase em vez de merge" },
-        { "long": "--ff-only", "description": "Só avança se não houver divergência" }
+        { "long": "--ff-only", "description": "Só avança se não houver divergência" },
+        { "long": "--no-rebase", "description": "Integra com merge" },
+        { "long": "--autostash", "description": "Guarda e reaplica alterações locais automaticamente" }
       ],
       "examples": [
         { "command": "git pull", "description": "Atualiza a branch atual" },
-        { "command": "git pull --rebase", "description": "Mantém o histórico linear" }
+        { "command": "git pull --rebase", "description": "Mantém o histórico linear" },
+        { "command": "git pull origin main", "description": "Traz a main do origin para a branch atual" },
+        { "command": "git pull --rebase --autostash", "description": "Atualiza sem commits de merge, mesmo com alterações locais" }
       ],
-      "related": ["git-fetch", "git-merge", "git-rebase", "git-push"]
+      "related": ["git-fetch", "git-merge", "git-rebase", "git-push", "git-resolve-conflicts"]
     },
     {
       "id": "git-push", "name": "git push", "kind": "command", "parent": "git",
@@ -321,7 +391,10 @@
       "related": ["git-rebase", "git-branch", "git-pull"]
     },
     {
-      "id": "git-cherry-pick", "name": "git cherry-pick", "kind": "command", "parent": "git",
+      "id": "git-cherry-pick",
+      "name": "git cherry-pick",
+      "kind": "command",
+      "parent": "git",
       "summary": "Aplica um commit específico de outra branch na atual",
       "usage": "git cherry-pick COMMIT...",
       "aliases": ["copiar commit", "aplicar commit de outra branch"],
@@ -329,20 +402,32 @@
       "options": [
         { "short": "-x", "description": "Anota na mensagem de onde o commit veio" },
         { "long": "--continue", "description": "Continua após resolver conflitos" },
-        { "long": "--abort", "description": "Cancela" }
+        { "long": "--abort", "description": "Cancela" },
+        { "short": "-n", "long": "--no-commit", "description": "Aplica sem commitar" },
+        { "short": "-m", "long": "--mainline", "arg": "N", "description": "Para commits de merge: qual pai usar" }
       ],
-      "examples": [{ "command": "git cherry-pick -x a1b2c3d", "description": "Traz um hotfix para esta branch" }],
+      "examples": [
+        { "command": "git cherry-pick -x a1b2c3d", "description": "Traz um hotfix para esta branch" },
+        { "command": "git cherry-pick a1b2c3d..f4e5d6c", "description": "Uma faixa de commits (sem incluir o primeiro)" },
+        { "command": "git cherry-pick --abort", "description": "Desiste e volta ao estado anterior" }
+      ],
       "related": ["git-rebase", "git-log"]
     },
     {
-      "id": "git-clone", "name": "git clone", "kind": "command", "parent": "git",
+      "id": "git-clone",
+      "name": "git clone",
+      "kind": "command",
+      "parent": "git",
       "summary": "Copia um repositório remoto para uma pasta local",
       "usage": "git clone [OPÇÕES] URL [DIRETÓRIO]",
       "aliases": ["clonar repositório", "baixar repositório", "clone"],
       "tags": ["git", "remoto"],
       "options": [
         { "long": "--depth", "arg": "N", "description": "Só os N commits mais recentes (clone raso)" },
-        { "short": "-b", "long": "--branch", "arg": "BRANCH", "description": "Branch a usar" }
+        { "short": "-b", "long": "--branch", "arg": "BRANCH", "description": "Branch a usar" },
+        { "long": "--recurse-submodules", "description": "Traz os submódulos junto" },
+        { "long": "--single-branch", "description": "Só a branch escolhida" },
+        { "long": "--bare", "description": "Sem diretório de trabalho (para servidores)" }
       ],
       "arguments": [
         { "name": "URL", "kind": "url", "description": "https://... ou git@host:dono/repo.git (SSH)" },
@@ -350,7 +435,9 @@
       ],
       "examples": [
         { "command": "git clone git@github.com:dono/repo.git", "description": "Via SSH (usa sua chave)" },
-        { "command": "git clone --depth 1 https://github.com/dono/repo.git", "description": "Só o último commit" }
+        { "command": "git clone --depth 1 https://github.com/dono/repo.git", "description": "Só o último commit" },
+        { "command": "git clone https://github.com/dono/repo.git meu-nome", "description": "Em uma pasta com outro nome" },
+        { "command": "git clone -b develop --single-branch git@github.com:dono/repo.git", "description": "Só a branch develop" }
       ],
       "related": ["git-fetch", "ssh-key-setup"]
     },
@@ -362,6 +449,13 @@
       "description": "A pergunta-chave: a alteração já foi commitada? E já foi enviada (push)? Commits publicados devem ser desfeitos com revert, que não reescreve o histórico.",
       "aliases": ["desfazer alterações", "desfazer commit", "voltar alteração", "git undo", "descartar mudanças", "desfazer mudanças git"],
       "tags": ["git", "desfazer"],
+      "examples": [
+        { "command": "git restore arquivo.txt", "description": "Descarta alterações de um arquivo" },
+        { "command": "git reset", "description": "Tira tudo do staging" },
+        { "command": "git reset --soft HEAD~1", "description": "Desfaz o último commit (não enviado)" },
+        { "command": "git revert HEAD", "description": "Desfaz o último commit já enviado" },
+        { "command": "git reflog", "description": "Rede de segurança: onde HEAD esteve (recupera commits 'perdidos')" }
+      ],
       "sections": [
         {
           "title": "Qual usar",
@@ -374,14 +468,7 @@
           ]
         }
       ],
-      "examples": [
-        { "command": "git restore arquivo.txt", "description": "Descarta alterações de um arquivo" },
-        { "command": "git reset", "description": "Tira tudo do staging" },
-        { "command": "git reset --soft HEAD~1", "description": "Desfaz o último commit (não enviado)" },
-        { "command": "git revert HEAD", "description": "Desfaz o último commit já enviado" },
-        { "command": "git reflog", "description": "Rede de segurança: onde HEAD esteve (recupera commits 'perdidos')" }
-      ],
-      "related": ["git-restore", "git-reset", "git-revert", "git-stash"]
+      "related": ["git-restore", "git-reset", "git-revert", "git-stash", "git-reflog", "git-recover-commit", "git-clean"]
     },
     {
       "id": "git-create-branch",
@@ -395,6 +482,243 @@
         { "command": "git push -u origin feature/nome", "description": "Publica e associa ao remoto" }
       ],
       "related": ["git-switch", "git-push", "git-branch"]
+    },
+    {
+      "id": "git-reflog",
+      "name": "git reflog",
+      "kind": "command",
+      "parent": "git",
+      "summary": "Histórico de onde o HEAD esteve: recupera commits \"perdidos\"",
+      "description": "Registra cada mudança do HEAD (commit, reset, rebase, checkout) por uns 90 dias. Depois de um reset --hard ou rebase errado, o commit antigo ainda está aqui.",
+      "usage": "git reflog [show REF]",
+      "aliases": ["recuperar commit", "desfazer reset", "commit perdido", "desfazer rebase", "recover commit"],
+      "tags": ["git", "desfazer"],
+      "examples": [
+        { "command": "git reflog", "description": "Onde o HEAD esteve, do mais recente ao mais antigo" },
+        { "command": "git reset --hard HEAD@{1}", "description": "Volta ao estado anterior à última operação" },
+        { "command": "git branch resgate a1b2c3d", "description": "Cria uma branch no commit encontrado" },
+        { "command": "git reflog show feature/x", "description": "Histórico de uma branch" }
+      ],
+      "related": ["git-reset", "git-log", "git-recover-commit"]
+    },
+    {
+      "id": "git-remote",
+      "name": "git remote",
+      "kind": "command",
+      "parent": "git",
+      "summary": "Lista e configura os repositórios remotos (origin, upstream)",
+      "usage": "git remote [-v] | add NOME URL | set-url NOME URL | remove NOME",
+      "aliases": ["origin", "trocar url do remoto", "adicionar remoto", "upstream", "mudar para ssh"],
+      "tags": ["git", "remoto"],
+      "options": [
+        { "short": "-v", "long": "--verbose", "description": "Mostra as URLs" }
+      ],
+      "examples": [
+        { "command": "git remote -v", "description": "Remotos e URLs" },
+        { "command": "git remote add origin git@github.com:dono/repo.git", "description": "Liga o repositório local a um remoto" },
+        { "command": "git remote set-url origin git@github.com:dono/repo.git", "description": "Troca HTTPS por SSH" },
+        { "command": "git remote add upstream https://github.com/original/repo.git", "description": "Remoto do projeto original (fork)" },
+        { "command": "git remote prune origin", "description": "Remove referências a branches apagadas no remoto" }
+      ],
+      "related": ["git-fetch", "git-push", "git-clone"]
+    },
+    {
+      "id": "git-tag",
+      "name": "git tag",
+      "kind": "command",
+      "parent": "git",
+      "summary": "Marca versões em commits (v1.2.0)",
+      "usage": "git tag [-a NOME -m MENSAGEM] [COMMIT] | -d NOME | -l PADRÃO",
+      "aliases": ["versão", "release", "criar tag", "marcar versão", "tags"],
+      "tags": ["git", "versões"],
+      "options": [
+        { "short": "-a", "long": "--annotate", "arg": "NOME", "description": "Tag anotada (com autor, data e mensagem)" },
+        { "short": "-m", "long": "--message", "arg": "MENSAGEM", "description": "Mensagem da tag" },
+        { "short": "-d", "long": "--delete", "arg": "NOME", "description": "Apaga a tag local" },
+        { "short": "-l", "long": "--list", "arg": "PADRÃO", "description": "Lista tags que casam com o padrão" }
+      ],
+      "examples": [
+        { "command": "git tag", "description": "Lista as tags" },
+        { "command": "git tag -a v1.2.0 -m 'Versão 1.2.0'", "description": "Cria uma tag anotada no commit atual" },
+        { "command": "git push origin v1.2.0", "description": "Publica a tag (push não envia tags sozinho)" },
+        { "command": "git push origin --tags", "description": "Publica todas as tags" },
+        { "command": "git describe --tags", "description": "Tag mais próxima do commit atual" }
+      ],
+      "related": ["git-push", "git-log", "git-show"]
+    },
+    {
+      "id": "git-config",
+      "name": "git config",
+      "kind": "command",
+      "parent": "git",
+      "summary": "Lê e define configurações do Git (nome, e-mail, editor, aliases)",
+      "usage": "git config [--global | --local] CHAVE [VALOR]",
+      "aliases": ["configurar git", "nome e email do git", "user.name", "user.email", "git alias", "autocrlf"],
+      "tags": ["git", "configuração"],
+      "options": [
+        { "long": "--global", "description": "Para o seu usuário (~/.gitconfig)" },
+        { "long": "--local", "description": "Só para este repositório (.git/config)" },
+        { "short": "-l", "long": "--list", "description": "Lista as configurações" },
+        { "long": "--show-origin", "description": "Mostra de qual arquivo vem cada valor" },
+        { "long": "--unset", "arg": "CHAVE", "description": "Remove uma configuração" }
+      ],
+      "examples": [
+        { "command": "git config --global user.name 'Maria Silva'", "description": "Nome dos seus commits" },
+        { "command": "git config --global user.email maria@example.com", "description": "E-mail dos seus commits" },
+        { "command": "git config --global init.defaultBranch main", "description": "Branch inicial dos novos repositórios" },
+        { "command": "git config --global pull.rebase true", "description": "git pull com rebase por padrão" },
+        { "command": "git config --global core.autocrlf input", "description": "Converte CRLF para LF ao commitar (WSL e Windows)" },
+        { "command": "git config --global alias.lg 'log --oneline --graph --all'", "description": "Cria o atalho git lg" },
+        { "command": "git config --list --show-origin", "description": "Tudo o que está valendo e de onde vem" }
+      ],
+      "related": ["git", "crlf"]
+    },
+    {
+      "id": "git-show",
+      "name": "git show",
+      "kind": "command",
+      "parent": "git",
+      "summary": "Mostra um commit: mensagem, autor e alterações",
+      "usage": "git show [COMMIT[:ARQUIVO]]",
+      "aliases": ["ver commit", "o que mudou no commit", "conteúdo de um commit"],
+      "tags": ["git", "histórico"],
+      "options": [
+        { "long": "--stat", "description": "Só a lista de arquivos alterados" },
+        { "long": "--name-only", "description": "Só os nomes dos arquivos" }
+      ],
+      "examples": [
+        { "command": "git show", "description": "O último commit" },
+        { "command": "git show a1b2c3d --stat", "description": "Arquivos alterados em um commit" },
+        { "command": "git show HEAD~2:src/app.py", "description": "Um arquivo como estava dois commits atrás" },
+        { "command": "git show v1.2.0", "description": "A tag e o commit dela" }
+      ],
+      "related": ["git-log", "git-diff", "git-blame"]
+    },
+    {
+      "id": "git-blame",
+      "name": "git blame",
+      "kind": "command",
+      "parent": "git",
+      "summary": "Mostra quem alterou cada linha de um arquivo, e em qual commit",
+      "usage": "git blame [OPÇÕES] ARQUIVO",
+      "aliases": ["quem alterou essa linha", "autor da linha", "annotate"],
+      "tags": ["git", "histórico"],
+      "options": [
+        { "short": "-L", "arg": "INÍCIO,FIM", "description": "Só um trecho de linhas" },
+        { "short": "-w", "description": "Ignora mudanças só de espaço" },
+        { "short": "-C", "description": "Detecta linhas movidas de outros arquivos" }
+      ],
+      "arguments": [
+        { "name": "ARQUIVO", "kind": "path", "description": "Arquivo a analisar" }
+      ],
+      "examples": [
+        { "command": "git blame src/app.py", "description": "Autor e commit de cada linha" },
+        { "command": "git blame -L 40,60 src/app.py", "description": "Só as linhas 40 a 60" },
+        { "command": "git log -L 40,60:src/app.py", "description": "Histórico completo daquele trecho" }
+      ],
+      "related": ["git-log", "git-show"]
+    },
+    {
+      "id": "git-clean",
+      "name": "git clean",
+      "kind": "command",
+      "parent": "git",
+      "summary": "Apaga arquivos não rastreados do diretório de trabalho",
+      "usage": "git clean [-n] [-f] [-d] [-x]",
+      "aliases": ["apagar arquivos não rastreados", "limpar repositório", "remover untracked"],
+      "tags": ["git", "desfazer"],
+      "options": [
+        { "short": "-n", "long": "--dry-run", "description": "Só mostra o que seria apagado" },
+        { "short": "-f", "long": "--force", "description": "Apaga de fato" },
+        { "short": "-d", "description": "Inclui pastas" },
+        { "short": "-x", "description": "Inclui também o que está no .gitignore (builds, node_modules)" },
+        { "short": "-i", "long": "--interactive", "description": "Pergunta arquivo por arquivo" }
+      ],
+      "examples": [
+        { "command": "git clean -nd", "description": "Simula: o que seria apagado" },
+        { "command": "git clean -fd", "description": "Apaga arquivos e pastas não rastreados" },
+        { "command": "git clean -fdx", "description": "Volta ao estado de um clone recém-feito" }
+      ],
+      "related": ["git-status", "git-restore", "git-reset", "gitignore"],
+      "warnings": ["Arquivos apagados pelo git clean não vão para lixeira e não estão no Git: rode -n antes."]
+    },
+    {
+      "id": "git-bisect",
+      "name": "git bisect",
+      "kind": "command",
+      "parent": "git",
+      "summary": "Busca binária no histórico para achar o commit que introduziu um bug",
+      "usage": "git bisect start | good COMMIT | bad COMMIT | reset",
+      "aliases": ["qual commit quebrou", "achar commit do bug", "busca binária git", "regressão"],
+      "tags": ["git", "depuração"],
+      "examples": [
+        { "command": "git bisect start", "description": "Começa" },
+        { "command": "git bisect bad", "description": "O commit atual tem o bug" },
+        { "command": "git bisect good v1.2.0", "description": "Esta versão funcionava" },
+        { "command": "git bisect run ./testa.sh", "description": "Automatiza: o script sai com 0 se estiver bom" },
+        { "command": "git bisect reset", "description": "Termina e volta à branch original" }
+      ],
+      "related": ["git-log", "git-revert"]
+    },
+    {
+      "id": "gitignore",
+      "name": ".gitignore",
+      "kind": "concept",
+      "summary": "Arquivo com padrões de arquivos que o Git deve ignorar",
+      "description": "Vale para arquivos ainda não rastreados. Se o arquivo já foi commitado, adicionar ao .gitignore não basta: tire do índice com git rm --cached.",
+      "aliases": ["gitignore", "ignorar arquivos no git", "node_modules no git", "git ignore"],
+      "tags": ["git"],
+      "examples": [
+        { "command": "echo 'node_modules/' >> .gitignore", "description": "Ignora uma pasta" },
+        { "command": "git rm -r --cached node_modules", "description": "Para de rastrear algo que já foi commitado" },
+        { "command": "git check-ignore -v arquivo.log", "description": "Qual regra ignora o arquivo" },
+        { "command": "git status --ignored", "description": "Mostra também os ignorados" }
+      ],
+      "sections": [
+        {
+          "title": "Padrões",
+          "rows": [
+            ["*.log", "qualquer .log, em qualquer pasta"],
+            ["build/", "a pasta build (a barra final indica pasta)"],
+            ["/config.local", "só na raiz do repositório"],
+            ["!importante.log", "exceção: não ignorar"],
+            ["**/tmp", "tmp em qualquer nível"]
+          ]
+        }
+      ],
+      "related": ["git-status", "git-clean", "git-add"]
+    },
+    {
+      "id": "git-recover-commit",
+      "name": "Recuperar um commit perdido",
+      "kind": "recipe",
+      "summary": "Depois de reset --hard, rebase ou branch apagada",
+      "aliases": ["recuperar commit", "desfazer reset hard", "branch apagada", "perdi meus commits", "undo reset"],
+      "tags": ["git", "desfazer"],
+      "steps": [
+        { "title": "Ache o commit", "command": "git reflog", "why": "Lista cada posição do HEAD; o commit perdido aparece antes do reset ou do rebase." },
+        { "title": "Confira o conteúdo", "command": "git show a1b2c3d --stat", "why": "Garante que é o commit certo." },
+        { "title": "Guarde em uma branch", "command": "git branch resgate a1b2c3d", "why": "Com uma branch apontando para ele, o commit não é mais coletado pelo Git." },
+        { "title": "Ou volte a branch atual para ele", "command": "git reset --hard a1b2c3d", "why": "Descarta o que há de não commitado; faça git stash antes, se precisar." }
+      ],
+      "related": ["git-reflog", "git-reset", "git-branch", "git-undo"]
+    },
+    {
+      "id": "git-resolve-conflicts",
+      "name": "Resolver conflitos de merge",
+      "kind": "recipe",
+      "summary": "O que fazer quando merge, rebase ou pull param com CONFLICT",
+      "aliases": ["resolver conflito", "merge conflict", "conflito de merge", "conflito no rebase", "<<<<<<< head"],
+      "tags": ["git", "merge"],
+      "steps": [
+        { "title": "Veja os arquivos em conflito", "command": "git status", "why": "Aparecem como both modified." },
+        { "title": "Edite cada arquivo", "command": "git diff", "why": "Entre <<<<<<< e ======= está a sua versão; entre ======= e >>>>>>>, a outra. Deixe o resultado final e apague as marcas." },
+        { "title": "Ou escolha um lado inteiro", "command": "git checkout --theirs caminho/arquivo", "why": "--ours mantém a sua versão; --theirs, a outra (no rebase os lados se invertem)." },
+        { "title": "Marque como resolvido", "command": "git add caminho/arquivo", "why": "Diz ao Git que o conflito daquele arquivo acabou." },
+        { "title": "Conclua", "command": "git commit", "why": "No rebase: git rebase --continue. No cherry-pick: git cherry-pick --continue." },
+        { "title": "Desistir", "command": "git merge --abort", "why": "Volta ao estado anterior (git rebase --abort no rebase)." }
+      ],
+      "related": ["git-merge", "git-rebase", "git-status", "git-diff"]
     }
   ]
 }

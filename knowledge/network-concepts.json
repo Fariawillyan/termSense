@@ -306,7 +306,7 @@
         { "command": "sudo iptables -L -n -v", "description": "Regras do iptables" },
         { "command": "sudo ufw status verbose", "description": "Estado do ufw (Ubuntu)" }
       ],
-      "related": ["porta", "connection-timeout", "nat"]
+      "related": ["porta", "connection-timeout", "nat", "ufw", "iptables", "nft", "open-firewall-port"]
     }
   ]
 }

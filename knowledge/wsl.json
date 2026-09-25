@@ -1,0 +1,219 @@
+{
+  "category": "wsl",
+  "entries": [
+    {
+      "id": "wsl",
+      "name": "WSL",
+      "kind": "concept",
+      "summary": "Subsistema do Windows para Linux: distribuições Linux rodando dentro do Windows",
+      "description": "O WSL 2 roda um kernel Linux de verdade em uma máquina virtual leve. Os arquivos do Linux ficam em um disco virtual; os do Windows aparecem em /mnt/c. Programas .exe do Windows podem ser chamados de dentro do Linux.",
+      "aliases": ["windows subsystem for linux", "wsl2", "linux no windows", "ubuntu no windows"],
+      "tags": ["wsl", "windows"],
+      "examples": [
+        { "command": "wsl.exe -l -v", "description": "Distribuições instaladas e versão do WSL" },
+        { "command": "uname -r", "description": "Kernel com microsoft-standard-WSL2 no nome" },
+        { "command": "explorer.exe .", "description": "Abre a pasta atual no Windows" }
+      ],
+      "related": ["wsl-exe", "wsl-windows-files", "wsl-networking", "crlf"]
+    },
+    {
+      "id": "wsl-exe",
+      "name": "wsl.exe",
+      "kind": "command",
+      "summary": "Gerencia as distribuições do WSL: listar, desligar, exportar",
+      "description": "Pode ser chamado do PowerShell (wsl) ou de dentro do Linux (wsl.exe).",
+      "usage": "wsl.exe [--list --verbose | --shutdown | --terminate DISTRO | --export ...]",
+      "aliases": ["wsl", "reiniciar wsl", "desligar wsl", "wsl shutdown", "versão do wsl"],
+      "tags": ["wsl", "windows"],
+      "options": [
+        { "short": "-l", "long": "--list", "description": "Lista as distribuições (-v mostra estado e versão)" },
+        { "short": "-v", "long": "--verbose", "description": "Detalhado (com --list)" },
+        { "long": "--shutdown", "description": "Desliga todas as distribuições e a VM (libera memória)" },
+        { "short": "-t", "long": "--terminate", "arg": "DISTRO", "description": "Desliga uma distribuição" },
+        { "short": "-s", "long": "--set-default", "arg": "DISTRO", "description": "Distribuição padrão" },
+        { "long": "--export", "arg": "DISTRO ARQUIVO", "description": "Backup da distribuição em .tar" },
+        { "long": "--import", "arg": "DISTRO PASTA ARQUIVO", "description": "Restaura ou clona uma distribuição" },
+        { "long": "--update", "description": "Atualiza o WSL" },
+        { "long": "--status", "description": "Versão e configuração" }
+      ],
+      "examples": [
+        { "command": "wsl.exe -l -v", "description": "Distribuições, estado e versão" },
+        { "command": "wsl.exe --shutdown", "description": "Reinicia tudo (aplica mudanças do .wslconfig)" },
+        { "command": "wsl.exe --export Ubuntu D:\\backup\\ubuntu.tar", "description": "Backup completo" }
+      ],
+      "related": ["wsl", "wsl-free-memory"]
+    },
+    {
+      "name": "wslpath",
+      "kind": "command",
+      "summary": "Converte caminhos entre Linux e Windows",
+      "usage": "wslpath [-w | -u | -m] CAMINHO",
+      "aliases": ["caminho do windows", "converter caminho", "c:\\ para /mnt/c", "windows path"],
+      "tags": ["wsl", "caminhos"],
+      "options": [
+        { "short": "-w", "description": "Linux → Windows (C:\\...)" },
+        { "short": "-u", "description": "Windows → Linux (padrão)" },
+        { "short": "-m", "description": "Linux → Windows com barras normais (C:/...)" }
+      ],
+      "examples": [
+        { "command": "wslpath -w ~/projeto", "description": "\\\\wsl.localhost\\Ubuntu\\home\\voce\\projeto" },
+        { "command": "wslpath 'C:\\Users\\Maria\\Downloads'", "description": "/mnt/c/Users/Maria/Downloads" },
+        { "command": "cd \"$(wslpath 'C:\\Users\\Maria\\Desktop')\"", "description": "Entra em uma pasta do Windows" }
+      ],
+      "related": ["wsl-windows-files", "explorer-exe"]
+    },
+    {
+      "id": "explorer-exe",
+      "name": "explorer.exe",
+      "kind": "command",
+      "summary": "Abre o Explorador de Arquivos do Windows (ou um arquivo com o programa padrão)",
+      "usage": "explorer.exe [PASTA | ARQUIVO]",
+      "aliases": ["abrir pasta no windows", "abrir no explorer", "explorer", "open folder windows"],
+      "tags": ["wsl", "windows"],
+      "examples": [
+        { "command": "explorer.exe .", "description": "Abre a pasta atual" },
+        { "command": "explorer.exe relatorio.pdf", "description": "Abre o arquivo com o programa padrão do Windows" },
+        { "command": "cmd.exe /c start https://example.com", "description": "Abre uma URL no navegador do Windows" }
+      ],
+      "related": ["wslpath", "clip-exe", "wsl-open-folder"]
+    },
+    {
+      "id": "clip-exe",
+      "name": "clip.exe",
+      "kind": "command",
+      "summary": "Copia a entrada para a área de transferência do Windows",
+      "usage": "COMANDO | clip.exe",
+      "aliases": ["copiar para área de transferência", "clipboard", "copiar saída", "ctrl+c do terminal", "pbcopy", "xclip"],
+      "tags": ["wsl", "windows"],
+      "examples": [
+        { "command": "cat ~/.ssh/id_ed25519.pub | clip.exe", "description": "Copia a chave pública (para colar no GitHub)" },
+        { "command": "pwd | clip.exe", "description": "Copia o caminho atual" },
+        { "command": "powershell.exe -c Get-Clipboard", "description": "Lê a área de transferência (colar)" }
+      ],
+      "related": ["wsl-copy-output", "explorer-exe"]
+    },
+    {
+      "id": "wsl-windows-files",
+      "name": "Arquivos do Windows no WSL (/mnt/c)",
+      "kind": "concept",
+      "summary": "Os discos do Windows aparecem em /mnt/c, /mnt/d...; o Linux aparece no Windows em \\\\wsl.localhost",
+      "description": "Acessar /mnt/c do Linux (e o Linux pelo Windows) passa por uma camada de tradução lenta. Deixe projetos, node_modules e repositórios Git dentro do Linux (~/): npm install, git status e builds ficam muito mais rápidos.",
+      "aliases": ["/mnt/c", "mnt c", "arquivos do windows", "acessar disco c", "\\\\wsl$", "wsl lento", "pasta do windows"],
+      "tags": ["wsl", "arquivos", "desempenho"],
+      "examples": [
+        { "command": "ls /mnt/c/Users", "description": "Usuários do Windows" },
+        { "command": "cp relatorio.pdf /mnt/c/Users/SEU_USUARIO/Downloads/", "description": "Manda um arquivo para o Windows" },
+        { "command": "explorer.exe .", "description": "Vê a pasta do Linux no Windows" }
+      ],
+      "sections": [
+        {
+          "title": "Cuidados",
+          "items": ["em /mnt/c, chmod quase não tem efeito, a menos que o disco seja montado com a opção metadata (/etc/wsl.conf)", "chaves SSH em /mnt/c ficam com permissões abertas demais: copie para ~/.ssh e rode chmod 600", "Git em /mnt/c pode reclamar de dubious ownership e de fim de linha (CRLF)"]
+        }
+      ],
+      "related": ["wslpath", "crlf", "error-git-dubious-ownership", "error-unprotected-key"]
+    },
+    {
+      "id": "wsl-networking",
+      "name": "Rede no WSL",
+      "kind": "concept",
+      "summary": "Como Windows e WSL se enxergam: localhost, IP da VM e portas",
+      "description": "No modo padrão (NAT), o WSL 2 tem IP próprio. Um serviço no WSL responde no localhost do Windows (encaminhamento automático). Do WSL para o Windows, use o IP do gateway. No modo mirrored (Windows 11), os dois compartilham as interfaces e o localhost.",
+      "aliases": ["localhost wsl", "acessar wsl pelo windows", "ip do windows no wsl", "wsl vpn", "mirrored", ".wslconfig", "portproxy", "wsl rede"],
+      "tags": ["wsl", "rede"],
+      "examples": [
+        { "command": "ip route show default | awk '{print $3}'", "description": "IP do Windows visto do WSL (modo NAT)" },
+        { "command": "hostname -I", "description": "IP do WSL" },
+        { "command": "curl http://localhost:8080", "description": "No Windows: serviços do WSL respondem no localhost" },
+        { "command": "cat /etc/resolv.conf", "description": "DNS usado (gerado pelo WSL)" }
+      ],
+      "sections": [
+        {
+          "title": "Situações comuns",
+          "rows": [
+            ["Windows → serviço no WSL", "http://localhost:PORTA (o serviço deve escutar em 0.0.0.0 ou 127.0.0.1)"],
+            ["WSL → serviço no Windows", "IP do gateway (modo NAT) ou localhost (modo mirrored); libere no firewall do Windows"],
+            ["Outra máquina → WSL", "modo mirrored, ou netsh interface portproxy no Windows"],
+            ["VPN corporativa quebra o DNS", "dnsTunneling=true ou networkingMode=mirrored no .wslconfig"]
+          ]
+        },
+        { "title": "%UserProfile%\\.wslconfig", "text": "[wsl2]\nnetworkingMode=mirrored\ndnsTunneling=true\nmemory=8GB" }
+      ],
+      "related": ["localhost", "nat", "wsl-exe", "dns-not-resolving"]
+    },
+    {
+      "id": "crlf",
+      "name": "CRLF × LF (fim de linha)",
+      "kind": "concept",
+      "summary": "O Windows termina as linhas com \\r\\n (CRLF); o Linux, só com \\n (LF)",
+      "description": "Scripts salvos no Windows quebram no Linux: o \\r extra vira parte do comando. Sintomas: /bin/bash^M: bad interpreter, $'\\r': command not found, variáveis com um caractere invisível no fim.",
+      "aliases": ["^m", "\\r", "fim de linha do windows", "line endings", "carriage return", "crlf", "lf", "autocrlf"],
+      "tags": ["texto", "wsl", "windows"],
+      "examples": [
+        { "command": "file script.sh", "description": "Mostra with CRLF line terminators" },
+        { "command": "dos2unix script.sh", "description": "Converte para LF" },
+        { "command": "sed -i 's/\\r$//' script.sh", "description": "O mesmo sem o dos2unix" },
+        { "command": "git config --global core.autocrlf input", "description": "O Git grava LF no repositório" },
+        { "command": "cat -A script.sh | head", "description": "Mostra ^M$ no fim das linhas com CR" }
+      ],
+      "related": ["dos2unix", "sed", "tr", "file", "shebang", "error-bad-interpreter"]
+    },
+    {
+      "id": "wsl-open-folder",
+      "name": "Abrir a pasta atual no Windows",
+      "kind": "recipe",
+      "summary": "Ver ou editar arquivos do Linux com programas do Windows",
+      "aliases": ["abrir pasta no windows", "abrir no explorer", "ver arquivos do wsl no windows", "vscode no wsl"],
+      "tags": ["wsl"],
+      "examples": [
+        { "command": "explorer.exe .", "description": "Explorador de Arquivos na pasta atual" },
+        { "command": "code .", "description": "VS Code conectado ao WSL (extensão WSL)" },
+        { "command": "wslpath -w .", "description": "Caminho para colar no Windows" }
+      ],
+      "related": ["explorer-exe", "wslpath"]
+    },
+    {
+      "id": "wsl-copy-output",
+      "name": "Copiar a saída de um comando",
+      "kind": "recipe",
+      "summary": "Mandar texto do terminal para a área de transferência",
+      "aliases": ["copiar saída do comando", "copiar para clipboard", "copiar texto do terminal", "copy to clipboard"],
+      "tags": ["wsl", "terminal"],
+      "examples": [
+        { "command": "comando | clip.exe", "description": "No WSL" },
+        { "command": "comando | xclip -selection clipboard", "description": "Linux com X11 (sudo apt install xclip)" },
+        { "command": "comando | wl-copy", "description": "Linux com Wayland (wl-clipboard)" }
+      ],
+      "related": ["clip-exe"]
+    },
+    {
+      "id": "wsl-free-memory",
+      "name": "Liberar memória do WSL",
+      "kind": "recipe",
+      "summary": "O processo VmmemWSL está usando memória demais no Windows",
+      "aliases": ["vmmem", "vmmemwsl", "wsl usando muita memória", "limitar memória do wsl", "wsl memory"],
+      "tags": ["wsl", "memória"],
+      "steps": [
+        { "title": "Veja o uso por dentro", "command": "free -h", "why": "buff/cache alto é normal: o Linux usa memória livre como cache de disco." },
+        { "title": "Solte o cache", "command": "sudo sh -c 'sync; echo 3 > /proc/sys/vm/drop_caches'", "why": "Devolve o cache ao Windows (o WSL recente faz isso aos poucos sozinho)." },
+        { "title": "Limite de vez", "command": "wsl.exe --shutdown", "why": "Depois de pôr memory=8GB na seção [wsl2] do %UserProfile%\\.wslconfig, reinicie o WSL para aplicar." }
+      ],
+      "related": ["wsl-exe", "free"]
+    },
+    {
+      "id": "wsl-access-service",
+      "name": "Acessar pelo Windows um serviço do WSL",
+      "kind": "recipe",
+      "summary": "Abrir no navegador do Windows um servidor que roda no Linux",
+      "aliases": ["acessar wsl pelo navegador", "localhost do wsl não abre", "servidor no wsl", "expor porta do wsl"],
+      "tags": ["wsl", "rede"],
+      "steps": [
+        { "title": "O serviço escuta?", "command": "ss -ltn | grep ':{{port:8080}}'", "why": "Deve aparecer 0.0.0.0, 127.0.0.1 ou [::]." },
+        { "title": "Teste dentro do WSL", "command": "curl -I http://localhost:{{port:8080}}", "why": "Se falhar aqui, o problema é o serviço, não a rede." },
+        { "title": "No Windows", "command": "curl.exe -I http://localhost:{{port:8080}}", "why": "O WSL 2 encaminha o localhost automaticamente (localhostForwarding)." },
+        { "title": "Para outras máquinas", "command": "hostname -I", "why": "Modo NAT: crie um portproxy no Windows para este IP, ou use networkingMode=mirrored." }
+      ],
+      "related": ["wsl-networking", "ss", "curl"]
+    }
+  ]
+}

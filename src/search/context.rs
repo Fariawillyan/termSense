@@ -29,6 +29,18 @@ pub enum Role<'r> {
     /// Value consumed by the preceding option (`POST` in `-X POST`).
     OptionValue(&'r CommandOption),
     Argument(Option<&'r Argument>),
+    /// Shell grammar: `if`, `then`, `do`, `done`, `in`, `;;`, `]]`, `((…))`,
+    /// test operators... `construct` is the knowledge entry of the construct
+    /// the word belongs to (`for` for `do`), when the base has one.
+    Keyword {
+        construct: Option<&'r Entry>,
+    },
+    /// `NAME` in `for NAME in ...`.
+    LoopVariable,
+    /// A `case` pattern (`start)`, `*)`).
+    CasePattern,
+    /// The name in a function definition (`deploy()`, `function deploy`).
+    FunctionName,
     EndOfOptions,
     Assignment,
     Pipe,
@@ -116,6 +128,27 @@ impl<'r> LineAnalysis<'r> {
         self.segments.first().and_then(|s| s.chain.first().copied())
     }
 
+    /// The line starts with shell grammar (`for`, `if`, `[[`...).
+    pub fn starts_with_keyword(&self) -> bool {
+        matches!(
+            self.roles.first(),
+            Some(Role::Keyword { .. } | Role::FunctionName)
+        )
+    }
+
+    /// Shell constructs used in the line (`for`, `if`), without repetition.
+    pub fn constructs(&self) -> Vec<&'r Entry> {
+        let mut out: Vec<&'r Entry> = Vec::new();
+        for role in &self.roles {
+            if let Role::Keyword { construct: Some(e) } = role
+                && !out.iter().any(|x| x.id == e.id)
+            {
+                out.push(e);
+            }
+        }
+        out
+    }
+
     /// Byte offset where a completion should be inserted.
     pub fn completion_start(&self, line: &str) -> usize {
         match self.tokens.last() {
@@ -177,6 +210,148 @@ impl<'r> LineAnalysis<'r> {
     }
 }
 
+/// Knowledge ids of the shell constructs the grammar links to.
+mod construct {
+    pub const IF: &str = "if";
+    pub const FOR: &str = "for";
+    pub const WHILE: &str = "while";
+    pub const CASE: &str = "case";
+    pub const FUNCTION: &str = "shell-function";
+    pub const GROUP: &str = "command-grouping";
+    pub const ARITHMETIC: &str = "arithmetic";
+    pub const NEGATION: &str = "exit-code";
+    pub const DOUBLE_BRACKET: &str = "double-bracket";
+    pub const BRACKET: &str = "test-bracket";
+    pub const TEST: &str = "test";
+}
+
+/// What the grammar expects next, after `for`, `case` or `function`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Expect {
+    Nothing,
+    LoopVariable,
+    LoopIn,
+    CaseWord,
+    CaseIn,
+    FunctionName,
+}
+
+/// Where the next token stands after a grammar word.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Next {
+    /// Same simple command (test operators, closing `]]`).
+    Stay,
+    /// A new command starts (after `then`, `do`, `!`, `a)` in a case).
+    Command,
+    /// A header follows, not a command (`for NAME in LIST`, `case WORD in`).
+    Header,
+}
+
+/// Shell grammar state carried across the tokens of a line.
+struct Grammar<'r> {
+    repo: &'r Repository,
+    /// Open constructs, innermost last (`for` until its `done`).
+    open: Vec<&'static str>,
+    expect: Expect,
+    /// Inside `case ... in`, at a pattern position.
+    case_pattern: bool,
+    /// Inside a test (`[[`, `[`, `test`), with its entry id.
+    test: Option<&'static str>,
+}
+
+impl<'r> Grammar<'r> {
+    fn entry(&self, id: &str) -> Option<&'r Entry> {
+        self.repo.get(id)
+    }
+
+    fn keyword(&self, id: &str) -> Role<'r> {
+        Role::Keyword {
+            construct: self.entry(id),
+        }
+    }
+
+    /// Construct of the innermost open loop (`for` or `while`).
+    fn innermost(&self, candidates: &[&'static str]) -> &'static str {
+        self.open
+            .iter()
+            .rev()
+            .find(|c| candidates.contains(c))
+            .copied()
+            .unwrap_or(candidates[0])
+    }
+
+    fn close(&mut self, construct: &str) {
+        if let Some(pos) = self.open.iter().rposition(|c| *c == construct) {
+            self.open.truncate(pos);
+        }
+    }
+
+    /// A reserved word in command position, with where the next token stands.
+    fn reserved(&mut self, word: &str) -> Option<(Role<'r>, Next)> {
+        use construct::*;
+        let next = match word {
+            "for" | "select" | "case" | "function" => Next::Header,
+            _ => Next::Command,
+        };
+        let role = match word {
+            "if" | "while" | "until" | "for" | "select" | "case" | "function" | "{" => {
+                let id = match word {
+                    "if" => IF,
+                    "while" | "until" => WHILE,
+                    "for" | "select" => FOR,
+                    "case" => CASE,
+                    "function" => FUNCTION,
+                    _ => GROUP,
+                };
+                if word != "function" {
+                    self.open.push(id);
+                }
+                self.expect = match word {
+                    "for" | "select" => Expect::LoopVariable,
+                    "case" => Expect::CaseWord,
+                    "function" => Expect::FunctionName,
+                    _ => Expect::Nothing,
+                };
+                self.keyword(id)
+            }
+            "then" | "elif" | "else" => self.keyword(IF),
+            "fi" => {
+                self.close(IF);
+                self.keyword(IF)
+            }
+            "do" => self.keyword(self.innermost(&[FOR, WHILE])),
+            "done" => {
+                let id = self.innermost(&[FOR, WHILE]);
+                self.close(id);
+                self.keyword(id)
+            }
+            "esac" => {
+                self.close(CASE);
+                self.case_pattern = false;
+                self.keyword(CASE)
+            }
+            "}" => {
+                self.close(GROUP);
+                self.keyword(GROUP)
+            }
+            "!" => self.keyword(NEGATION),
+            w if w.starts_with("((") => self.keyword(ARITHMETIC),
+            _ => return None,
+        };
+        Some((role, next))
+    }
+}
+
+/// Ends the current simple command before token `i`; the next one starts
+/// after it. Empty segments are dropped.
+fn restart<'r>(seg: &mut Segment<'r>, segments: &mut Vec<Segment<'r>>, i: usize) {
+    seg.tokens.end = i;
+    let old = std::mem::replace(seg, Segment::new(i + 1));
+    if !old.tokens.is_empty() {
+        segments.push(old);
+    }
+}
+
 /// Resolves every token of `line` against the knowledge base.
 pub fn analyze<'r>(repo: &'r Repository, line: &str) -> LineAnalysis<'r> {
     let tokens = tokenize(line);
@@ -187,20 +362,58 @@ pub fn analyze<'r>(repo: &'r Repository, line: &str) -> LineAnalysis<'r> {
     let mut after_redirect = false;
     let mut end_of_options = false;
     let mut subcommand_allowed = true;
+    let mut g = Grammar {
+        repo,
+        open: Vec::new(),
+        expect: Expect::Nothing,
+        case_pattern: false,
+        test: None,
+    };
 
     for (i, t) in tokens.iter().enumerate() {
+        // `&&` and `||` inside `[[ ]]` combine conditions; they do not end
+        // the command. `|` inside a case pattern separates alternatives.
+        let in_double_bracket = g.test == Some(construct::DOUBLE_BRACKET);
+        if (in_double_bracket && matches!(t.text.as_str(), "&&" | "||"))
+            || (g.case_pattern && t.kind == TokenKind::Pipe)
+        {
+            let id = if g.case_pattern {
+                construct::CASE
+            } else {
+                construct::DOUBLE_BRACKET
+            };
+            roles.push(g.keyword(id));
+            continue;
+        }
         if t.kind.is_separator() {
-            roles.push(if t.kind == TokenKind::Pipe {
+            let case_end = t.text == ";;" && g.open.last() == Some(&construct::CASE);
+            roles.push(if case_end {
+                g.case_pattern = true;
+                g.keyword(construct::CASE)
+            } else if t.kind == TokenKind::Pipe {
                 Role::Pipe
             } else {
                 Role::Operator
             });
+            g.test = None;
             seg.tokens.end = i;
             segments.push(std::mem::replace(&mut seg, Segment::new(i + 1)));
             expect_value = None;
             after_redirect = false;
             end_of_options = false;
             subcommand_allowed = true;
+            continue;
+        }
+        if let Some((role, next)) = grammar_role(&mut g, &seg, t) {
+            roles.push(role);
+            if next != Next::Stay {
+                restart(&mut seg, &mut segments, i);
+                // Words of a `for`/`case` header are not a command.
+                seg.has_command = next == Next::Header;
+                expect_value = None;
+                end_of_options = false;
+                subcommand_allowed = true;
+            }
             continue;
         }
         if t.kind == TokenKind::Redirect {
@@ -224,6 +437,15 @@ pub fn analyze<'r>(repo: &'r Repository, line: &str) -> LineAnalysis<'r> {
         if !seg.has_command {
             seg.has_command = true;
             roles.push(resolve_command(repo, &mut seg, t));
+            g.test = seg.entry().and_then(|e| {
+                [
+                    construct::DOUBLE_BRACKET,
+                    construct::BRACKET,
+                    construct::TEST,
+                ]
+                .into_iter()
+                .find(|id| *id == e.id)
+            });
             continue;
         }
         if t.kind == TokenKind::EndOfOptions && !end_of_options {
@@ -231,7 +453,10 @@ pub fn analyze<'r>(repo: &'r Repository, line: &str) -> LineAnalysis<'r> {
             roles.push(Role::EndOfOptions);
             continue;
         }
-        if t.kind == TokenKind::Option && !end_of_options {
+        // Inside a test, `-f` after `&&` is an operator even though the
+        // lexer sees a new command position there.
+        let dash_in_test = g.test.is_some() && t.text.len() > 1 && t.text.starts_with('-');
+        if (t.kind == TokenKind::Option || dash_in_test) && !end_of_options {
             let role = resolve_option(&mut seg, t);
             if let Role::Option {
                 option,
@@ -286,6 +511,74 @@ pub fn analyze<'r>(repo: &'r Repository, line: &str) -> LineAnalysis<'r> {
         roles,
         segments,
     }
+}
+
+/// Roles decided by the shell grammar rather than by the knowledge base:
+/// reserved words, `for` and `case` headers, test operators, patterns.
+fn grammar_role<'r>(g: &mut Grammar<'r>, seg: &Segment<'r>, t: &Token) -> Option<(Role<'r>, Next)> {
+    let word = t.text.as_str();
+    match g.expect {
+        Expect::LoopVariable if word.starts_with("((") => {
+            // C-style header: for ((i=0; i<10; i++))
+            g.expect = Expect::Nothing;
+            return Some((g.keyword(construct::ARITHMETIC), Next::Command));
+        }
+        Expect::LoopVariable => {
+            g.expect = Expect::LoopIn;
+            return Some((Role::LoopVariable, Next::Header));
+        }
+        Expect::LoopIn => {
+            g.expect = Expect::Nothing;
+            if word == "in" {
+                return Some((g.keyword(construct::FOR), Next::Header));
+            }
+        }
+        Expect::CaseWord => {
+            g.expect = Expect::CaseIn;
+            return Some((Role::Argument(None), Next::Header));
+        }
+        Expect::CaseIn => {
+            g.expect = Expect::Nothing;
+            if word == "in" {
+                g.case_pattern = true;
+                return Some((g.keyword(construct::CASE), Next::Header));
+            }
+        }
+        Expect::FunctionName => {
+            g.expect = Expect::Nothing;
+            return Some((Role::FunctionName, Next::Command));
+        }
+        Expect::Nothing => {}
+    }
+    if g.case_pattern && word != "esac" {
+        if word.ends_with(')') {
+            g.case_pattern = false;
+            return Some((Role::CasePattern, Next::Command));
+        }
+        return Some((Role::CasePattern, Next::Header));
+    }
+    if let Some(test) = g.test.filter(|_| seg.has_command) {
+        let closing = match test {
+            construct::DOUBLE_BRACKET => "]]",
+            construct::BRACKET => "]",
+            _ => "",
+        };
+        if word == closing {
+            g.test = None;
+            return Some((g.keyword(test), Next::Stay));
+        }
+        if matches!(word, "!" | "==" | "=" | "!=" | "=~" | "(" | ")") {
+            return Some((g.keyword(test), Next::Stay));
+        }
+        return None;
+    }
+    if seg.has_command || t.kind == TokenKind::String {
+        return None;
+    }
+    if word.len() > 2 && word.ends_with("()") {
+        return Some((Role::FunctionName, Next::Command));
+    }
+    g.reserved(word)
 }
 
 fn resolve_command<'r>(repo: &'r Repository, seg: &mut Segment<'r>, t: &Token) -> Role<'r> {
@@ -486,6 +779,12 @@ mod tests {
                 Role::OptionValue(o) => format!("val:{}", o.key()),
                 Role::Argument(Some(a)) => format!("arg:{}", a.name),
                 Role::Argument(None) => "arg".into(),
+                Role::Keyword { construct } => {
+                    format!("kw:{}", construct.map_or("?", |e| e.id.as_str()))
+                }
+                Role::LoopVariable => "loopvar".into(),
+                Role::CasePattern => "pattern".into(),
+                Role::FunctionName => "fn".into(),
                 Role::EndOfOptions => "--".into(),
                 Role::Assignment => "assign".into(),
                 Role::Pipe => "|".into(),
@@ -535,6 +834,63 @@ mod tests {
     }
 
     #[test]
+    fn shell_grammar() {
+        assert_eq!(
+            role_names("for f in *.log; do gzip $f; done"),
+            [
+                "kw:for", "loopvar", "kw:for", "arg", "op", "kw:for", "cmd:gzip", "arg", "op",
+                "kw:for"
+            ]
+        );
+        assert_eq!(
+            role_names("if [[ -f app.log && ! -s app.log ]]; then rm app.log; fi"),
+            [
+                "kw:if",
+                "cmd:double-bracket",
+                "opt:-f",
+                "val:-f",
+                "kw:double-bracket",
+                "kw:double-bracket",
+                "opt:-s",
+                "val:-s",
+                "kw:double-bracket",
+                "op",
+                "kw:if",
+                "cmd:rm",
+                "arg:ARQUIVO",
+                "op",
+                "kw:if"
+            ]
+        );
+        assert_eq!(
+            role_names("case $1 in start|stop) echo ok;; *) exit 1;; esac"),
+            [
+                "kw:case", "arg", "kw:case", "pattern", "kw:case", "pattern", "cmd:echo", "arg",
+                "kw:case", "pattern", "cmd:exit", "arg", "kw:case", "kw:case"
+            ]
+        );
+        assert_eq!(
+            role_names("while true; do sleep 1; done"),
+            [
+                "kw:while",
+                "cmd:?",
+                "op",
+                "kw:while",
+                "cmd:sleep",
+                "arg",
+                "op",
+                "kw:while"
+            ]
+        );
+        assert_eq!(role_names("deploy() { git pull; }")[0], "fn");
+        assert_eq!(role_names("echo done")[1], "arg", "done como argumento");
+        let a = analyze(repo(), "for f in *; do grep -");
+        assert_eq!(a.current().entry().unwrap().id, "grep");
+        assert!(matches!(a.cursor(), Cursor::Option(p) if p == "-"));
+        assert!(a.starts_with_keyword());
+    }
+
+    #[test]
     fn wrappers_expose_the_inner_command() {
         let a = analyze(repo(), "sudo ss -tulnp");
         assert_eq!(a.current().entry().unwrap().id, "ss");
@@ -578,7 +934,7 @@ mod tests {
             .iter()
             .map(|e| e.leaf_name())
             .collect();
-        assert_eq!(names, ["stash", "status", "switch"]);
+        assert_eq!(names, ["show", "stash", "status", "switch"]);
     }
 
     #[test]

@@ -62,3 +62,7 @@ case ":$PATH:" in
         echo "    Enquanto isso, execute: $INSTALL_DIR/ts"
         ;;
 esac
+
+# 6. Integração com o shell (opcional, não é instalada automaticamente)
+echo "    Opcional: para Alt+H abrir o ts com a linha que você está digitando,"
+echo "    adicione ao ~/.bashrc: eval \"\$(ts --init bash)\"  (zsh e fish: veja o README)"

@@ -27,13 +27,15 @@ Os arquivos ficam em `knowledge/`, um por tema:
 | Arquivo | Tema |
 |---|---|
 | `categories.json` | lista de categorias (id, nome, descrição) |
-| `linux.json`, `text.json`, `shell.json`, `processes.json` | Linux, texto, shell, processos |
+| `linux.json`, `text.json`, `shell.json`, `processes.json` | Linux, texto, shell (inclusive estruturas como `for` e `[[`), processos e agendamento |
 | `regex.json` | regex e padrões prontos |
-| `networking.json` | comandos de rede e troubleshooting |
+| `networking.json` | comandos de rede, firewall e troubleshooting |
 | `network-concepts.json`, `http.json` | conceitos de rede, HTTP e TLS |
 | `ssh.json`, `git.json`, `docker.json` | SSH, Git, Docker |
+| `packages.json`, `editors.json`, `wsl.json` | apt/dpkg/dnf; vim, nano e tmux; WSL |
+| `errors.json` | catálogo de mensagens de erro (veja abaixo) |
 
-Para testar sem recompilar, coloque um JSON em `~/.config/termsense/knowledge/` e rode `ts`. Para incorporar à base, edite o arquivo do tema. Se criar um arquivo novo, registre-o em `EMBEDDED` (`src/knowledge/loader.rs`).
+Para testar sem recompilar, coloque um JSON em `~/.config/termsense/knowledge/` e rode `ts --check`, depois `ts`. Para incorporar à base, edite o arquivo do tema. Se criar um arquivo novo, registre-o em `EMBEDDED` (`src/knowledge/loader.rs`).
 
 ### Estrutura de um arquivo
 
@@ -60,9 +62,10 @@ O `category` do arquivo é o padrão das entradas que não declaram o seu.
 | `usage` | não | Sintaxe (`grep [OPÇÕES] PADRÃO [ARQUIVO...]`) |
 | `parent` | não | Id do comando pai, para subcomandos |
 | `wrapper` | não | `true` se o comando executa outro (`sudo`, `nohup`, `xargs`) |
+| `builtin` | não | `true` para recursos do shell sem executável no `PATH` (`cd`, `export`, `for`, `[[`): a página diz isso em vez de "não encontrado" |
 | `aliases` | não | Sinônimos e frases em linguagem natural (pt/en): é o que faz `quem usa a porta` achar a receita |
 | `tags` | não | Palavras-chave curtas |
-| `options` | não | `{ "short": "-i", "long": "--ignore-case", "arg": "VALOR", "description": "..." }` |
+| `options` | não | `{ "short": "-i", "long": "--ignore-case", "arg": "VALOR", "kind": "...", "description": "..." }` (`kind` opcional, exige `arg`) |
 | `arguments` | não | `{ "name": "PADRÃO", "kind": "regex", "description": "...", "repeat": false }` |
 | `examples` | não | `{ "command": "...", "description": "..." }` |
 | `steps` | não | `{ "title": "...", "command": "...", "why": "..." }`: passos ordenados de receitas |
@@ -71,7 +74,13 @@ O `category` do arquivo é o padrão das entradas que não declaram o seu.
 | `install` | não | Como instalar, quando o comando pode não vir por padrão |
 | `warnings` | não | Riscos (aparecem em destaque nas páginas e nas explicações) |
 
-Os tipos de `arguments[].kind` são `text`, `regex`, `path`, `host`, `url`, `port`, `command`, `number` e `user`. O explicador usa o tipo: argumentos `regex` recebem a interpretação do padrão, e `url`/`host` são decompostos em esquema, host, porta e caminho.
+Os tipos de `arguments[].kind` (e de `options[].kind`) são `text`, `regex`, `path`, `host`, `url`, `port`, `command`, `number`, `user`, `mode`, `umask`, `sed` e `awk`. O explicador usa o tipo:
+
+- `regex`: recebe a interpretação do padrão;
+- `url` e `host`: são decompostos em esquema, host, porta e caminho;
+- `mode`: permissões do `chmod` (`755` → `rwxr-xr-x`, `u+x` em palavras), inclusive as formas `-644` e `/111` do `find -perm`;
+- `umask`: mostra as permissões que arquivos e diretórios novos recebem;
+- `sed` e `awk`: o script ou programa é decomposto peça por peça (`sed -e SCRIPT` usa `"kind": "sed"` na opção).
 
 ### Opções que recebem valor
 
@@ -97,9 +106,16 @@ nc -vz {{host:host}} {{port:8080}}
 - um `related` ou `parent` apontar para id inexistente;
 - uma entrada usar categoria não declarada;
 - um `summary` terminar com ponto ou estiver vazio;
-- uma flag não começar com `-`;
+- uma flag não começar com `-`, ou uma opção tiver `kind` sem `arg`;
 - uma receita não tiver `examples` nem `steps`;
-- alguma entrada exigida pela especificação sumir.
+- alguma entrada exigida pela especificação sumir;
+- uma consulta da lista `golden_queries` (`src/assistant/mod.rs`) mudar de primeiro resultado.
+
+As mesmas regras (menos as duas últimas) valem para os seus arquivos: `ts --check` valida `~/.config/termsense/knowledge/*.json`, ou os arquivos passados como argumento, e sai com código 1 se houver problema.
+
+### Mensagens de erro
+
+As receitas de `errors.json` são achadas quando a pessoa cola a mensagem inteira. O que faz isso funcionar são os `aliases`: coloque trechos **literais** da mensagem, sem as partes que variam (nomes de arquivo, hosts, PIDs). Quanto mais longo o trecho, mais específico: se duas receitas casam com a mesma linha, vence a que tem mais palavras de alias contidas nela (as frases se somam). Por exemplo, `bad interpreter: no such file or directory` faz a receita de CRLF vencer a genérica `no such file or directory`. Mensagens com `->` ou `|` passam pelo modo comando, mas, sem nenhum comando conhecido na linha, a busca vem primeiro.
 
 ### Boas práticas de conteúdo
 
@@ -117,7 +133,7 @@ Leia [ARCHITECTURE.md](ARCHITECTURE.md) antes. Resumo das regras:
 1. **A UI só apresenta.** Lógica nova vai para `assistant/`, `search/`, `regex/` ou `networking/`, produzindo `Suggestion`/`Document`. A UI não decide conteúdo.
 2. **Serviços não dependem de UI** nem uns dos outros sem necessidade. `regex/` e `networking/` não importam `search/`.
 3. **Determinismo.** Nada de aleatoriedade, relógio ou ordem de `HashMap` influenciando resultados. Toda ordenação precisa de desempate total.
-4. **Somente consulta.** Não use `std::process::Command`, chamadas de rede nem escritas em disco. A única interação com o sistema é `system::which`.
+4. **Somente consulta.** Não use `std::process::Command`, chamadas de rede nem escritas em disco. A única interação com o sistema é `system::which` (e, no modo widget, desenhar em `/dev/tty`).
 5. **Dependências.** Não adicione crates sem necessidade clara; discuta no PR.
 6. **Sem abstrações artificiais.** Crie trait ou módulo quando houver duas implementações reais ou uma fronteira clara de responsabilidade.
 7. **Testes junto do código**, em `#[cfg(test)] mod tests`, cobrindo o comportamento (não detalhes internos).
@@ -126,9 +142,9 @@ Leia [ARCHITECTURE.md](ARCHITECTURE.md) antes. Resumo das regras:
 
 | Quero… | Onde |
 |---|---|
-| mudar a pontuação da busca | `search/ranking.rs` (níveis e pesos) e `search/engine.rs` (campos); rode os testes de `engine` |
-| reconhecer uma nova sintaxe de shell | `search/tokenizer.rs` (lexer/forma) e `search/context.rs` (papel) |
-| um novo tipo de análise (ex.: permissões octais `755`) | função no `Assistant` que devolve `Suggestion::analysis(...)` + página em `pages.rs` |
+| mudar a pontuação da busca | `search/ranking.rs` (níveis e pesos) e `search/engine.rs` (campos e índice invertido); rode os testes de `engine` e o `golden_queries` |
+| reconhecer uma nova sintaxe de shell | `search/tokenizer.rs` (lexer/forma) e `search/context.rs` (papel; palavras reservadas em `Grammar`) |
+| um novo tipo de análise (como permissões, cron, exit code) | módulo em `analysis/`, função no `Assistant` que devolve `Suggestion::analysis(...)` e página em `pages.rs` |
 | um novo bloco visual | variante em `document::Block`, renderização em `ui.rs` (e contagem de links, se tiver links) |
 | uma nova tecla | `input::map_key` → `Action` → `App::handle_*` |
 | um novo aviso de comando perigoso | lista `checks` em `assistant/explain.rs` |

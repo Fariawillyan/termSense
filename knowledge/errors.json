@@ -1,0 +1,496 @@
+{
+  "category": "errors",
+  "entries": [
+    {
+      "id": "error-command-not-found",
+      "name": "Erro: command not found",
+      "kind": "recipe",
+      "summary": "O shell não achou o programa: nome errado, não instalado ou fora do PATH (exit code 127)",
+      "aliases": ["command not found", "comando não encontrado", "no such command", "exit code 127"],
+      "tags": ["erro"],
+      "steps": [
+        { "title": "O nome existe?", "command": "type -a nome", "why": "Mostra se é alias, função, builtin ou arquivo; sem saída, o shell não conhece o nome." },
+        { "title": "Está em algum lugar do disco?", "command": "ls ~/.local/bin /usr/local/bin | grep nome", "why": "Achou fora do PATH: rode com o caminho completo ou adicione a pasta ao PATH." },
+        { "title": "Veja o PATH", "command": "echo $PATH | tr ':' '\\n'", "why": "O diretório do programa precisa estar aqui." },
+        { "title": "Instale", "command": "apt search nome", "why": "O pacote pode ter outro nome; o TermSense mostra a sugestão na página do comando." },
+        { "title": "Acabou de instalar?", "command": "hash -r", "why": "Abra um novo terminal ou esqueça o cache de caminhos." }
+      ],
+      "related": ["path-variable", "which", "type", "install-program", "exit-code"]
+    },
+    {
+      "id": "error-permission-denied",
+      "name": "Erro: Permission denied",
+      "kind": "recipe",
+      "summary": "Faltam permissões no arquivo ou em alguma pasta do caminho",
+      "aliases": ["permission denied", "permissão negada", "acesso negado", "eacces", "cannot open: permission denied"],
+      "tags": ["erro"],
+      "steps": [
+        { "title": "Veja dono e permissões", "command": "ls -l arquivo", "why": "Quem é o dono e o que cada um pode fazer." },
+        { "title": "E o caminho inteiro", "command": "namei -l /caminho/completo/arquivo", "why": "Para entrar em uma pasta é preciso x nela e em todas as anteriores." },
+        { "title": "Quem é você", "command": "id", "why": "Seu usuário e grupos (grupos novos só valem depois de relogar)." },
+        { "title": "Script sem execução", "command": "chmod +x script.sh", "why": "./script.sh exige permissão x." },
+        { "title": "Arquivo do sistema", "command": "sudo comando", "why": "Arquivos em /etc e /var costumam exigir root." }
+      ],
+      "related": ["permissions", "chmod", "chown", "sudo", "id"]
+    },
+    {
+      "id": "error-ssh-publickey",
+      "name": "Erro: Permission denied (publickey)",
+      "kind": "recipe",
+      "summary": "O servidor SSH não aceitou nenhuma das suas chaves",
+      "aliases": ["permission denied (publickey)", "permission denied (publickey,password)", "publickey", "git@github.com: permission denied"],
+      "tags": ["erro", "ssh"],
+      "steps": [
+        { "title": "Veja o que o ssh tenta", "command": "ssh -v user@host", "why": "-v mostra quais chaves foram oferecidas e por que falharam." },
+        { "title": "A chave está carregada?", "command": "ssh-add -l", "why": "Sem chaves no agente e sem ~/.ssh/id_*, nada é oferecido." },
+        { "title": "GitHub e GitLab", "command": "ssh -T git@github.com", "why": "Confirma se a chave está cadastrada na sua conta." },
+        { "title": "Instale a chave no servidor", "command": "ssh-copy-id user@host", "why": "Usa a senha uma última vez e grava em ~/.ssh/authorized_keys." },
+        { "title": "Permissões no servidor", "command": "chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys", "why": "O sshd ignora chaves se ~/.ssh ou authorized_keys estiverem abertos demais." }
+      ],
+      "related": ["ssh", "ssh-add", "ssh-copy-id", "authorized-keys", "ssh-key-setup"]
+    },
+    {
+      "id": "error-no-such-file",
+      "name": "Erro: No such file or directory",
+      "kind": "recipe",
+      "summary": "O caminho não existe onde o programa procurou",
+      "aliases": ["no such file or directory", "arquivo ou diretório inexistente", "enoent", "cannot access"],
+      "tags": ["erro"],
+      "steps": [
+        { "title": "Onde você está?", "command": "pwd", "why": "Caminhos relativos partem do diretório atual." },
+        { "title": "O que existe ali?", "command": "ls -la", "why": "Confira maiúsculas, extensão e espaços no nome." },
+        { "title": "Nomes com espaço", "command": "ls \"meu arquivo.txt\"", "why": "Sem aspas, o shell divide o nome em dois argumentos." },
+        { "title": "Procure o arquivo", "command": "find . -name 'parte-do-nome*'", "why": "Talvez esteja em outra pasta." },
+        { "title": "Link quebrado?", "command": "ls -l caminho", "why": "Um link simbólico para destino inexistente dá este erro." }
+      ],
+      "related": ["find", "ls", "realpath", "quotes", "error-bad-interpreter"]
+    },
+    {
+      "id": "error-bad-interpreter",
+      "name": "Erro: bad interpreter (^M)",
+      "kind": "recipe",
+      "summary": "O script tem fim de linha do Windows (CRLF) ou a shebang aponta para um programa inexistente",
+      "aliases": ["bad interpreter", "bad interpreter: no such file or directory", "/bin/bash^m", "$'\\r': command not found", "\\r': command not found", "cannot execute: required file not found", "^m"],
+      "tags": ["erro", "wsl"],
+      "steps": [
+        { "title": "Confirme o CRLF", "command": "file script.sh", "why": "Aparece with CRLF line terminators." },
+        { "title": "Converta", "command": "dos2unix script.sh", "why": "Troca CRLF por LF." },
+        { "title": "Sem dos2unix", "command": "sed -i 's/\\r$//' script.sh", "why": "Remove o \\r do fim de cada linha." },
+        { "title": "Evite no Git", "command": "git config --global core.autocrlf input", "why": "O repositório passa a guardar LF." },
+        { "title": "Ou a shebang está errada", "command": "head -n 1 script.sh", "why": "O interpretador da primeira linha precisa existir." }
+      ],
+      "related": ["crlf", "dos2unix", "shebang", "file"]
+    },
+    {
+      "id": "error-no-space",
+      "name": "Erro: No space left on device",
+      "kind": "recipe",
+      "summary": "O disco (ou os inodes) acabou",
+      "aliases": ["no space left on device", "disco cheio", "enospc", "sem espaço em disco", "disk full"],
+      "tags": ["erro"],
+      "steps": [
+        { "title": "Qual partição encheu?", "command": "df -h", "why": "Olhe a coluna Use%." },
+        { "title": "Ou acabaram os inodes", "command": "df -i", "why": "Muitos arquivos pequenos esgotam inodes com espaço sobrando." },
+        { "title": "O que ocupa mais", "command": "sudo du -xh / --max-depth=2 2>/dev/null | sort -h | tail -n 20", "why": "Pastas maiores na partição, sem atravessar outros discos." },
+        { "title": "Suspeitos comuns", "command": "sudo journalctl --vacuum-size=200M && sudo apt clean && docker system df", "why": "Logs do journal, cache do apt e imagens do Docker." },
+        { "title": "Arquivos apagados ainda abertos", "command": "sudo lsof +L1", "why": "O espaço só volta quando o processo fecha o arquivo (reinicie-o)." }
+      ],
+      "related": ["df", "du", "disk-usage", "inode", "docker-cleanup", "find-large-files"]
+    },
+    {
+      "id": "error-too-many-open-files",
+      "name": "Erro: Too many open files",
+      "kind": "recipe",
+      "summary": "O processo chegou ao limite de descritores de arquivo",
+      "aliases": ["too many open files", "emfile", "open files limit"],
+      "tags": ["erro"],
+      "steps": [
+        { "title": "Qual é o limite?", "command": "ulimit -n", "why": "Limite do shell atual." },
+        { "title": "Quantos o processo tem abertos", "command": "ls /proc/1234/fd | wc -l", "why": "Troque 1234 pelo PID." },
+        { "title": "O que ele abriu", "command": "sudo lsof -p 1234 | awk '{print $5}' | sort | uniq -c | sort -rn | head", "why": "Muitas conexões ou arquivos iguais indicam vazamento." },
+        { "title": "Aumente para a sessão", "command": "ulimit -n 65535", "why": "Vale para o que for iniciado deste shell." },
+        { "title": "Aumente para um serviço", "command": "sudo systemctl edit nome", "why": "Em [Service] da unidade: LimitNOFILE=65535, depois daemon-reload e restart." }
+      ],
+      "related": ["ulimit", "file-descriptors", "lsof", "systemd-unit"]
+    },
+    {
+      "id": "error-killed",
+      "name": "Erro: Killed (falta de memória)",
+      "kind": "recipe",
+      "summary": "O kernel matou o processo com SIGKILL, quase sempre por falta de memória (exit code 137)",
+      "aliases": ["killed", "out of memory", "oom", "oom-killer", "oomkilled", "exit code 137", "cannot allocate memory", "memória insuficiente"],
+      "tags": ["erro"],
+      "steps": [
+        { "title": "Confirme no log do kernel", "command": "sudo dmesg -T | grep -i -E 'killed process|out of memory'", "why": "Mostra qual processo morreu e quanta memória usava." },
+        { "title": "Memória agora", "command": "free -h", "why": "Olhe a coluna available." },
+        { "title": "Quem mais consome", "command": "ps aux --sort=-%mem | head", "why": "Os maiores processos por memória." },
+        { "title": "Em container", "command": "docker inspect -f '{{.State.OOMKilled}}' container", "why": "true indica que o limite de memória do container estourou." },
+        { "title": "Soluções", "command": "swapon --show", "why": "Aumente a memória ou o limite (docker run -m), crie swap, ou reduza o consumo (menos workers, lotes menores)." }
+      ],
+      "related": ["dmesg", "free", "memory-usage", "signals", "docker-inspect"]
+    },
+    {
+      "id": "error-segfault",
+      "name": "Erro: Segmentation fault",
+      "kind": "recipe",
+      "summary": "O programa acessou memória inválida: bug no programa ou biblioteca incompatível (exit code 139)",
+      "aliases": ["segmentation fault", "segfault", "core dumped", "sigsegv", "exit code 139"],
+      "tags": ["erro"],
+      "steps": [
+        { "title": "Registro no kernel", "command": "sudo dmesg -T | tail", "why": "Mostra o programa e a biblioteca onde falhou." },
+        { "title": "Bibliotecas usadas", "command": "ldd $(command -v programa)", "why": "Versões erradas ou not found causam falhas." },
+        { "title": "Core dumps", "command": "coredumpctl list", "why": "Se houver, dá para analisar com gdb." },
+        { "title": "Atualize", "command": "sudo apt update && sudo apt upgrade", "why": "Muitas vezes é bug corrigido em versão nova." }
+      ],
+      "related": ["dmesg", "signals", "exit-code"]
+    },
+    {
+      "id": "error-read-only-fs",
+      "name": "Erro: Read-only file system",
+      "kind": "recipe",
+      "summary": "O sistema de arquivos está montado só para leitura, muitas vezes por erro de disco",
+      "aliases": ["read-only file system", "sistema de arquivos somente leitura", "erofs"],
+      "tags": ["erro"],
+      "steps": [
+        { "title": "Como está montado", "command": "findmnt -no OPTIONS /", "why": "ro na lista de opções confirma." },
+        { "title": "Por quê", "command": "sudo dmesg -T | grep -i -E 'error|remount'", "why": "O kernel remonta em ro quando detecta erros no disco." },
+        { "title": "Remonte (se o disco estiver são)", "command": "sudo mount -o remount,rw /", "why": "Temporário: dura até o reboot." },
+        { "title": "Verifique o disco", "command": "sudo fsck -f /dev/sdXN", "why": "Com a partição desmontada (ou no próximo boot)." },
+        { "title": "No WSL", "command": "wsl.exe --shutdown", "why": "Reinicie o WSL pelo Windows." }
+      ],
+      "related": ["mount", "dmesg", "lsblk"]
+    },
+    {
+      "id": "error-device-busy",
+      "name": "Erro: Device or resource busy",
+      "kind": "recipe",
+      "summary": "Algo ainda usa o disco ou a pasta que você quer desmontar ou apagar",
+      "aliases": ["device or resource busy", "target is busy", "ebusy", "umount: target is busy"],
+      "tags": ["erro"],
+      "steps": [
+        { "title": "Quem está usando", "command": "sudo lsof +f -- /mnt/ponto", "why": "Processos com arquivos abertos no ponto de montagem." },
+        { "title": "Alternativa", "command": "sudo fuser -vm /mnt/ponto", "why": "Lista os PIDs e como usam." },
+        { "title": "Você mesmo?", "command": "cd ~", "why": "Um terminal com cd dentro da pasta já prende o disco." },
+        { "title": "Desmontagem preguiçosa", "command": "sudo umount -l /mnt/ponto", "why": "Desliga agora e libera quando ninguém mais usar." }
+      ],
+      "related": ["mount", "lsof"]
+    },
+    {
+      "id": "error-operation-not-permitted",
+      "name": "Erro: Operation not permitted",
+      "kind": "recipe",
+      "summary": "A operação é proibida mesmo com permissão de arquivo: exige root, capability ou o arquivo é imutável",
+      "aliases": ["operation not permitted", "eperm"],
+      "tags": ["erro"],
+      "steps": [
+        { "title": "Precisa de root?", "command": "sudo comando", "why": "Mudar dono, montar discos e portas abaixo de 1024 exigem privilégios." },
+        { "title": "Arquivo imutável", "command": "lsattr arquivo", "why": "O atributo i impede alterações até para o root." },
+        { "title": "Remova o atributo", "command": "sudo chattr -i arquivo", "why": "Só se você souber por que ele foi posto." },
+        { "title": "Em container", "command": "docker inspect -f '{{.HostConfig.CapAdd}}' container", "why": "Faltam capabilities (docker run --cap-add) ou o sistema é somente leitura." }
+      ],
+      "related": ["sudo", "permissions"]
+    },
+    {
+      "id": "error-argument-list-too-long",
+      "name": "Erro: Argument list too long",
+      "kind": "recipe",
+      "summary": "O glob expandiu para arquivos demais para uma só linha de comando",
+      "aliases": ["argument list too long", "e2big"],
+      "tags": ["erro"],
+      "steps": [
+        { "title": "Use find", "command": "find . -maxdepth 1 -name '*.log' -delete", "why": "Processa em lotes do tamanho certo." },
+        { "title": "Ou xargs", "command": "find . -name '*.tmp' -print0 | xargs -0 rm", "why": "Divide a lista em várias execuções; -0 aguenta espaços." },
+        { "title": "Ou um laço", "command": "for f in *.log; do rm \"$f\"; done", "why": "Um arquivo por vez (mais lento)." }
+      ],
+      "related": ["find", "xargs", "globbing"]
+    },
+    {
+      "id": "error-text-file-busy",
+      "name": "Erro: Text file busy",
+      "kind": "recipe",
+      "summary": "Você tentou sobrescrever um executável que está rodando",
+      "aliases": ["text file busy", "etxtbsy"],
+      "tags": ["erro"],
+      "steps": [
+        { "title": "Quem executa o arquivo", "command": "sudo lsof /caminho/do/binario", "why": "Pare o processo antes de trocar o binário." },
+        { "title": "Troque sem sobrescrever", "command": "cp novo /opt/app/bin.tmp && mv /opt/app/bin.tmp /opt/app/bin", "why": "Grave em outro nome e renomeie: o mv substitui de forma atômica." }
+      ],
+      "related": ["lsof", "mv"]
+    },
+    {
+      "id": "error-apt-lock",
+      "name": "Erro: Could not get lock (apt/dpkg)",
+      "kind": "recipe",
+      "summary": "Outro processo do apt ou dpkg está rodando (muitas vezes a atualização automática)",
+      "aliases": ["could not get lock", "unable to acquire the dpkg frontend lock", "dpkg frontend lock", "/var/lib/dpkg/lock", "is another process using it", "waiting for cache lock"],
+      "tags": ["erro", "pacotes"],
+      "steps": [
+        { "title": "Quem segura o lock", "command": "ps aux | grep -E '[a]pt|[d]pkg'", "why": "Normalmente unattended-upgrades ou outro apt aberto: espere terminar." },
+        { "title": "Confirme pelo arquivo", "command": "sudo lsof /var/lib/dpkg/lock-frontend", "why": "Mostra o PID que tem o lock." },
+        { "title": "Se uma instalação foi interrompida", "command": "sudo dpkg --configure -a", "why": "Termina a configuração pendente." }
+      ],
+      "related": ["apt", "dpkg"],
+      "warnings": ["Não apague os arquivos de lock enquanto outro apt roda: isso pode corromper a base de pacotes."]
+    },
+    {
+      "id": "error-unable-to-locate-package",
+      "name": "Erro: Unable to locate package",
+      "kind": "recipe",
+      "summary": "O apt não conhece o pacote: lista desatualizada, nome errado ou repositório faltando",
+      "aliases": ["unable to locate package", "e: unable to locate package", "has no installation candidate", "package not found"],
+      "tags": ["erro", "pacotes"],
+      "steps": [
+        { "title": "Atualize a lista", "command": "sudo apt update", "why": "Em sistemas novos (e no WSL), a lista começa vazia." },
+        { "title": "Procure o nome certo", "command": "apt search nome", "why": "O pacote pode se chamar diferente do comando." },
+        { "title": "Repositório universe (Ubuntu)", "command": "sudo add-apt-repository universe", "why": "Muitos pacotes ficam nele." },
+        { "title": "Qual pacote tem o comando", "command": "apt-file search bin/nome", "why": "Busca pelo arquivo nos repositórios." }
+      ],
+      "related": ["apt", "apt-search", "which-package"]
+    },
+    {
+      "id": "error-host-key-changed",
+      "name": "Erro: REMOTE HOST IDENTIFICATION HAS CHANGED",
+      "kind": "recipe",
+      "summary": "A chave do servidor mudou desde a última conexão: servidor reinstalado ou ataque",
+      "aliases": ["remote host identification has changed", "host key verification failed", "possible dns spoofing", "man-in-the-middle", "offending key"],
+      "tags": ["erro", "ssh"],
+      "steps": [
+        { "title": "Confirme a mudança", "why": "Pergunte a quem administra o servidor se ele foi reinstalado ou mudou de IP." },
+        { "title": "Remova a chave antiga", "command": "ssh-keygen -R host", "why": "Apaga a linha do host no known_hosts." },
+        { "title": "Conecte e confira a nova", "command": "ssh user@host", "why": "Compare a impressão digital mostrada com a do servidor." }
+      ],
+      "related": ["known-hosts", "ssh", "ssh-keygen"],
+      "warnings": ["Se ninguém mudou o servidor, não aceite a nova chave: pode ser um ataque."]
+    },
+    {
+      "id": "error-unprotected-key",
+      "name": "Erro: UNPROTECTED PRIVATE KEY FILE",
+      "kind": "recipe",
+      "summary": "O ssh recusa chaves privadas que outros usuários podem ler",
+      "aliases": ["unprotected private key file", "are too open", "bad permissions", "permissions 0644 for", "permissions 0777 for"],
+      "tags": ["erro", "ssh"],
+      "steps": [
+        { "title": "Corrija a chave", "command": "chmod 600 ~/.ssh/id_ed25519", "why": "Só o dono pode ler." },
+        { "title": "E a pasta", "command": "chmod 700 ~/.ssh", "why": "~/.ssh só para você." },
+        { "title": "No WSL, chave em /mnt/c", "command": "cp /mnt/c/Users/SEU_USUARIO/.ssh/id_ed25519 ~/.ssh/ && chmod 600 ~/.ssh/id_ed25519", "why": "Lá o chmod não funciona: copie para o Linux." }
+      ],
+      "related": ["private-key", "chmod", "wsl-windows-files"]
+    },
+    {
+      "id": "error-git-push-rejected",
+      "name": "Erro: git push rejected (fetch first)",
+      "kind": "recipe",
+      "summary": "O remoto tem commits que você não tem: integre antes de enviar",
+      "aliases": ["failed to push some refs", "updates were rejected", "non-fast-forward", "fetch first", "tip of your current branch is behind", "rejected"],
+      "tags": ["erro", "git"],
+      "steps": [
+        { "title": "Traga o que falta", "command": "git pull --rebase", "why": "Rebase mantém o histórico linear; git pull faz merge." },
+        { "title": "Resolva conflitos, se houver", "command": "git status", "why": "Depois de editar: git add e git rebase --continue." },
+        { "title": "Envie", "command": "git push", "why": "Agora é fast-forward." },
+        { "title": "Reescreveu o histórico de propósito?", "command": "git push --force-with-lease", "why": "Só em branch sua: não sobrescreve o trabalho que outros enviaram." }
+      ],
+      "related": ["git-pull", "git-push", "git-rebase", "git-resolve-conflicts"]
+    },
+    {
+      "id": "error-not-a-git-repo",
+      "name": "Erro: not a git repository",
+      "kind": "recipe",
+      "summary": "O comando Git rodou fora de um repositório",
+      "aliases": ["not a git repository", "fatal: not a git repository", "or any of the parent directories"],
+      "tags": ["erro", "git"],
+      "steps": [
+        { "title": "Onde você está?", "command": "pwd", "why": "Entre na pasta do projeto." },
+        { "title": "Existe .git?", "command": "ls -a", "why": "O repositório começa na pasta que contém .git." },
+        { "title": "Crie ou clone", "command": "git init", "why": "git init começa um novo; git clone baixa um existente." }
+      ],
+      "related": ["git", "git-clone"]
+    },
+    {
+      "id": "error-git-dubious-ownership",
+      "name": "Erro: detected dubious ownership (Git)",
+      "kind": "recipe",
+      "summary": "O repositório pertence a outro usuário (comum em /mnt/c no WSL, com sudo ou em containers)",
+      "aliases": ["dubious ownership", "detected dubious ownership in repository", "safe.directory"],
+      "tags": ["erro", "git", "wsl"],
+      "steps": [
+        { "title": "Veja o dono", "command": "ls -ld .git", "why": "Compare com o seu usuário (id -un)." },
+        { "title": "Confie no repositório", "command": "git config --global --add safe.directory \"$(pwd)\"", "why": "Registra a exceção só para este caminho." },
+        { "title": "Ou corrija o dono", "command": "sudo chown -R $USER: .", "why": "Quando o repositório é seu, mas ficou do root." }
+      ],
+      "related": ["git-config", "chown", "wsl-windows-files"]
+    },
+    {
+      "id": "error-git-local-changes",
+      "name": "Erro: local changes would be overwritten (Git)",
+      "kind": "recipe",
+      "summary": "Pull, checkout ou merge sobrescreveriam alterações que você não commitou",
+      "aliases": ["your local changes to the following files would be overwritten", "would be overwritten by merge", "would be overwritten by checkout", "please commit your changes or stash them"],
+      "tags": ["erro", "git"],
+      "steps": [
+        { "title": "Veja o que mudou", "command": "git status", "why": "Decida se quer manter." },
+        { "title": "Guarde temporariamente", "command": "git stash -u", "why": "Inclui arquivos novos com -u." },
+        { "title": "Faça a operação", "command": "git pull", "why": "Pull, checkout ou merge." },
+        { "title": "Reaplique", "command": "git stash pop", "why": "Pode gerar conflito se as mesmas linhas mudaram." }
+      ],
+      "related": ["git-stash", "git-status", "git-commit"]
+    },
+    {
+      "id": "error-git-merge-conflict",
+      "name": "Erro: CONFLICT (content): Merge conflict",
+      "kind": "recipe",
+      "summary": "O Git não conseguiu juntar alterações nas mesmas linhas",
+      "aliases": ["conflict (content)", "merge conflict in", "automatic merge failed", "fix conflicts and then commit the result", "could not apply"],
+      "tags": ["erro", "git"],
+      "steps": [
+        { "title": "Arquivos em conflito", "command": "git status", "why": "Aparecem como both modified." },
+        { "title": "Resolva e marque", "command": "git add arquivo", "why": "Edite as marcas <<<<<<< ======= >>>>>>> e adicione o arquivo." },
+        { "title": "Conclua", "command": "git commit", "why": "No rebase: git rebase --continue." },
+        { "title": "Ou desista", "command": "git merge --abort", "why": "Volta ao estado anterior." }
+      ],
+      "related": ["git-resolve-conflicts", "git-merge", "git-rebase"]
+    },
+    {
+      "id": "error-git-unrelated-histories",
+      "name": "Erro: refusing to merge unrelated histories",
+      "kind": "recipe",
+      "summary": "Os dois históricos não têm commit em comum (ex.: repositório criado com README no GitHub)",
+      "aliases": ["refusing to merge unrelated histories", "unrelated histories"],
+      "tags": ["erro", "git"],
+      "steps": [
+        { "title": "Junte mesmo assim", "command": "git pull origin main --allow-unrelated-histories", "why": "Faz um merge dos dois históricos; resolva conflitos se aparecerem." }
+      ],
+      "related": ["git-pull", "git-merge"]
+    },
+    {
+      "id": "error-docker-socket-permission",
+      "name": "Erro: permission denied no socket do Docker",
+      "kind": "recipe",
+      "summary": "Seu usuário não pode falar com o daemon do Docker",
+      "aliases": ["permission denied while trying to connect to the docker daemon socket", "got permission denied while trying to connect to the docker daemon", "docker.sock: connect: permission denied"],
+      "tags": ["erro", "docker"],
+      "steps": [
+        { "title": "Você está no grupo docker?", "command": "groups", "why": "Sem o grupo, só com sudo." },
+        { "title": "Entre no grupo", "command": "sudo usermod -aG docker $USER", "why": "Depois, saia e entre de novo na sessão (ou reinicie o WSL)." },
+        { "title": "Aplicar só neste terminal", "command": "newgrp docker", "why": "Sem relogar." }
+      ],
+      "related": ["usermod", "groups", "docker"],
+      "warnings": ["Quem está no grupo docker tem, na prática, acesso de root à máquina."]
+    },
+    {
+      "id": "error-docker-daemon",
+      "name": "Erro: Cannot connect to the Docker daemon",
+      "kind": "recipe",
+      "summary": "O serviço do Docker não está rodando, ou o cliente aponta para outro lugar",
+      "aliases": ["cannot connect to the docker daemon", "is the docker daemon running"],
+      "tags": ["erro", "docker"],
+      "steps": [
+        { "title": "O serviço está ativo?", "command": "systemctl status docker", "why": "Mostra se caiu e as últimas linhas de log." },
+        { "title": "Inicie", "command": "sudo systemctl enable --now docker", "why": "enable faz subir no boot." },
+        { "title": "No WSL sem systemd", "command": "sudo service docker start", "why": "Ou ative a integração com o WSL no Docker Desktop." },
+        { "title": "Contexto certo?", "command": "docker context ls", "why": "O cliente pode estar apontando para outro daemon." }
+      ],
+      "related": ["docker", "systemctl", "wsl"]
+    },
+    {
+      "id": "error-docker-port-allocated",
+      "name": "Erro: port is already allocated (Docker)",
+      "kind": "recipe",
+      "summary": "Outra coisa já usa a porta que o container quer publicar",
+      "aliases": ["port is already allocated", "bind for 0.0.0.0", "failed to bind host port", "address already in use docker"],
+      "tags": ["erro", "docker"],
+      "steps": [
+        { "title": "Outro container?", "command": "docker ps --format '{{.Names}} {{.Ports}}'", "why": "Procure a porta na coluna PORTS." },
+        { "title": "Ou um processo da máquina", "command": "sudo ss -ltnp | grep ':{{port:8080}}'", "why": "Mostra o programa que escuta." },
+        { "title": "Pare o dono da porta, ou troque", "command": "docker run -p 8081:80 nginx", "why": "Publique em outra porta da máquina." }
+      ],
+      "related": ["docker-ps", "ss", "kill-process-on-port"]
+    },
+    {
+      "id": "error-sudo-resolve-host",
+      "name": "Erro: sudo: unable to resolve host",
+      "kind": "recipe",
+      "summary": "O nome da máquina não está no /etc/hosts",
+      "aliases": ["unable to resolve host", "sudo: unable to resolve host"],
+      "tags": ["erro", "rede"],
+      "steps": [
+        { "title": "Nome da máquina", "command": "hostname", "why": "É o nome que o sudo tenta resolver." },
+        { "title": "Veja o /etc/hosts", "command": "cat /etc/hosts", "why": "Deveria haver uma linha 127.0.1.1 NOME." },
+        { "title": "Adicione", "command": "echo '127.0.1.1 NOME' | sudo tee -a /etc/hosts", "why": "Troque NOME pelo resultado do hostname." }
+      ],
+      "related": ["hostname", "getent", "sudo"]
+    },
+    {
+      "id": "error-not-in-sudoers",
+      "name": "Erro: is not in the sudoers file",
+      "kind": "recipe",
+      "summary": "Seu usuário não tem permissão de usar sudo",
+      "aliases": ["is not in the sudoers file", "not in the sudoers file", "this incident will be reported", "is not allowed to run sudo"],
+      "tags": ["erro", "usuários"],
+      "steps": [
+        { "title": "Seus grupos", "command": "groups", "why": "Debian/Ubuntu usam o grupo sudo; Fedora/RHEL, wheel." },
+        { "title": "Como root, adicione o usuário", "command": "su - -c 'usermod -aG sudo SEU_USUARIO'", "why": "Precisa da senha do root (ou de outro administrador)." },
+        { "title": "No WSL", "command": "wsl.exe -u root", "why": "Pelo Windows, entre como root e faça o mesmo." },
+        { "title": "Relogue", "command": "exit", "why": "Grupos novos só valem em uma nova sessão." }
+      ],
+      "related": ["sudo", "usermod", "su", "groups"]
+    },
+    {
+      "id": "error-syntax-eof",
+      "name": "Erro: syntax error (unexpected end of file)",
+      "kind": "recipe",
+      "summary": "Algo foi aberto e não fechado no script: aspas, if, laço ou chaves",
+      "aliases": ["syntax error: unexpected end of file", "syntax error near unexpected token", "unexpected eof while looking for matching", "unexpected end of file"],
+      "tags": ["erro", "shell"],
+      "steps": [
+        { "title": "Verifique sem executar", "command": "bash -n script.sh", "why": "Mostra a linha do erro." },
+        { "title": "Confira os pares", "why": "if/fi, do/done, case/esac, { }, aspas e $( )." },
+        { "title": "CRLF também causa", "command": "file script.sh", "why": "Um \\r no fim de then ou do confunde o bash." },
+        { "title": "Análise estática", "command": "shellcheck script.sh", "why": "Aponta o erro e muitos outros problemas." }
+      ],
+      "related": ["if", "for", "case", "quotes", "crlf"]
+    },
+    {
+      "id": "error-unbound-variable",
+      "name": "Erro: unbound variable",
+      "kind": "recipe",
+      "summary": "O script usa set -u e leu uma variável que não foi definida",
+      "aliases": ["unbound variable", "parameter not set"],
+      "tags": ["erro", "shell"],
+      "steps": [
+        { "title": "Dê um valor padrão", "command": "echo \"${VAR:-padrão}\"", "why": "Vazio se não existir: ${VAR:-}." },
+        { "title": "Ou exija o valor com mensagem", "command": "echo \"${VAR:?defina VAR}\"", "why": "Aborta explicando o que falta." },
+        { "title": "Argumentos opcionais", "command": "[[ -n ${1:-} ]] || echo 'sem argumento'", "why": "Com set -u, use ${1:-} para testar se existe." }
+      ],
+      "related": ["set", "parameter-expansion", "special-variables"]
+    },
+    {
+      "id": "error-broken-pipe",
+      "name": "Erro: Broken pipe",
+      "kind": "recipe",
+      "summary": "O outro lado fechou a conexão ou o pipe enquanto você escrevia",
+      "aliases": ["broken pipe", "client_loop: send disconnect: broken pipe", "connection reset by peer", "write error: broken pipe"],
+      "tags": ["erro", "ssh"],
+      "steps": [
+        { "title": "SSH caindo por inatividade", "command": "ssh -o ServerAliveInterval=60 user@host", "why": "Manda um sinal de vida a cada 60 s (ponha no ~/.ssh/config como ServerAliveInterval 60)." },
+        { "title": "Em pipelines", "command": "seq 100000 | head -n 1", "why": "cmd | head fecha o pipe cedo de propósito: pode ignorar (exit code 141)." },
+        { "title": "Tarefas longas por SSH", "command": "tmux new -s tarefa", "why": "Rode dentro do tmux para sobreviver à queda." }
+      ],
+      "related": ["ssh-config", "tmux", "signals"]
+    },
+    {
+      "id": "error-exec-format",
+      "name": "Erro: Exec format error",
+      "kind": "recipe",
+      "summary": "O arquivo não é executável nesta máquina: outra arquitetura ou falta a shebang",
+      "aliases": ["exec format error", "cannot execute binary file"],
+      "tags": ["erro"],
+      "steps": [
+        { "title": "Que arquivo é esse?", "command": "file programa", "why": "Mostra a arquitetura (x86-64, ARM aarch64) ou se é texto." },
+        { "title": "E a máquina?", "command": "uname -m", "why": "x86_64 ou aarch64: o binário precisa bater." },
+        { "title": "Script sem shebang", "command": "head -n 1 script", "why": "Adicione #!/usr/bin/env bash na primeira linha ou rode com bash script." },
+        { "title": "Imagem Docker de outra arquitetura", "command": "docker run --platform linux/amd64 imagem", "why": "Construa ou baixe para a plataforma certa." }
+      ],
+      "related": ["file", "shebang", "uname"]
+    }
+  ]
+}

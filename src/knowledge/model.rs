@@ -49,6 +49,10 @@ pub struct CommandOption {
     /// Name of the value the option takes (`MÉTODO` for `-X`), if any.
     #[serde(default)]
     pub arg: Option<String>,
+    /// Shape of the value, when the explainer can say more about it
+    /// (`sed -e SCRIPT` is a sed program, `find -perm MODO` a mode).
+    #[serde(default)]
+    pub kind: Option<ArgKind>,
     pub description: String,
 }
 
@@ -111,6 +115,14 @@ pub enum ArgKind {
     Command,
     Number,
     User,
+    /// Permission mode for chmod (`755`, `u+x`).
+    Mode,
+    /// File-creation mask (`022`).
+    Umask,
+    /// A sed script (`s/a/b/g`).
+    Sed,
+    /// An awk program (`{print $1}`).
+    Awk,
 }
 
 impl ArgKind {
@@ -125,6 +137,10 @@ impl ArgKind {
             ArgKind::Command => "comando",
             ArgKind::Number => "número",
             ArgKind::User => "usuário",
+            ArgKind::Mode => "permissões",
+            ArgKind::Umask => "máscara",
+            ArgKind::Sed => "script sed",
+            ArgKind::Awk => "programa awk",
         }
     }
 }
@@ -203,6 +219,10 @@ pub struct Entry {
     /// The command runs another command (`sudo`, `nohup`, `xargs`).
     #[serde(default)]
     pub wrapper: bool,
+    /// Shell builtin or keyword (`cd`, `export`, `for`): part of the shell,
+    /// not an executable in `PATH`.
+    #[serde(default)]
+    pub builtin: bool,
     /// Synonyms and natural-language phrases, in any language.
     #[serde(default)]
     pub aliases: Vec<String>,
@@ -245,9 +265,10 @@ impl Entry {
     }
 
     /// Executable that must exist for a command entry (`git` for `git status`).
+    /// Builtins and keywords live inside the shell and have none.
     pub fn binary(&self) -> Option<&str> {
         match self.kind {
-            EntryKind::Command => self.name.split_whitespace().next(),
+            EntryKind::Command if !self.builtin => self.name.split_whitespace().next(),
             _ => None,
         }
     }
@@ -292,6 +313,7 @@ mod tests {
             short: short.map(str::to_string),
             long: long.map(str::to_string),
             arg: arg.map(str::to_string),
+            kind: None,
             description: String::new(),
         }
     }

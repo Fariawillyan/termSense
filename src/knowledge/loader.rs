@@ -5,6 +5,7 @@
 //! knowledge directories are merged on top: an entry with an existing id
 //! replaces the built-in one, new ids are added.
 
+use std::collections::HashMap;
 use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -38,6 +39,13 @@ pub const EMBEDDED: &[(&str, &str)] = &[
     ("ssh.json", include_str!("../../knowledge/ssh.json")),
     ("git.json", include_str!("../../knowledge/git.json")),
     ("docker.json", include_str!("../../knowledge/docker.json")),
+    (
+        "packages.json",
+        include_str!("../../knowledge/packages.json"),
+    ),
+    ("editors.json", include_str!("../../knowledge/editors.json")),
+    ("wsl.json", include_str!("../../knowledge/wsl.json")),
+    ("errors.json", include_str!("../../knowledge/errors.json")),
 ];
 
 /// A knowledge file that could not be parsed.
@@ -62,6 +70,8 @@ pub struct Loaded {
     pub categories: Vec<Category>,
     /// Non-fatal problems (invalid user files, duplicated ids).
     pub warnings: Vec<String>,
+    /// Position of each id in `entries`, for overrides while merging.
+    positions: HashMap<String, usize>,
 }
 
 /// Parses one knowledge file and fills derived fields (id, category).
@@ -102,20 +112,34 @@ pub fn load_embedded() -> Result<Loaded, LoadError> {
 /// Loads the built-in knowledge plus every `*.json` file found in `dirs`.
 /// Problems in user files become warnings instead of errors.
 pub fn load(dirs: &[PathBuf]) -> Result<Loaded, LoadError> {
+    let files: Vec<PathBuf> = dirs.iter().flat_map(|d| json_files(d)).collect();
+    load_files(&files).map(|(loaded, _)| loaded)
+}
+
+/// A user file and its number of entries, or why it could not be read.
+pub type FileReport = (String, Result<usize, String>);
+
+/// Loads the built-in knowledge plus `files`, in order, reporting on each file.
+pub fn load_files(files: &[PathBuf]) -> Result<(Loaded, Vec<FileReport>), LoadError> {
     let mut loaded = load_embedded()?;
-    for dir in dirs {
-        for path in json_files(dir) {
-            let source = path.display().to_string();
-            match fs::read_to_string(&path) {
-                Ok(content) => match parse(&source, &content) {
-                    Ok(file) => merge(&mut loaded, file, &source, false),
-                    Err(e) => loaded.warnings.push(e.to_string()),
-                },
-                Err(e) => loaded.warnings.push(format!("{source}: {e}")),
+    let mut reports = Vec::with_capacity(files.len());
+    for path in files {
+        let source = path.display().to_string();
+        let result = fs::read_to_string(path)
+            .map_err(|e| format!("{source}: {e}"))
+            .and_then(|content| parse(&source, &content).map_err(|e| e.to_string()));
+        match result {
+            Ok(file) => {
+                reports.push((source.clone(), Ok(file.entries.len())));
+                merge(&mut loaded, file, &source, false);
+            }
+            Err(e) => {
+                loaded.warnings.push(e.clone());
+                reports.push((source, Err(e)));
             }
         }
     }
-    Ok(loaded)
+    Ok((loaded, reports))
 }
 
 /// `git status` → `git-status`, `Conexão TCP` → `conexao-tcp`.
@@ -131,8 +155,8 @@ pub fn slug(name: &str) -> String {
     out.trim_end_matches('-').to_string()
 }
 
-/// Sorted for deterministic override order.
-fn json_files(dir: &Path) -> Vec<PathBuf> {
+/// `*.json` files of `dir`, sorted for a deterministic override order.
+pub fn json_files(dir: &Path) -> Vec<PathBuf> {
     let Ok(read) = fs::read_dir(dir) else {
         return Vec::new();
     };
@@ -152,8 +176,8 @@ fn merge(loaded: &mut Loaded, file: KnowledgeFile, source: &str, warn_duplicates
         }
     }
     for entry in file.entries {
-        match loaded.entries.iter().position(|e| e.id == entry.id) {
-            Some(i) => {
+        match loaded.positions.get(&entry.id) {
+            Some(&i) => {
                 if warn_duplicates {
                     loaded
                         .warnings
@@ -161,7 +185,12 @@ fn merge(loaded: &mut Loaded, file: KnowledgeFile, source: &str, warn_duplicates
                 }
                 loaded.entries[i] = entry;
             }
-            None => loaded.entries.push(entry),
+            None => {
+                loaded
+                    .positions
+                    .insert(entry.id.clone(), loaded.entries.len());
+                loaded.entries.push(entry);
+            }
         }
     }
 }

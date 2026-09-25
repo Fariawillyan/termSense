@@ -1,0 +1,230 @@
+{
+  "category": "packages",
+  "entries": [
+    {
+      "name": "apt",
+      "kind": "command",
+      "summary": "Gerenciador de pacotes do Debian e do Ubuntu: instala, atualiza e remove programas",
+      "description": "apt update baixa a lista de pacotes disponíveis; apt upgrade instala as novas versões. Quase tudo exige sudo. Em scripts, prefira apt-get (saída estável).",
+      "usage": "sudo apt SUBCOMANDO [OPÇÕES] [PACOTE...]",
+      "aliases": ["instalar programa", "instalar pacote", "apt-get", "gerenciador de pacotes", "package manager", "ubuntu instalar"],
+      "tags": ["pacotes", "debian", "ubuntu"],
+      "options": [
+        { "short": "-y", "long": "--yes", "description": "Responde sim a todas as perguntas" },
+        { "long": "--no-install-recommends", "description": "Só as dependências obrigatórias" },
+        { "long": "--fix-broken", "description": "Tenta consertar dependências quebradas" }
+      ],
+      "examples": [
+        { "command": "sudo apt update && sudo apt upgrade", "description": "Atualiza o sistema" },
+        { "command": "sudo apt install -y curl git", "description": "Instala pacotes" },
+        { "command": "apt search jq", "description": "Procura pelo nome e pela descrição" },
+        { "command": "sudo apt remove --purge pacote", "description": "Remove, inclusive a configuração" },
+        { "command": "sudo apt --fix-broken install", "description": "Conserta dependências quebradas" }
+      ],
+      "related": ["dpkg", "dnf", "install-program", "error-apt-lock", "error-unable-to-locate-package"]
+    },
+    {
+      "id": "apt-update",
+      "name": "apt update",
+      "kind": "command",
+      "parent": "apt",
+      "summary": "Baixa a lista atualizada de pacotes dos repositórios",
+      "usage": "sudo apt update",
+      "aliases": ["atualizar lista de pacotes", "apt-get update"],
+      "examples": [
+        { "command": "sudo apt update", "description": "Antes de instalar ou atualizar" },
+        { "command": "apt list --upgradable", "description": "O que pode ser atualizado" }
+      ],
+      "related": ["apt-upgrade", "apt-install"]
+    },
+    {
+      "id": "apt-upgrade",
+      "name": "apt upgrade",
+      "kind": "command",
+      "parent": "apt",
+      "summary": "Instala as versões novas dos pacotes já instalados",
+      "usage": "sudo apt upgrade [-y]",
+      "aliases": ["atualizar sistema", "atualizar pacotes", "apt-get upgrade", "full-upgrade"],
+      "options": [
+        { "short": "-y", "long": "--yes", "description": "Sem perguntar" }
+      ],
+      "examples": [
+        { "command": "sudo apt update && sudo apt upgrade -y", "description": "Atualização completa" },
+        { "command": "sudo apt full-upgrade", "description": "Permite remover pacotes para resolver dependências" }
+      ],
+      "related": ["apt-update", "apt-autoremove"]
+    },
+    {
+      "id": "apt-install",
+      "name": "apt install",
+      "kind": "command",
+      "parent": "apt",
+      "summary": "Instala pacotes e suas dependências",
+      "usage": "sudo apt install [-y] PACOTE...",
+      "aliases": ["instalar pacote", "apt-get install", "install package"],
+      "options": [
+        { "short": "-y", "long": "--yes", "description": "Sem perguntar" },
+        { "long": "--no-install-recommends", "description": "Sem os pacotes recomendados" },
+        { "long": "--reinstall", "description": "Reinstala" }
+      ],
+      "arguments": [
+        { "name": "PACOTE", "kind": "text", "description": "Nome do pacote, ou ./arquivo.deb", "repeat": true }
+      ],
+      "examples": [
+        { "command": "sudo apt install -y htop", "description": "Instala o htop" },
+        { "command": "sudo apt install ./programa.deb", "description": "Instala um .deb resolvendo as dependências" },
+        { "command": "sudo apt install nginx=1.24.*", "description": "Uma versão específica" }
+      ],
+      "related": ["apt-search", "apt-remove", "dpkg"]
+    },
+    {
+      "id": "apt-remove",
+      "name": "apt remove",
+      "kind": "command",
+      "parent": "apt",
+      "summary": "Remove pacotes (purge remove também a configuração)",
+      "usage": "sudo apt remove [--purge] PACOTE...",
+      "aliases": ["desinstalar", "remover programa", "apt purge", "uninstall"],
+      "options": [
+        { "long": "--purge", "description": "Apaga também os arquivos de configuração" }
+      ],
+      "examples": [
+        { "command": "sudo apt remove pacote", "description": "Remove mantendo a configuração" },
+        { "command": "sudo apt purge pacote", "description": "Remove tudo" }
+      ],
+      "related": ["apt-autoremove", "apt-install"]
+    },
+    {
+      "id": "apt-autoremove",
+      "name": "apt autoremove",
+      "kind": "command",
+      "parent": "apt",
+      "summary": "Remove dependências que nenhum pacote usa mais",
+      "usage": "sudo apt autoremove [--purge]",
+      "aliases": ["limpar pacotes", "liberar espaço apt", "apt clean"],
+      "examples": [
+        { "command": "sudo apt autoremove --purge", "description": "Remove o que sobrou" },
+        { "command": "sudo apt clean", "description": "Apaga os .deb baixados em /var/cache/apt" }
+      ],
+      "related": ["apt-remove", "error-no-space"]
+    },
+    {
+      "id": "apt-search",
+      "name": "apt search",
+      "kind": "command",
+      "parent": "apt",
+      "summary": "Procura pacotes pelo nome e pela descrição",
+      "usage": "apt search TERMO",
+      "aliases": ["procurar pacote", "qual pacote instalar", "apt-cache search"],
+      "examples": [
+        { "command": "apt search '^python3-'", "description": "Busca com regex" },
+        { "command": "apt-cache policy nginx", "description": "Versão instalada e disponíveis, e de qual repositório" }
+      ],
+      "related": ["apt-show", "apt-install", "which-package"]
+    },
+    {
+      "id": "apt-show",
+      "name": "apt show",
+      "kind": "command",
+      "parent": "apt",
+      "summary": "Mostra detalhes de um pacote: versão, dependências, descrição",
+      "usage": "apt show PACOTE",
+      "aliases": ["detalhes do pacote", "versão do pacote", "apt-cache show"],
+      "examples": [
+        { "command": "apt show nginx", "description": "Versão, tamanho, dependências e descrição" }
+      ],
+      "related": ["apt-search", "dpkg"]
+    },
+    {
+      "id": "apt-list",
+      "name": "apt list",
+      "kind": "command",
+      "parent": "apt",
+      "summary": "Lista pacotes instalados, atualizáveis ou disponíveis",
+      "usage": "apt list [--installed | --upgradable] [PADRÃO]",
+      "aliases": ["pacotes instalados", "listar pacotes", "o que está instalado"],
+      "options": [
+        { "long": "--installed", "description": "Só os instalados" },
+        { "long": "--upgradable", "description": "Só os que têm versão nova" }
+      ],
+      "examples": [
+        { "command": "apt list --installed | grep python", "description": "Pacotes Python instalados" },
+        { "command": "apt list --upgradable", "description": "Atualizações disponíveis" }
+      ],
+      "related": ["dpkg", "apt-show"]
+    },
+    {
+      "name": "dpkg",
+      "kind": "command",
+      "summary": "Instalador de baixo nível de pacotes .deb (o apt usa por baixo)",
+      "usage": "dpkg [-i | -l | -L | -S | -r] ...",
+      "aliases": ["instalar deb", "pacote deb", "qual pacote instalou esse arquivo", "dpkg-query"],
+      "tags": ["pacotes", "debian"],
+      "options": [
+        { "short": "-i", "long": "--install", "arg": "ARQUIVO.deb", "description": "Instala um .deb (não resolve dependências: use apt install ./arquivo.deb)" },
+        { "short": "-l", "long": "--list", "description": "Lista pacotes instalados" },
+        { "short": "-L", "long": "--listfiles", "arg": "PACOTE", "description": "Arquivos instalados por um pacote" },
+        { "short": "-S", "long": "--search", "arg": "ARQUIVO", "description": "Qual pacote instalou um arquivo" },
+        { "short": "-r", "long": "--remove", "arg": "PACOTE", "description": "Remove" },
+        { "long": "--configure", "arg": "PACOTE", "description": "Conclui instalações interrompidas (-a: todas)" }
+      ],
+      "examples": [
+        { "command": "dpkg -S /usr/bin/dig", "description": "Qual pacote fornece o dig" },
+        { "command": "dpkg -L curl", "description": "Onde os arquivos do curl foram instalados" },
+        { "command": "dpkg -l | grep nginx", "description": "Versão instalada" },
+        { "command": "sudo dpkg --configure -a", "description": "Termina instalações que foram interrompidas" }
+      ],
+      "related": ["apt", "which-package"]
+    },
+    {
+      "name": "dnf",
+      "kind": "command",
+      "summary": "Gerenciador de pacotes do Fedora, RHEL, Rocky e Alma",
+      "usage": "sudo dnf SUBCOMANDO [PACOTE...]",
+      "aliases": ["yum", "instalar no fedora", "rpm", "fedora instalar"],
+      "tags": ["pacotes", "fedora", "rhel"],
+      "options": [
+        { "short": "-y", "long": "--assumeyes", "description": "Responde sim" }
+      ],
+      "examples": [
+        { "command": "sudo dnf install -y htop", "description": "Instala" },
+        { "command": "sudo dnf upgrade", "description": "Atualiza o sistema" },
+        { "command": "dnf search jq", "description": "Procura" },
+        { "command": "dnf provides /usr/bin/dig", "description": "Qual pacote fornece um arquivo" },
+        { "command": "sudo dnf remove pacote", "description": "Remove" },
+        { "command": "rpm -qa | grep nginx", "description": "Pacotes instalados (rpm)" }
+      ],
+      "related": ["apt", "install-program"]
+    },
+    {
+      "id": "install-program",
+      "name": "Instalar um programa",
+      "kind": "recipe",
+      "summary": "Pelo gerenciador de pacotes da distribuição",
+      "aliases": ["instalar programa", "como instalar", "instalar pacote", "install program", "comando não instalado"],
+      "tags": ["pacotes"],
+      "steps": [
+        { "title": "Qual é a distribuição?", "command": "cat /etc/os-release", "why": "Debian/Ubuntu usam apt; Fedora/RHEL usam dnf." },
+        { "title": "Atualize a lista", "command": "sudo apt update", "why": "Sem isso, o apt pode não achar o pacote ou baixar versões velhas." },
+        { "title": "Procure o nome", "command": "apt search nome", "why": "O pacote pode ter nome diferente do comando (dig vem de dnsutils ou bind9-dnsutils)." },
+        { "title": "Instale", "command": "sudo apt install -y nome", "why": "No Fedora: sudo dnf install -y nome." },
+        { "title": "Confira", "command": "command -v nome", "why": "Se não achar, abra um novo terminal ou rode hash -r." }
+      ],
+      "related": ["apt", "dnf", "which-package"]
+    },
+    {
+      "id": "which-package",
+      "name": "Descobrir qual pacote instala um comando",
+      "kind": "recipe",
+      "summary": "Quando o comando não existe e você não sabe o nome do pacote",
+      "aliases": ["qual pacote instala", "pacote de um comando", "que pacote tem o comando", "provides"],
+      "tags": ["pacotes"],
+      "examples": [
+        { "command": "dpkg -S $(command -v dig)", "description": "Já instalado: qual pacote o trouxe" },
+        { "command": "apt-file search bin/dig", "description": "Não instalado: busca nos repositórios (sudo apt install apt-file; sudo apt-file update)" },
+        { "command": "dnf provides '*/bin/dig'", "description": "No Fedora/RHEL" }
+      ],
+      "related": ["dpkg", "apt", "dnf"]
+    }
+  ]
+}

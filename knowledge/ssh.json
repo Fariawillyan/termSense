@@ -117,11 +117,15 @@
       "tags": ["ssh", "chaves"],
       "options": [
         { "short": "-s", "description": "Gera comandos para sh/bash" },
-        { "short": "-k", "description": "Encerra o agente atual" }
+        { "short": "-k", "description": "Encerra o agente atual" },
+        { "short": "-t", "arg": "TEMPO", "description": "Tempo de vida padrão das chaves adicionadas" }
       ],
       "examples": [
         { "command": "eval \"$(ssh-agent -s)\"", "description": "Inicia o agente na sessão" },
-        { "command": "echo $SSH_AUTH_SOCK", "description": "Há um agente disponível?" }
+        { "command": "echo $SSH_AUTH_SOCK", "description": "Há um agente disponível?" },
+        { "command": "ssh-add -l", "description": "Chaves carregadas no agente" },
+        { "command": "ssh-agent -k", "description": "Encerra o agente" },
+        { "command": "ssh -A user@host", "description": "Encaminha o agente para o servidor (só em servidores confiáveis)" }
       ],
       "related": ["ssh-add", "private-key", "ssh"]
     },
@@ -153,12 +157,17 @@
       "tags": ["ssh", "chaves"],
       "options": [
         { "short": "-i", "arg": "CHAVE", "description": "Chave pública a enviar" },
-        { "short": "-p", "arg": "PORTA", "description": "Porta do servidor" }
+        { "short": "-p", "arg": "PORTA", "description": "Porta do servidor" },
+        { "short": "-f", "description": "Envia mesmo se a chave já parecer instalada" },
+        { "short": "-n", "description": "Simula: mostra o que seria instalado" }
       ],
-      "arguments": [{ "name": "DESTINO", "kind": "host", "description": "usuário@host" }],
+      "arguments": [
+        { "name": "DESTINO", "kind": "host", "description": "usuário@host" }
+      ],
       "examples": [
         { "command": "ssh-copy-id user@host", "description": "Pede a senha uma última vez e instala a chave" },
-        { "command": "ssh-copy-id -i ~/.ssh/id_ed25519.pub -p 2222 user@host", "description": "Chave e porta específicas" }
+        { "command": "ssh-copy-id -i ~/.ssh/id_ed25519.pub -p 2222 user@host", "description": "Chave e porta específicas" },
+        { "command": "cat ~/.ssh/id_ed25519.pub | ssh user@host 'mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys'", "description": "Sem ssh-copy-id (ex.: no macOS antigo)" }
       ],
       "related": ["authorized-keys", "public-key", "ssh-keygen"]
     },

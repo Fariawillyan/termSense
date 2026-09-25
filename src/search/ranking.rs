@@ -69,6 +69,10 @@ pub struct Hit {
     pub index: usize,
     pub score: u32,
     pub kind: MatchKind,
+    /// The match is trustworthy: the whole query hit the name, an alias or a
+    /// tag, or every term was found. Weak hits (partial coverage, one word
+    /// found only in an example) are still listed, but flagged as approximate.
+    pub strong: bool,
 }
 
 /// Entry attributes used only to break ties deterministically.
@@ -112,7 +116,12 @@ mod tests {
     use super::*;
 
     fn hit(index: usize, score: u32, kind: MatchKind) -> Hit {
-        Hit { index, score, kind }
+        Hit {
+            index,
+            score,
+            kind,
+            strong: true,
+        }
     }
 
     fn tb(name: &str, entry_kind: u8) -> TieBreak<'_> {

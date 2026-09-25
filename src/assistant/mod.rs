@@ -1,8 +1,7 @@
 //! The application core: turns the text being typed into suggestions and
-//! documents. It orchestrates search, contextual completion, the regex and
-//! networking analyzers and the explainer — and knows nothing about the
-//! terminal. A future AI provider would plug in here, next to the local
-//! providers, instead of inside the search engine.
+//! documents. It orchestrates search, contextual completion, the regex,
+//! networking, permission, cron and exit-code analyzers and the explainer —
+//! and knows nothing about the terminal.
 
 pub mod explain;
 pub mod pages;
@@ -12,6 +11,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::net::IpAddr;
 
+use crate::analysis::{cron, exit_code, permissions};
 use crate::config::Config;
 use crate::document::{Document, Link};
 use crate::knowledge::template::render;
@@ -34,6 +34,9 @@ pub enum Mode {
     Command,
     Regex,
     Network,
+    Permissions,
+    Cron,
+    ExitCode,
 }
 
 impl Mode {
@@ -44,6 +47,9 @@ impl Mode {
             Mode::Command => "comando",
             Mode::Regex => "regex",
             Mode::Network => "rede",
+            Mode::Permissions => "permissões",
+            Mode::Cron => "cron",
+            Mode::ExitCode => "exit code",
         }
     }
 }
@@ -97,6 +103,15 @@ impl Assistant {
         if let Some(pattern) = regex_pattern(input) {
             return self.regex_mode(pattern);
         }
+        if let Some(line) = cron_line(trimmed) {
+            return self.cron_mode(line);
+        }
+        if let Some((code, program)) = exit_code::parse_query(trimmed) {
+            return self.exit_code_mode(code, program.as_deref());
+        }
+        if let Some((file_type, mode)) = permission_query(trimmed) {
+            return self.permissions_mode(trimmed, file_type, mode);
+        }
         if let Some(address) = single_address(trimmed) {
             return self.network_mode(address);
         }
@@ -135,6 +150,9 @@ impl Assistant {
                 }
                 None => pages::not_found(id),
             },
+            Link::Command { line, .. } if cron::looks_like_cron(line) => {
+                pages::cron_page(&self.repo, line, &cron::parse(line))
+            }
             Link::Command { line, note } => {
                 explain::explain_line(&self.repo, self.regex.as_ref(), line, note.as_deref())
             }
@@ -144,9 +162,13 @@ impl Assistant {
 
     /// Cached `PATH` lookup for command entries.
     fn availability(&self, e: &Entry) -> Option<Availability> {
-        let binary = e.binary()?;
+        Some(self.which(e.binary()?))
+    }
+
+    /// Cached `PATH` lookup (a `stat` per directory; nothing is executed).
+    fn which(&self, binary: &str) -> Availability {
         if let Some(a) = self.availability.borrow().get(binary) {
-            return Some(a.clone());
+            return a.clone();
         }
         let a = match system::which(binary) {
             Some(path) => Availability::Found(path),
@@ -155,7 +177,7 @@ impl Assistant {
         self.availability
             .borrow_mut()
             .insert(binary.to_string(), a.clone());
-        Some(a)
+        a
     }
 
     // -----------------------------------------------------------------------
@@ -199,15 +221,25 @@ impl Assistant {
             })
             .collect::<Vec<_>>()
             .join(" ");
-        let query = if query.trim().is_empty() {
-            input
-        } else {
-            &query
-        };
+        let only_parameters = query.trim().is_empty();
+        let query = if only_parameters { input } else { &query };
         let hits = self.engine.search(query, self.max_results);
+        // "8080" alone asks about the port, not about texts that mention it.
+        let bare_port = net
+            .ports
+            .first()
+            .is_some_and(|p| input.trim() == p.to_string());
+        let confident = !only_parameters && !bare_port && hits.iter().any(|h| h.strong);
 
         let mut insights = self.network_insights(net);
         let mut out = Vec::new();
+        if !confident {
+            // Computed facts beat approximate matches ("8080" → the port).
+            out.append(&mut insights);
+            if out.is_empty() {
+                out.push(self.no_match(query, !hits.is_empty()));
+            }
+        }
         let mut expanded = 0;
         for (rank, hit) in hits.iter().enumerate() {
             let entry = self.repo.entry(hit.index);
@@ -225,6 +257,196 @@ impl Assistant {
             mode: Mode::Search,
             suggestions: dedup(out),
         }
+    }
+
+    /// First suggestion when nothing matches well: what is known about an
+    /// unknown command, or a note that the results are approximate.
+    fn no_match(&self, query: &str, has_results: bool) -> Suggestion {
+        let first = query.split_whitespace().next().unwrap_or_default();
+        let single = !query.trim().contains(char::is_whitespace);
+        if is_command_shaped(first) && self.repo.command(first).is_none() {
+            let availability = self.which(first);
+            let installed = matches!(availability, Availability::Found(_));
+            if single || installed {
+                let subtitle = match &availability {
+                    Availability::Found(path) => {
+                        format!(
+                            "instalado em {}, mas fora da base · veja man {first}",
+                            path.display()
+                        )
+                    }
+                    Availability::Missing if has_results => {
+                        "fora da base e do PATH · abaixo, resultados aproximados".to_string()
+                    }
+                    Availability::Missing => "fora da base e do PATH".to_string(),
+                };
+                return Suggestion::analysis(
+                    format!("{first}: não está na base"),
+                    subtitle,
+                    pages::unknown_page(first, &availability),
+                );
+            }
+        }
+        let subtitle = if has_results {
+            "os resultados abaixo são aproximados"
+        } else {
+            "tente outras palavras"
+        };
+        Suggestion::analysis(
+            format!("Sem correspondência exata para \"{}\"", query.trim()),
+            subtitle,
+            pages::weak_results_page(query, has_results),
+        )
+    }
+
+    fn permissions_mode(
+        &self,
+        input: &str,
+        file_type: Option<char>,
+        mode: permissions::Mode,
+    ) -> Response {
+        let doc = pages::permissions_page(&self.repo, mode, file_type);
+        let subtitle = (0..3)
+            .map(|c| {
+                format!(
+                    "{} {}",
+                    permissions::CLASSES[c],
+                    permissions::digit_meaning(mode.digit(c))
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(" · ");
+        let mut out = vec![Suggestion::analysis(doc.title.clone(), subtitle, doc)];
+        out.extend(
+            ["chmod", "permissions", "umask", "chown", "stat", "ls"]
+                .iter()
+                .filter_map(|id| self.repo.get(id))
+                .map(Suggestion::entry),
+        );
+        out.extend(self.search_hits(input, 3));
+        Response {
+            mode: Mode::Permissions,
+            suggestions: dedup(out),
+        }
+    }
+
+    fn cron_mode(&self, line: &str) -> Response {
+        let schedule = cron::parse(line);
+        let subtitle = match &schedule {
+            Ok(s) => s.summary.clone(),
+            Err(e) => e.clone(),
+        };
+        let doc = pages::cron_page(&self.repo, line, &schedule);
+        let mut out = vec![Suggestion::analysis(
+            format!("Cron: {}", line.trim()),
+            subtitle,
+            doc,
+        )];
+        if let Ok(Some(cmd)) = schedule.as_ref().map(|s| s.command.clone()) {
+            out.push(Suggestion::command_line(
+                cmd.clone(),
+                "comando agendado",
+                cmd,
+            ));
+        }
+        out.extend(
+            ["cron-syntax", "crontab", "systemctl", "journalctl"]
+                .iter()
+                .filter_map(|id| self.repo.get(id))
+                .map(Suggestion::entry),
+        );
+        Response {
+            mode: Mode::Cron,
+            suggestions: dedup(out),
+        }
+    }
+
+    fn exit_code_mode(&self, code: u16, program: Option<&str>) -> Response {
+        let mut out = Vec::new();
+        match exit_code::explain(code) {
+            Some(info) => {
+                let specific = program
+                    .and_then(|p| info.programs.iter().find(|(name, _)| *name == p))
+                    .map(|(_, m)| (*m).to_string());
+                let doc = pages::exit_code_page(&self.repo, &info, program);
+                out.push(Suggestion::analysis(
+                    doc.title.clone(),
+                    specific.unwrap_or_else(|| info.meaning.clone()),
+                    doc,
+                ));
+            }
+            None => {
+                let mut doc =
+                    Document::new(format!("Exit code {code}")).subtitle("código de saída");
+                doc.paragraph("Exit codes vão de 0 a 255: o valor é um byte. exit 256 vira 0 e exit 300 vira 44 (resto da divisão por 256).");
+                out.push(Suggestion::analysis(
+                    format!("Exit code {code}"),
+                    "fora da faixa 0–255",
+                    doc,
+                ));
+            }
+        }
+        let program_entry = program.and_then(|p| self.repo.command(p));
+        out.extend(program_entry.map(Suggestion::entry));
+        out.extend(
+            ["exit-code", "signals", "kill"]
+                .iter()
+                .filter_map(|id| self.repo.get(id))
+                .map(Suggestion::entry),
+        );
+        Response {
+            mode: Mode::ExitCode,
+            suggestions: dedup(out),
+        }
+    }
+
+    /// Permission modes and umasks typed in a command line (`chmod 755`).
+    fn mode_analyses(&self, a: &LineAnalysis<'_>) -> Vec<Suggestion> {
+        use crate::knowledge::ArgKind;
+        let mut out = Vec::new();
+        for (t, role) in a.tokens.iter().zip(&a.roles) {
+            let kind = match role {
+                Role::Argument(Some(spec)) => Some(spec.kind),
+                Role::OptionValue(o) => o.kind,
+                _ => None,
+            };
+            let value = t.value.trim_start_matches(['-', '/']);
+            match kind {
+                Some(ArgKind::Mode) => {
+                    if let Some(mode) = permissions::Mode::parse_octal(value) {
+                        let doc = pages::permissions_page(&self.repo, mode, None);
+                        out.push(Suggestion::analysis(
+                            doc.title.clone(),
+                            "calculadora de permissões",
+                            doc,
+                        ));
+                    } else if let Some(clauses) = permissions::parse_symbolic_change(value) {
+                        let subtitle = clauses
+                            .iter()
+                            .map(|c| c.description.clone())
+                            .collect::<Vec<_>>()
+                            .join("; ");
+                        let doc = pages::symbolic_change_page(&self.repo, value, &clauses);
+                        out.push(Suggestion::analysis(doc.title.clone(), subtitle, doc));
+                    }
+                }
+                Some(ArgKind::Umask) => {
+                    let mask = permissions::Mode::parse_octal(value)
+                        .or_else(|| permissions::Mode::parse_octal(&format!("0{value}")));
+                    if let Some(mask) = mask {
+                        let doc = pages::umask_page(&self.repo, mask);
+                        let (file, dir) = permissions::umask_result(mask);
+                        out.push(Suggestion::analysis(
+                            doc.title.clone(),
+                            format!("arquivos {} · diretórios {}", file.octal(), dir.octal()),
+                            doc,
+                        ));
+                    }
+                }
+                _ => {}
+            }
+        }
+        out
     }
 
     fn regex_mode(&self, pattern: &str) -> Response {
@@ -365,9 +587,20 @@ impl Assistant {
             });
         }
 
+        out.extend(self.mode_analyses(a));
+
         let words = plain_words(a);
         if words >= 2 {
-            out.extend(self.search_hits(input, 5));
+            let hits = self.search_hits(input, 5);
+            // Prose without any known command is more likely a pasted error
+            // message ("! [rejected] main -> main") than a command line.
+            let no_known_command = a.segments.iter().all(|s| s.chain.is_empty());
+            let prose = no_known_command && words >= 3;
+            if prose && !hits.is_empty() {
+                out.splice(0..0, hits);
+            } else {
+                out.extend(hits);
+            }
         }
 
         let replace = |text: &str| format!("{}{}", &input[..a.completion_start(input)], text);
@@ -480,6 +713,7 @@ impl Assistant {
             commands.extend(s.wrappers.iter().copied());
         }
         out.extend(commands.into_iter().map(Suggestion::entry));
+        out.extend(a.constructs().into_iter().map(Suggestion::entry));
         if let Some(entry) = seg.entry() {
             out.extend(
                 self.repo
@@ -608,7 +842,7 @@ fn single_address(trimmed: &str) -> Option<Address> {
 }
 
 /// A command line (as opposed to a search): a known command followed by
-/// something, or any shell operator.
+/// something, shell grammar (`for x in`), or any shell operator.
 fn is_command_line(a: &LineAnalysis<'_>) -> bool {
     let has_operator = a.tokens.iter().any(|t| {
         matches!(
@@ -616,8 +850,61 @@ fn is_command_line(a: &LineAnalysis<'_>) -> bool {
             TokenKind::Pipe | TokenKind::Operator | TokenKind::Redirect
         )
     });
-    let known = a.first_command().is_some();
+    let known = a.first_command().is_some() || a.starts_with_keyword();
     has_operator || (known && (a.tokens.len() > 1 || a.trailing_space))
+}
+
+/// `cron */5 * * * *`, or a line that already looks like a crontab entry.
+fn cron_line(trimmed: &str) -> Option<&str> {
+    let (word, rest) = trimmed
+        .split_once(char::is_whitespace)
+        .unwrap_or((trimmed, ""));
+    if word.eq_ignore_ascii_case("cron") && !rest.trim().is_empty() {
+        let rest = rest.trim();
+        // `cron job` is a search; `cron 0 3 * * *` is a schedule.
+        let starts_like_field =
+            rest.starts_with(|c: char| c.is_ascii_digit() || c == '*' || c == '@');
+        return starts_like_field.then_some(rest);
+    }
+    cron::looks_like_cron(trimmed).then_some(trimmed)
+}
+
+/// `755`, `0644`, `rwxr-xr-x`, `-rw-r--r--`, or `permissão 755`. Bare
+/// numbers that are well-known ports (`443`) stay port searches.
+fn permission_query(trimmed: &str) -> Option<(Option<char>, permissions::Mode)> {
+    let words: Vec<&str> = trimmed.split_whitespace().collect();
+    let value = match words.as_slice() {
+        [v] => *v,
+        [k, v]
+            if matches!(
+                crate::search::tokenizer::normalize(k).as_str(),
+                "permissao" | "permissoes" | "permission" | "permissions" | "modo" | "mode"
+            ) =>
+        {
+            *v
+        }
+        _ => return None,
+    };
+    if let Some((kind, mode)) = permissions::Mode::parse_symbolic(value) {
+        return Some((kind, mode));
+    }
+    let mode = permissions::Mode::parse_octal(value)?;
+    let is_port = value
+        .parse::<u16>()
+        .ok()
+        .and_then(networking::knowledge::port_info)
+        .is_some();
+    (words.len() == 2 || !is_port).then_some((None, mode))
+}
+
+/// A word that could be the name of an executable.
+fn is_command_shaped(word: &str) -> bool {
+    word.len() >= 2
+        && word.len() <= 40
+        && word.starts_with(|c: char| c.is_ascii_alphanumeric())
+        && word
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b"._+-".contains(&b))
 }
 
 /// Positional plain words (not paths, quotes or numbers): a hint that the
@@ -815,6 +1102,158 @@ mod tests {
         );
     }
 
+    /// `entry:ID` for knowledge entries, `analysis:TITLE` for computed ones.
+    fn first(a: &mut Assistant, q: &str) -> String {
+        let r = a.respond(q);
+        let s = r.suggestions.first().expect(q);
+        match &s.target {
+            Target::Link(Link::Entry(id)) => format!("entry:{id}"),
+            _ => format!("{}:{}", s.kind.label(), s.title),
+        }
+    }
+
+    /// Ranking guard: the first answer for real queries. Update it only when
+    /// a change of first result is intended.
+    #[test]
+    fn golden_queries() {
+        let mut a = assistant();
+        let cases: &[(&str, &str)] = &[
+            ("grep", "entry:grep"),
+            ("gr", "entry:grep"),
+            ("gerp", "entry:grep"),
+            ("crontab", "entry:crontab"),
+            ("agendar tarefa", "entry:schedule-task"),
+            ("como sair do vim", "entry:exit-vim"),
+            ("compactar pasta", "entry:compress-extract"),
+            ("instalar programa", "entry:install-program"),
+            ("quem usa a porta 8080", "entry:port-owner"),
+            ("liberar porta no firewall", "entry:open-firewall-port"),
+            ("abrir pasta no windows", "entry:wsl-open-folder"),
+            ("recuperar commit", "entry:git-recover-commit"),
+            ("desfazer alterações", "entry:git-undo"),
+            ("jq", "entry:jq"),
+            ("rsync", "entry:rsync"),
+            ("useradd", "entry:useradd"),
+            ("[[", "entry:double-bracket"),
+            ("for", "entry:for"),
+            ("variável vazia", "entry:double-bracket"),
+            ("copiar saída do comando", "entry:wsl-copy-output"),
+            ("wsl lento", "entry:wsl-windows-files"),
+            ("tempo limite", "entry:timeout"),
+            ("disco cheio", "entry:disk-usage"),
+            ("ver processos", "entry:see-processes"),
+            ("qual pacote instala", "entry:which-package"),
+            ("Permission denied (publickey)", "entry:error-ssh-publickey"),
+            (
+                "bash: ./x.sh: Permission denied",
+                "entry:error-permission-denied",
+            ),
+            (
+                "-bash: ./x.sh: /bin/bash^M: bad interpreter: No such file or directory",
+                "entry:error-bad-interpreter",
+            ),
+            (
+                "E: Unable to locate package htop",
+                "entry:error-unable-to-locate-package",
+            ),
+            (
+                "sudo: unable to resolve host pc: Name or service not known",
+                "entry:error-sudo-resolve-host",
+            ),
+            (
+                "bash: kubectl: command not found",
+                "entry:error-command-not-found",
+            ),
+            (
+                "! [rejected]  main -> main (fetch first)",
+                "entry:error-git-push-rejected",
+            ),
+            ("755", "análise:Permissões 755 · rwxr-xr-x"),
+            ("*/5 * * * *", "análise:Cron: */5 * * * *"),
+            ("exit 127", "análise:Exit code 127"),
+            ("8080", "análise:Porta 8080/tcp · HTTP alternativo"),
+            ("443", "análise:Porta 443/tcp · HTTPS"),
+        ];
+        let failures: Vec<String> = cases
+            .iter()
+            .filter_map(|(q, expected)| {
+                let got = first(&mut a, q);
+                (got != *expected).then(|| format!("{q:?}: esperado {expected}, veio {got}"))
+            })
+            .collect();
+        assert!(failures.is_empty(), "{failures:#?}");
+    }
+
+    #[test]
+    fn unknown_words_are_admitted_not_guessed() {
+        let mut a = assistant();
+        let r = a.respond("xyzzy");
+        assert_eq!(r.suggestions[0].kind, SuggestionKind::Analysis);
+        assert!(
+            r.suggestions[0]
+                .title
+                .starts_with("xyzzy: não está na base")
+        );
+        let doc = a.preview(&r.suggestions[0]);
+        assert!(doc.blocks.iter().any(|b| matches!(b, crate::document::Block::Code { text, .. } if text.contains("\"name\": \"xyzzy\""))));
+
+        // Weak, partial matches come after an honest note.
+        let r = a.respond("zzzqqq agendar");
+        assert!(
+            r.suggestions[0]
+                .title
+                .starts_with("Sem correspondência exata"),
+            "{:?}",
+            titles(&r)
+        );
+        assert!(r.suggestions.len() > 1);
+    }
+
+    #[test]
+    fn analysis_modes() {
+        let mut a = assistant();
+        let r = a.respond("rwxr-x---");
+        assert_eq!(r.mode, Mode::Permissions);
+        assert!(r.suggestions[0].title.contains("750"));
+        let r = a.respond("0 3 * * 1 /opt/backup.sh");
+        assert_eq!(r.mode, Mode::Cron);
+        assert!(
+            r.suggestions[0]
+                .subtitle
+                .starts_with("Às 03:00, às segundas-feiras")
+        );
+        let r = a.respond("cron @reboot /opt/app.sh");
+        assert_eq!(r.mode, Mode::Cron);
+        let r = a.respond("curl exit 28");
+        assert_eq!(r.mode, Mode::ExitCode);
+        assert!(r.suggestions[0].subtitle.contains("timeout"));
+        let r = a.respond("chmod 640 segredo.txt");
+        assert_eq!(r.mode, Mode::Command);
+        assert!(
+            r.suggestions
+                .iter()
+                .any(|s| s.title.starts_with("Permissões 640"))
+        );
+        let r = a.respond("umask 077");
+        assert!(
+            r.suggestions
+                .iter()
+                .any(|s| s.subtitle == "arquivos 600 · diretórios 700")
+        );
+        // A search word that happens to be a port stays a search.
+        assert_eq!(a.respond("porta 3306").mode, Mode::Search);
+    }
+
+    #[test]
+    fn shell_grammar_is_a_command_line() {
+        let mut a = assistant();
+        let r = a.respond("for f in *.log");
+        assert_eq!(r.mode, Mode::Command);
+        assert!(titles(&r).contains(&"for"), "{:?}", titles(&r));
+        let r = a.respond("while read -r linha; do");
+        assert!(titles(&r).contains(&"while"));
+    }
+
     #[test]
     fn every_suggestion_previews() {
         let mut a = assistant();
@@ -829,6 +1268,12 @@ mod tests {
             "docker exec -it",
             "ssh -",
             "xyzzy",
+            "755",
+            "*/5 * * * * cmd",
+            "exit 137",
+            "chmod u+x f",
+            "for i in 1 2; do echo $i; done",
+            "Permission denied (publickey)",
         ] {
             let r = a.respond(q);
             for s in &r.suggestions {

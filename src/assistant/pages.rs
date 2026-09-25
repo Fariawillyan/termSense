@@ -3,6 +3,9 @@
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::path::PathBuf;
 
+use crate::analysis::cron::Schedule;
+use crate::analysis::exit_code::ExitInfo;
+use crate::analysis::permissions::{self, Clause, Mode};
 use crate::document::{Block, Document, Item, Link, Row, StepItem, Tone};
 use crate::knowledge::template::render;
 use crate::knowledge::{CommandOption, Entry, EntryKind, Repository, Vars};
@@ -51,6 +54,12 @@ pub fn entry_page(
     if let Some(usage) = &e.usage {
         doc.heading("USO");
         doc.code(usage, None);
+    }
+    if e.builtin {
+        doc.note(
+            Tone::Info,
+            "Recurso interno do shell (builtin ou palavra-chave): faz parte do bash/zsh e não existe como arquivo no PATH. Ajuda: help NOME (bash) ou man bash.",
+        );
     }
     match availability {
         Some(Availability::Found(path)) => {
@@ -546,6 +555,324 @@ fn ipv6_kind(ip: Ipv6Addr) -> &'static str {
     }
 }
 
+fn entry_items(repo: &Repository, ids: &[&str]) -> Vec<Item> {
+    ids.iter()
+        .filter_map(|id| repo.get(id))
+        .map(|e| {
+            Item::new(&e.name)
+                .detail(&e.summary)
+                .link(Link::Entry(e.id.clone()))
+        })
+        .collect()
+}
+
+/// Octal ↔ symbolic calculator for a permission mode.
+pub fn permissions_page(repo: &Repository, mode: Mode, file_type: Option<char>) -> Document {
+    let mut doc = Document::new(format!("Permissões {} · {}", mode.octal(), mode.symbolic()))
+        .subtitle("calculadora de permissões");
+    if let Some(kind) = file_type {
+        let what = match kind {
+            'd' => "diretório",
+            'l' => "link simbólico (as permissões que valem são as do destino)",
+            'c' | 'b' => "dispositivo",
+            'p' => "pipe nomeado (FIFO)",
+            's' => "socket",
+            _ => "arquivo comum",
+        };
+        doc.paragraph(format!("Primeira coluna do ls -l: {kind} = {what}."));
+    }
+    let rows: Vec<Row> = (0..3)
+        .map(|c| {
+            let digit = mode.digit(c);
+            let sym: String = mode.symbolic().chars().skip(3 * c).take(3).collect();
+            Row::new([
+                permissions::CLASSES[c].to_string(),
+                sym,
+                digit.to_string(),
+                permissions::digit_meaning(digit),
+            ])
+        })
+        .collect();
+    doc.heading("QUEM PODE O QUÊ");
+    doc.table(rows);
+    doc.heading("EM DIRETÓRIOS");
+    doc.table(
+        (0..3)
+            .map(|c| {
+                Row::new([
+                    permissions::CLASSES[c].to_string(),
+                    permissions::digit_meaning_dir(mode.digit(c)),
+                ])
+            })
+            .collect(),
+    );
+    let special = permissions::special_bits(mode);
+    if !special.is_empty() {
+        doc.heading("BITS ESPECIAIS");
+        doc.table(special.into_iter().map(|(b, d)| Row::new([b, d])).collect());
+    }
+    if let Some(u) = permissions::typical_use(mode) {
+        doc.note(Tone::Info, format!("Uso típico de {}: {u}.", mode.octal()));
+    }
+    for r in permissions::risks(mode) {
+        let tone = if mode.0 & 0o777 == 0o777 {
+            Tone::Danger
+        } else {
+            Tone::Warning
+        };
+        doc.note(tone, r);
+    }
+    doc.heading("CONTA");
+    doc.paragraph("Cada dígito soma r = 4, w = 2 e x = 1, na ordem dono, grupo e outros. Um quarto dígito à esquerda liga os bits especiais: 4 setuid, 2 setgid, 1 sticky.");
+    doc.heading("COMANDOS");
+    for (line, caption) in [
+        (
+            format!("chmod {} arquivo", mode.octal()),
+            "Aplica estas permissões",
+        ),
+        (
+            "stat -c '%a %A %n' arquivo".to_string(),
+            "Mostra as permissões atuais em octal e simbólico",
+        ),
+        (
+            format!("find . -perm {} -ls", mode.octal()),
+            "Procura arquivos com exatamente estas permissões",
+        ),
+    ] {
+        let link = command_link(&line, caption);
+        doc.example(line, caption, Some(link));
+    }
+    doc.list(entry_items(
+        repo,
+        &["chmod", "permissions", "umask", "chown"],
+    ));
+    doc
+}
+
+/// Default permissions produced by a umask.
+pub fn umask_page(repo: &Repository, mask: Mode) -> Document {
+    let (file, dir) = permissions::umask_result(mask);
+    let mut doc =
+        Document::new(format!("umask {:03o}", mask.0 & 0o777)).subtitle("máscara de criação");
+    doc.paragraph("A umask tira permissões de tudo o que é criado: arquivos partem de 666 e diretórios de 777, e os bits da máscara são removidos.");
+    doc.table(vec![
+        Row::new([
+            "Arquivos novos".to_string(),
+            format!("{} ({})", file.octal(), file.symbolic()),
+        ])
+        .tone(Tone::Accent),
+        Row::new([
+            "Diretórios novos".to_string(),
+            format!("{} ({})", dir.octal(), dir.symbolic()),
+        ])
+        .tone(Tone::Accent),
+    ]);
+    doc.paragraph("Valores comuns: 022 (padrão: todos leem), 002 (grupo também escreve), 077 (privado: só o dono).");
+    doc.list(entry_items(repo, &["umask", "chmod", "permissions"]));
+    doc
+}
+
+/// chmod's symbolic syntax (`u+x,go-w`).
+pub fn symbolic_change_page(repo: &Repository, text: &str, clauses: &[Clause]) -> Document {
+    let mut doc = Document::new(format!("chmod {text}")).subtitle("modo simbólico");
+    doc.table(
+        clauses
+            .iter()
+            .map(|c| Row::new([c.text.clone(), c.description.clone()]))
+            .collect(),
+    );
+    doc.paragraph("Quem: u dono, g grupo, o outros, a todos. Operação: + adiciona, - remove, = define exatamente. Permissões: r leitura, w escrita, x execução, X execução só em diretórios.");
+    doc.list(entry_items(repo, &["chmod", "permissions"]));
+    doc
+}
+
+/// Explanation of a crontab line.
+pub fn cron_page(repo: &Repository, line: &str, schedule: &Result<Schedule, String>) -> Document {
+    let mut doc = Document::new(line.trim()).subtitle("agendamento cron");
+    let s = match schedule {
+        Ok(s) => s,
+        Err(e) => {
+            doc.note(Tone::Danger, e);
+            doc.paragraph("Formato: minuto (0-59) hora (0-23) dia-do-mês (1-31) mês (1-12) dia-da-semana (0-7, 0 e 7 = domingo), seguido do comando.");
+            doc.list(entry_items(repo, &["cron-syntax", "crontab"]));
+            return doc;
+        }
+    };
+    doc.heading("QUANDO");
+    doc.paragraph(&s.summary);
+    if !s.fields.is_empty() {
+        doc.heading("CAMPOS");
+        doc.table(
+            s.fields
+                .iter()
+                .map(|f| Row::new([f.raw.clone(), f.name.to_string(), f.description.clone()]))
+                .collect(),
+        );
+    }
+    if let Some(sc) = &s.shortcut {
+        doc.paragraph(format!("{sc} é um atalho do cron."));
+    }
+    if let Some(cmd) = &s.command {
+        doc.heading("COMANDO");
+        doc.code(cmd, Some(command_link(cmd, "comando agendado no cron")));
+    }
+    doc.heading("CUIDADOS");
+    for n in &s.notes {
+        doc.note(Tone::Info, n);
+    }
+    doc.heading("COMANDOS");
+    for (line, caption) in [
+        ("crontab -e", "Edita o seu crontab"),
+        ("crontab -l", "Lista as suas tarefas"),
+        (
+            "grep CRON /var/log/syslog",
+            "Confere se rodou (Debian/Ubuntu; em outros: journalctl -u cron)",
+        ),
+    ] {
+        doc.example(line, caption, Some(command_link(line, caption)));
+    }
+    doc.list(entry_items(repo, &["cron-syntax", "crontab", "systemctl"]));
+    doc
+}
+
+/// Meaning of an exit code, optionally for one program.
+pub fn exit_code_page(repo: &Repository, info: &ExitInfo, program: Option<&str>) -> Document {
+    let title = match program {
+        Some(p) => format!("{p}: exit code {}", info.code),
+        None => format!("Exit code {}", info.code),
+    };
+    let mut doc = Document::new(title).subtitle("código de saída");
+    let specific = program.and_then(|p| info.programs.iter().find(|(name, _)| *name == p));
+    if let Some((p, meaning)) = specific {
+        doc.note(Tone::Accent, format!("No {p}: {meaning}."));
+    }
+    doc.paragraph(format!("{}.", info.meaning));
+    if let Some(d) = info.detail {
+        doc.paragraph(d);
+    }
+    if let Some(sig) = info.signal {
+        doc.table(vec![
+            Row::new([
+                "Sinal".to_string(),
+                format!("{} ({})", sig.number, sig.name),
+            ])
+            .tone(Tone::Accent),
+            Row::new([
+                "Conta".to_string(),
+                format!("128 + {} = {}", sig.number, info.code),
+            ]),
+        ]);
+    }
+    let others: Vec<Row> = info
+        .programs
+        .iter()
+        .filter(|(p, _)| Some(*p) != program)
+        .map(|(p, m)| Row::new([*p, *m]))
+        .collect();
+    if !others.is_empty() {
+        doc.heading(format!("O CÓDIGO {} EM OUTROS PROGRAMAS", info.code));
+        doc.table(others);
+    }
+    doc.heading("COMO VER");
+    for (line, caption) in [
+        ("echo $?", "Exit code do último comando"),
+        (
+            "echo \"${PIPESTATUS[@]}\"",
+            "Códigos de cada comando do último pipeline (bash)",
+        ),
+        (
+            "set -o pipefail",
+            "Faz o pipeline falhar se qualquer comando falhar",
+        ),
+    ] {
+        doc.example(line, caption, Some(command_link(line, caption)));
+    }
+    let mut related = vec!["exit-code", "signals"];
+    if let Some(p) = program.and_then(|p| repo.command(p)) {
+        related.insert(0, p.id.as_str());
+    }
+    doc.list(entry_items(repo, &related));
+    doc
+}
+
+/// A word that is not in the knowledge base.
+pub fn unknown_page(word: &str, availability: &Availability) -> Document {
+    let mut doc = Document::new(word).subtitle("fora da base de conhecimento");
+    doc.paragraph(format!("\"{word}\" não está na base do TermSense."));
+    match availability {
+        Availability::Found(path) => {
+            doc.note(
+                Tone::Success,
+                format!(
+                    "Instalado neste sistema: {}. A documentação local responde:",
+                    path.display()
+                ),
+            );
+            for (line, caption) in [
+                (format!("man {word}"), "Manual completo"),
+                (
+                    format!("{word} --help"),
+                    "Resumo das opções (a maioria dos programas aceita)",
+                ),
+                (format!("whatis {word}"), "Descrição de uma linha"),
+            ] {
+                let link = command_link(&line, caption);
+                doc.example(line, caption, Some(link));
+            }
+        }
+        Availability::Missing => {
+            doc.note(Tone::Warning, "Também não está no PATH deste sistema.");
+            doc.paragraph("Se for um programa, procure o pacote que o instala:");
+            for (line, caption) in [
+                (format!("apt search {word}"), "Debian/Ubuntu"),
+                (format!("dnf search {word}"), "Fedora/RHEL"),
+                (
+                    format!("apropos {word}"),
+                    "Manuais instalados que citam a palavra",
+                ),
+            ] {
+                let link = command_link(&line, caption);
+                doc.example(line, caption, Some(link));
+            }
+            doc.paragraph("Se for um erro de digitação, veja as sugestões na lista.");
+        }
+    }
+    doc.heading("ENSINE AO TERMSENSE");
+    doc.paragraph(format!(
+        "Crie ~/.config/termsense/knowledge/{word}.json com o que você aprendeu e valide com ts --check:"
+    ));
+    doc.code(
+        format!(
+            "{{\n  \"category\": \"linux\",\n  \"entries\": [\n    {{\n      \"name\": \"{word}\",\n      \"kind\": \"command\",\n      \"summary\": \"O que {word} faz, em uma linha\",\n      \"examples\": [\n        {{ \"command\": \"{word} --help\", \"description\": \"Ajuda\" }}\n      ]\n    }}\n  ]\n}}"
+        ),
+        None,
+    );
+    doc
+}
+
+/// Shown first when no result matches the query well.
+pub fn weak_results_page(query: &str, has_results: bool) -> Document {
+    let mut doc = Document::new("Sem correspondência exata").subtitle(query.trim());
+    if has_results {
+        doc.paragraph("Nenhuma entrada da base casa bem com a busca. Os resultados da lista são aproximados: casaram só parte das palavras ou só em textos secundários.");
+    } else {
+        doc.paragraph("Nada na base casa com a busca.");
+    }
+    doc.heading("DICAS");
+    doc.list(
+        [
+            "use o nome de um comando (grep, ss, tar) ou uma palavra-chave (porta, disco, permissão)",
+            "descreva a tarefa com verbos: compactar pasta, liberar porta, agendar tarefa",
+            "cole a mensagem de erro inteira: muitas têm receita própria",
+            "apague a busca para ver os temas",
+        ]
+        .into_iter()
+        .map(Item::new)
+        .collect(),
+    );
+    doc
+}
+
 /// Getting-started page shown on the home screen.
 pub fn welcome_page() -> Document {
     let mut doc = Document::new("TermSense").subtitle("assistente de conhecimento do terminal");
@@ -571,6 +898,14 @@ pub fn welcome_page() -> Document {
             ("regex ^[0-9]+$", "analisar uma expressão regular"),
             ("/24", "calcular uma sub-rede CIDR"),
             ("192.168.1.10", "classificar um endereço IP"),
+            ("755", "calcular permissões (também rwxr-xr-x)"),
+            ("*/5 * * * *", "entender um agendamento do cron"),
+            ("exit 137", "o que significa um exit code"),
+            ("sed 's/a/b/g' f.txt", "explicar scripts sed e awk"),
+            (
+                "Permission denied (publickey)",
+                "colar uma mensagem de erro",
+            ),
         ]
         .into_iter()
         .map(|(q, d)| Row::new([q, d]))

@@ -360,7 +360,15 @@ fn draw_detail(frame: &mut Frame, area: Rect, app: &mut App) {
 }
 
 fn draw_help(frame: &mut Frame, area: Rect, app: &App) {
-    let keys: &[(&str, &str)] = if app.details.is_empty() {
+    let keys: &[(&str, &str)] = if app.details.is_empty() && app.widget {
+        &[
+            ("↑↓", "navegar"),
+            ("Enter", "abrir"),
+            ("Tab", "completar"),
+            ("Esc", "usar a linha no shell"),
+            ("Ctrl+C", "cancelar"),
+        ]
+    } else if app.details.is_empty() {
         &[
             ("↑↓", "navegar"),
             ("Enter", "abrir"),
@@ -721,13 +729,18 @@ pub fn wrap(text: &str, width: usize) -> Vec<String> {
     let width = width.max(1);
     let mut lines = Vec::new();
     for paragraph in text.split('\n') {
-        let mut line = String::new();
-        let mut line_w = 0;
-        for word in paragraph.split(' ') {
+        // Leading spaces are indentation (code, JSON): keep them.
+        let body = paragraph.trim_start_matches(' ');
+        let indent = (paragraph.len() - body.len()).min(width / 2);
+        let mut line = " ".repeat(indent);
+        let mut line_w = indent;
+        let mut has_word = false;
+        for word in body.split(' ') {
             let ww = word.width();
-            if line_w > 0 && line_w + 1 + ww > width {
+            if has_word && line_w + 1 + ww > width {
                 lines.push(std::mem::take(&mut line));
                 line_w = 0;
+                has_word = false;
             }
             if ww > width {
                 for c in word.chars() {
@@ -739,14 +752,16 @@ pub fn wrap(text: &str, width: usize) -> Vec<String> {
                     line.push(c);
                     line_w += cw;
                 }
+                has_word = true;
                 continue;
             }
-            if line_w > 0 {
+            if has_word {
                 line.push(' ');
                 line_w += 1;
             }
             line.push_str(word);
             line_w += ww;
+            has_word = true;
         }
         lines.push(line);
     }
