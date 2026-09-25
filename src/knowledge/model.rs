@@ -53,6 +53,10 @@ pub struct CommandOption {
     /// (`sed -e SCRIPT` is a sed program, `find -perm MODO` a mode).
     #[serde(default)]
     pub kind: Option<ArgKind>,
+    /// The flag is a prefix glued to its value: `-Xmx` in `-Xmx512m`,
+    /// `-XX:` in `-XX:+UseG1GC`.
+    #[serde(default)]
+    pub prefix: bool,
     pub description: String,
 }
 
@@ -123,6 +127,8 @@ pub enum ArgKind {
     Sed,
     /// An awk program (`{print $1}`).
     Awk,
+    /// A Kubernetes/OpenShift resource: `pods`, `deployment/app`.
+    Resource,
 }
 
 impl ArgKind {
@@ -141,6 +147,7 @@ impl ArgKind {
             ArgKind::Umask => "máscara",
             ArgKind::Sed => "script sed",
             ArgKind::Awk => "programa awk",
+            ArgKind::Resource => "recurso",
         }
     }
 }
@@ -223,6 +230,16 @@ pub struct Entry {
     /// not an executable in `PATH`.
     #[serde(default)]
     pub builtin: bool,
+    /// Other executable names for the same command (`mvnw` for `mvn`).
+    #[serde(default)]
+    pub names: Vec<String>,
+    /// Subcommands may follow one another: `mvn clean install`.
+    #[serde(default)]
+    pub phases: bool,
+    /// Flags starting with this prefix identify the program even when the
+    /// executable is not in the base: `--gtest_` in `./testes --gtest_filter=X`.
+    #[serde(default)]
+    pub flag_prefix: Option<String>,
     /// Synonyms and natural-language phrases, in any language.
     #[serde(default)]
     pub aliases: Vec<String>,
@@ -314,6 +331,7 @@ mod tests {
             long: long.map(str::to_string),
             arg: arg.map(str::to_string),
             kind: None,
+            prefix: false,
             description: String::new(),
         }
     }

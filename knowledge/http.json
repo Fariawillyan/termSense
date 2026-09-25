@@ -196,7 +196,7 @@
         { "title": "Relógio do sistema", "command": "date", "why": "Relógio errado faz certificados válidos parecerem expirados (comum em VMs e WSL após suspender)." },
         { "title": "CAs do sistema", "command": "sudo update-ca-certificates", "why": "Certificados de CA interna precisam estar instalados em /usr/local/share/ca-certificates." }
       ],
-      "related": ["certificado", "ca", "openssl-s-client", "tls"]
+      "related": ["certificado", "ca", "openssl-s-client", "tls", "error-corporate-cert", "error-pkix"]
     }
   ]
 }

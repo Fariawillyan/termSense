@@ -36,6 +36,9 @@ use config::Config;
 use input::{Action, map_key};
 use knowledge::Repository;
 
+/// Date of this release (shown by `ts --version`).
+const RELEASE_DATE: &str = "2026-09-25";
+
 const USAGE: &str = "\
 TermSense — assistente de conhecimento para o terminal
 
@@ -144,7 +147,10 @@ fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         Command::Version => {
-            println!("ts (TermSense) {}", env!("CARGO_PKG_VERSION"));
+            println!(
+                "ts (TermSense) {} ({RELEASE_DATE})",
+                env!("CARGO_PKG_VERSION")
+            );
             ExitCode::SUCCESS
         }
         Command::Print(query) => match load() {
@@ -234,10 +240,19 @@ fn check(files: Vec<PathBuf>) -> ExitCode {
         );
         println!("  · nenhum arquivo do usuário em {dir}");
     }
-    for (source, result) in &report.files {
-        match result {
-            Ok(n) => println!("  ✓ {source}: {n} entradas"),
+    for f in &report.files {
+        match &f.result {
+            Ok(n) => println!("  ✓ {}: {n} entradas", f.source),
             Err(e) => println!("  ✗ {e}"),
+        }
+        if !f.overrides.is_empty() {
+            // Not an error, but worth a look after an update: the built-in
+            // entry may have become better than the local copy.
+            println!(
+                "    ℹ substitui {} entrada(s) da base: {}",
+                f.overrides.len(),
+                f.overrides.join(", ")
+            );
         }
     }
     if !report.problems.is_empty() {
@@ -250,7 +265,7 @@ fn check(files: Vec<PathBuf>) -> ExitCode {
         println!("\nTudo certo.");
         ExitCode::SUCCESS
     } else {
-        let invalid = report.files.iter().filter(|(_, r)| r.is_err()).count();
+        let invalid = report.files.iter().filter(|f| f.result.is_err()).count();
         println!(
             "\n{invalid} arquivo(s) inválido(s), {} problema(s).",
             report.problems.len()

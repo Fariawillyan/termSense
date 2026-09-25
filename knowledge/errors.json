@@ -61,9 +61,10 @@
         { "title": "O que existe ali?", "command": "ls -la", "why": "Confira maiúsculas, extensão e espaços no nome." },
         { "title": "Nomes com espaço", "command": "ls \"meu arquivo.txt\"", "why": "Sem aspas, o shell divide o nome em dois argumentos." },
         { "title": "Procure o arquivo", "command": "find . -name 'parte-do-nome*'", "why": "Talvez esteja em outra pasta." },
-        { "title": "Link quebrado?", "command": "ls -l caminho", "why": "Um link simbólico para destino inexistente dá este erro." }
+        { "title": "Link quebrado?", "command": "ls -l caminho", "why": "Um link simbólico para destino inexistente dá este erro." },
+        { "title": "Em compilação C/C++", "command": "echo | g++ -E -Wp,-v -x c++ - 2>&1 | grep '^ /'", "why": "Com fatal error: X.h, falta o pacote -dev ou o -I da pasta do cabeçalho." }
       ],
-      "related": ["find", "ls", "realpath", "quotes", "error-bad-interpreter"]
+      "related": ["find", "ls", "realpath", "quotes", "error-bad-interpreter", "error-include-not-found"]
     },
     {
       "id": "error-bad-interpreter",
@@ -118,7 +119,7 @@
       "name": "Erro: Killed (falta de memória)",
       "kind": "recipe",
       "summary": "O kernel matou o processo com SIGKILL, quase sempre por falta de memória (exit code 137)",
-      "aliases": ["killed", "out of memory", "oom", "oom-killer", "oomkilled", "exit code 137", "cannot allocate memory", "memória insuficiente"],
+      "aliases": ["killed", "out of memory", "oom", "oom-killer", "exit code 137", "cannot allocate memory", "memória insuficiente"],
       "tags": ["erro"],
       "steps": [
         { "title": "Confirme no log do kernel", "command": "sudo dmesg -T | grep -i -E 'killed process|out of memory'", "why": "Mostra qual processo morreu e quanta memória usava." },
@@ -127,7 +128,7 @@
         { "title": "Em container", "command": "docker inspect -f '{{.State.OOMKilled}}' container", "why": "true indica que o limite de memória do container estourou." },
         { "title": "Soluções", "command": "swapon --show", "why": "Aumente a memória ou o limite (docker run -m), crie swap, ou reduza o consumo (menos workers, lotes menores)." }
       ],
-      "related": ["dmesg", "free", "memory-usage", "signals", "docker-inspect"]
+      "related": ["dmesg", "free", "memory-usage", "signals", "docker-inspect", "error-oomkilled"]
     },
     {
       "id": "error-segfault",
@@ -142,7 +143,7 @@
         { "title": "Core dumps", "command": "coredumpctl list", "why": "Se houver, dá para analisar com gdb." },
         { "title": "Atualize", "command": "sudo apt update && sudo apt upgrade", "why": "Muitas vezes é bug corrigido em versão nova." }
       ],
-      "related": ["dmesg", "signals", "exit-code"]
+      "related": ["dmesg", "signals", "exit-code", "gdb", "valgrind", "cpp-debug-crash"]
     },
     {
       "id": "error-read-only-fs",
@@ -491,6 +492,506 @@
         { "title": "Imagem Docker de outra arquitetura", "command": "docker run --platform linux/amd64 imagem", "why": "Construa ou baixe para a plataforma certa." }
       ],
       "related": ["file", "shebang", "uname"]
+    },
+    {
+      "id": "error-unsupported-class-version",
+      "name": "Erro: UnsupportedClassVersionError",
+      "kind": "recipe",
+      "summary": "A classe foi compilada para um Java mais novo que o que está rodando",
+      "aliases": ["unsupportedclassversionerror", "has been compiled by a more recent version of the java runtime", "class file version", "unsupported major.minor version"],
+      "tags": ["erro", "java"],
+      "steps": [
+        { "title": "Qual Java roda", "command": "java -version", "why": "Compare com a versão pedida na mensagem (o TermSense traduz o class file)." },
+        { "title": "Qual Java compilou", "command": "javap -v App.class | grep major", "why": "major version 65 = Java 21, 61 = Java 17, 55 = Java 11, 52 = Java 8." },
+        { "title": "Rode com o Java certo", "command": "export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64", "why": "Ou troque o padrão com update-alternatives." },
+        { "title": "Ou compile para o Java antigo", "command": "mvn -Dmaven.compiler.release=17 clean package", "why": "No pom.xml: <maven.compiler.release>17</maven.compiler.release>." }
+      ],
+      "related": ["java-switch-version", "java-home", "java"]
+    },
+    {
+      "id": "error-main-class",
+      "name": "Erro: Could not find or load main class",
+      "kind": "recipe",
+      "summary": "A JVM não achou a classe principal: nome, pacote ou classpath errados",
+      "aliases": ["could not find or load main class", "error: could not find or load main class", "caused by: java.lang.classnotfoundexception"],
+      "tags": ["erro", "java"],
+      "steps": [
+        { "title": "Use o nome completo", "command": "java -cp out com.exemplo.App", "why": "Com pacote e sem .class: com.exemplo.App, não App.class." },
+        { "title": "Aponte para a raiz dos pacotes", "command": "ls out/com/exemplo/App.class", "why": "O -cp é a pasta que contém com/, não a pasta da classe." },
+        { "title": "No JAR", "command": "unzip -p app.jar META-INF/MANIFEST.MF", "why": "O manifesto precisa de Main-Class." }
+      ],
+      "related": ["classpath", "java", "jar"]
+    },
+    {
+      "id": "error-class-not-found",
+      "name": "Erro: ClassNotFoundException / NoClassDefFoundError",
+      "kind": "recipe",
+      "summary": "Uma classe usada pelo programa não está no classpath em tempo de execução",
+      "aliases": ["classnotfoundexception", "noclassdeffounderror", "java.lang.noclassdeffounderror", "java.lang.classnotfoundexception"],
+      "tags": ["erro", "java"],
+      "steps": [
+        { "title": "Qual JAR deveria ter a classe", "command": "for j in lib/*.jar; do unzip -l \"$j\" | grep -q 'NomeDaClasse' && echo \"$j\"; done", "why": "Procure a classe nos JARs do projeto." },
+        { "title": "A dependência vai para o pacote?", "command": "mvn dependency:tree -Dincludes=GRUPO", "why": "Escopo provided ou test não entra no artefato final." },
+        { "title": "JAR sem dependências", "why": "java -jar de um JAR comum não leva as bibliotecas: use o plugin do Spring Boot, o shade ou o assembly." },
+        { "title": "Versões misturadas", "command": "mvn dependency:tree -Dverbose", "why": "NoClassDefFoundError também aparece quando duas versões da biblioteca brigam." }
+      ],
+      "related": ["classpath", "maven-dependency-conflict", "mvn-dependency-tree"]
+    },
+    {
+      "id": "error-java-heap-space",
+      "name": "Erro: OutOfMemoryError: Java heap space",
+      "kind": "recipe",
+      "summary": "O heap da JVM encheu: limite baixo, vazamento ou volume de dados alto",
+      "aliases": ["outofmemoryerror", "java heap space", "gc overhead limit exceeded", "java.lang.outofmemoryerror", "metaspace"],
+      "tags": ["erro", "java", "memória"],
+      "steps": [
+        { "title": "Qual é o limite", "command": "java -XX:+PrintFlagsFinal -version | grep MaxHeapSize", "why": "Sem -Xmx, a JVM usa 1/4 da memória (ou do limite do container)." },
+        { "title": "Aumente", "command": "java -Xmx2g -jar app.jar", "why": "Em container, prefira uma porcentagem do limite." },
+        { "title": "Em container", "command": "java -XX:MaxRAMPercentage=75 -jar app.jar", "why": "Usa 75% do limite de memória do container." },
+        { "title": "Guarde a prova", "command": "java -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp -jar app.jar", "why": "Gera o heap dump na hora do erro, para achar o vazamento." },
+        { "title": "Metaspace", "command": "jcmd 1234 VM.native_memory summary", "why": "Se a mensagem diz Metaspace, são classes demais carregadas (redeploys, geração de classes)." }
+      ],
+      "related": ["jcmd", "jvm-diagnose", "error-oomkilled", "java"]
+    },
+    {
+      "id": "error-maven-compilation-failure",
+      "name": "Erro: Maven Compilation failure",
+      "kind": "recipe",
+      "summary": "O javac falhou dentro do Maven: o erro real está nas linhas [ERROR] com arquivo e linha",
+      "aliases": ["compilation failure", "failed to execute goal org.apache.maven.plugins:maven-compiler-plugin", "cannot find symbol", "package does not exist", "compilation error"],
+      "tags": ["erro", "java", "maven"],
+      "steps": [
+        { "title": "Ache o primeiro erro", "command": "mvn -q compile 2>&1 | grep -m5 ERROR", "why": "Os erros seguintes costumam ser consequência dele." },
+        { "title": "cannot find symbol / package does not exist", "why": "Falta dependência no pom.xml, import errado ou módulo não construído (use -am)." },
+        { "title": "Versão do Java", "command": "mvn -v", "why": "Recursos novos da linguagem exigem release compatível." },
+        { "title": "Depois de trocar de branch", "command": "mvn clean compile", "why": "Classes velhas em target/ confundem o build." }
+      ],
+      "related": ["mvn-compile", "java-home", "mvn"]
+    },
+    {
+      "id": "error-maven-invalid-release",
+      "name": "Erro: invalid target release (Maven)",
+      "kind": "recipe",
+      "summary": "O Maven está rodando com um JDK mais antigo que a versão pedida no projeto",
+      "aliases": ["invalid target release", "release version 21 not supported", "release version 17 not supported", "invalid source release", "error: release version"],
+      "tags": ["erro", "java", "maven"],
+      "steps": [
+        { "title": "Qual Java o Maven usa", "command": "mvn -v", "why": "Não é necessariamente o do java -version." },
+        { "title": "Aponte para o JDK certo", "command": "export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64", "why": "O Maven segue o JAVA_HOME." },
+        { "title": "Ou baixe o release do projeto", "command": "mvn -Dmaven.compiler.release=17 compile", "why": "Só se o código não usa recursos novos." }
+      ],
+      "related": ["java-home", "java-switch-version"]
+    },
+    {
+      "id": "error-maven-dependency-resolution",
+      "name": "Erro: Could not resolve dependencies (Maven)",
+      "kind": "recipe",
+      "summary": "O Maven não conseguiu baixar uma dependência ou o pom pai",
+      "aliases": ["could not resolve dependencies", "could not transfer artifact", "was cached in the local repository", "failed to read artifact descriptor", "non-resolvable parent pom", "could not find artifact"],
+      "tags": ["erro", "java", "maven"],
+      "steps": [
+        { "title": "Tente de novo sem o cache de falha", "command": "mvn -U clean install", "why": "O Maven lembra falhas de download; -U força nova tentativa." },
+        { "title": "A versão existe?", "why": "Confira grupo, artefato e versão no repositório (erro de digitação é comum)." },
+        { "title": "Repositório da empresa", "command": "mvn help:effective-settings", "why": "Mirrors e credenciais ficam no settings.xml." },
+        { "title": "Proxy ou certificado", "command": "curl -I https://repo.maven.apache.org/maven2/", "why": "Se a mensagem cita PKIX ou timeout, o problema é a rede corporativa." },
+        { "title": "Cache corrompido", "command": "rm -rf ~/.m2/repository/com/exemplo/artefato", "why": "Apaga só o artefato problemático do repositório local." }
+      ],
+      "related": ["maven-settings", "error-pkix", "mvn"]
+    },
+    {
+      "id": "error-pkix",
+      "name": "Erro: PKIX path building failed",
+      "kind": "recipe",
+      "summary": "O Java não confia no certificado do servidor: quase sempre um proxy corporativo inspecionando HTTPS",
+      "aliases": ["pkix path building failed", "unable to find valid certification path to requested target", "suncertpathbuilderexception", "sun.security.validator.validatorexception"],
+      "tags": ["erro", "java", "certificados"],
+      "steps": [
+        { "title": "Veja quem assina o certificado", "command": "keytool -printcert -sslserver repo.maven.apache.org:443", "why": "Se o emissor é da sua empresa, é o proxy." },
+        { "title": "Pegue a CA da empresa", "command": "openssl s_client -connect repo.maven.apache.org:443 -showcerts </dev/null", "why": "Peça à TI ou exporte pelo navegador; o openssl mostra a cadeia." },
+        { "title": "Importe no Java certo", "command": "sudo keytool -importcert -cacerts -alias proxy-empresa -file proxy.crt -storepass changeit -noprompt", "why": "No cacerts do JDK usado (mvn -v mostra qual)." },
+        { "title": "Sem mexer no JDK", "command": "export MAVEN_OPTS='-Djavax.net.ssl.trustStore=/caminho/truststore.jks -Djavax.net.ssl.trustStorePassword=changeit'", "why": "Um truststore próprio só para o Maven." }
+      ],
+      "related": ["keytool", "certificate-error", "error-corporate-cert"]
+    },
+    {
+      "id": "error-maven-tests-failed",
+      "name": "Erro: There are test failures (Maven)",
+      "kind": "recipe",
+      "summary": "Algum teste falhou; os detalhes ficam nos relatórios do Surefire",
+      "aliases": ["there are test failures", "failed to execute goal org.apache.maven.plugins:maven-surefire-plugin", "surefire-reports", "tests run:"],
+      "tags": ["erro", "java", "maven", "testes"],
+      "steps": [
+        { "title": "Leia o relatório", "command": "ls target/surefire-reports/", "why": "Um arquivo por classe de teste, com o stack trace completo." },
+        { "title": "Rode só o que falhou", "command": "mvn test -Dtest=ClasseQueFalhou", "why": "Mais rápido para investigar." },
+        { "title": "Stack trace completo", "command": "mvn test -Dtest=ClasseQueFalhou -DtrimStackTrace=false", "why": "O Surefire resume os traces por padrão." }
+      ],
+      "related": ["maven-run-single-test", "mvn-test"]
+    },
+    {
+      "id": "error-undefined-reference",
+      "name": "Erro: undefined reference to",
+      "kind": "recipe",
+      "summary": "O linker não achou a definição de uma função ou variável usada",
+      "aliases": ["undefined reference to", "ld returned 1 exit status", "collect2: error", "undefined symbol", "unresolved external symbol"],
+      "tags": ["erro", "c++"],
+      "steps": [
+        { "title": "Todos os .cpp entraram?", "command": "g++ -o app main.cpp util.cpp", "why": "A função existe em um arquivo que não foi compilado junto." },
+        { "title": "Bibliotecas depois dos arquivos", "command": "g++ main.cpp -o app -lpthread", "why": "-l no fim da linha: o linker resolve da esquerda para a direita." },
+        { "title": "No CMake", "why": "target_link_libraries(app PRIVATE minhalib) no CMakeLists.txt." },
+        { "title": "Templates e inline", "why": "Definições de templates precisam estar no cabeçalho." },
+        { "title": "Código C chamado do C++", "why": "Declare com extern \"C\" { ... }." },
+        { "title": "Quem define o símbolo", "command": "nm -C --defined-only libminha.a | grep nomeDaFuncao", "why": "Procura nos objetos e bibliotecas." }
+      ],
+      "related": ["compile-link", "gpp", "cmake"]
+    },
+    {
+      "id": "error-multiple-definition",
+      "name": "Erro: multiple definition of",
+      "kind": "recipe",
+      "summary": "A mesma função ou variável foi definida em mais de um arquivo",
+      "aliases": ["multiple definition of", "first defined here", "duplicate symbol"],
+      "tags": ["erro", "c++"],
+      "steps": [
+        { "title": "Função definida no cabeçalho", "why": "Marque como inline ou mova a definição para um .cpp." },
+        { "title": "Variável global no cabeçalho", "why": "No .h: extern int contador; em um único .cpp: int contador = 0;" },
+        { "title": "Arquivo compilado duas vezes", "why": "Confira a lista de fontes no Makefile ou no CMakeLists.txt." }
+      ],
+      "related": ["compile-link", "gpp"]
+    },
+    {
+      "id": "error-cannot-find-lib",
+      "name": "Erro: cannot find -l (biblioteca)",
+      "kind": "recipe",
+      "summary": "O linker não achou a biblioteca pedida com -l",
+      "aliases": ["cannot find -l", "/usr/bin/ld: cannot find", "ld: cannot find", "no such file or directory", "ld: library not found"],
+      "tags": ["erro", "c++"],
+      "steps": [
+        { "title": "Instale o pacote -dev", "command": "apt search libssl | grep dev", "why": "Ex.: -lssl vem de libssl-dev." },
+        { "title": "Onde ela está", "command": "find / -name 'libssl.so*' 2>/dev/null", "why": "Se está em pasta fora do padrão, use -L." },
+        { "title": "Deixe o pkg-config montar as flags", "command": "g++ main.cpp -o app $(pkg-config --cflags --libs openssl)", "why": "Evita errar caminho e nome." }
+      ],
+      "related": ["gpp", "error-undefined-reference"]
+    },
+    {
+      "id": "error-include-not-found",
+      "name": "Erro: arquivo de #include não encontrado",
+      "kind": "recipe",
+      "summary": "O compilador não achou um cabeçalho (fatal error: X.h: No such file or directory)",
+      "aliases": ["no such file or directory compilation terminated", "compilation terminated", "fatal error:", "no such file or directory"],
+      "tags": ["erro", "c++"],
+      "steps": [
+        { "title": "É de uma biblioteca?", "command": "apt-file search curl/curl.h", "why": "Cabeçalhos vêm nos pacotes -dev (ex.: libcurl4-openssl-dev)." },
+        { "title": "É do projeto?", "command": "g++ -Iinclude -o app src/main.cpp", "why": "Aponte a pasta com -I (ou target_include_directories no CMake)." },
+        { "title": "Veja onde o compilador procura", "command": "echo | g++ -E -Wp,-v -x c++ - 2>&1 | grep '^ /'", "why": "Lista as pastas de busca." }
+      ],
+      "related": ["compile-link", "gpp", "cmake"]
+    },
+    {
+      "id": "error-shared-library",
+      "name": "Erro: error while loading shared libraries",
+      "kind": "recipe",
+      "summary": "O programa compilou, mas ao rodar não acha uma biblioteca dinâmica (.so)",
+      "aliases": ["error while loading shared libraries", "cannot open shared object file"],
+      "tags": ["erro", "c++"],
+      "steps": [
+        { "title": "Qual falta", "command": "ldd ./app | grep 'not found'", "why": "Linhas com not found." },
+        { "title": "Instale", "command": "apt search nomedabiblioteca", "why": "O pacote da biblioteca (sem -dev, para rodar)." },
+        { "title": "Biblioteca própria em pasta fora do padrão", "command": "export LD_LIBRARY_PATH=/opt/minhalib/lib:$LD_LIBRARY_PATH", "why": "Para esta sessão; para sempre, grave em /etc/ld.so.conf.d/ e rode sudo ldconfig." }
+      ],
+      "related": ["ldd", "error-cannot-find-lib"]
+    },
+    {
+      "id": "error-cmake-package",
+      "name": "Erro: CMake could not find package",
+      "kind": "recipe",
+      "summary": "O find_package do CMake não achou uma dependência",
+      "aliases": ["could not find a package configuration file", "by not providing", "could not find package", "does not appear to contain cmakelists.txt"],
+      "tags": ["erro", "c++"],
+      "steps": [
+        { "title": "Instale o pacote -dev", "command": "apt search libgtest-dev", "why": "Muitos trazem o arquivo NomeConfig.cmake." },
+        { "title": "Instalada em pasta própria", "command": "cmake -S . -B build -DCMAKE_PREFIX_PATH=/opt/minhalib", "why": "Diga ao CMake onde procurar." },
+        { "title": "Sem CMakeLists.txt", "command": "ls CMakeLists.txt", "why": "O -S precisa apontar para a pasta que contém o CMakeLists.txt." },
+        { "title": "Reconfigure do zero", "command": "rm -rf build && cmake -S . -B build", "why": "O cache guarda falhas antigas." }
+      ],
+      "related": ["cmake", "cpp-build-cmake"]
+    },
+    {
+      "id": "error-npm-eresolve",
+      "name": "Erro: npm ERESOLVE (conflito de dependências)",
+      "kind": "recipe",
+      "summary": "Duas dependências exigem versões incompatíveis de um mesmo pacote (em geral, uma peer dependency)",
+      "aliases": ["eresolve", "unable to resolve dependency tree", "could not resolve dependency", "conflicting peer dependency", "code eresolve"],
+      "tags": ["erro", "node"],
+      "steps": [
+        { "title": "Leia quem pede o quê", "why": "A mensagem mostra o pacote raiz (Found) e quem exige outra faixa (Could not resolve)." },
+        { "title": "Veja as versões em jogo", "command": "npm ls nome-do-pacote", "why": "Quem traz cada versão." },
+        { "title": "Atualize quem está desatualizado", "command": "npm outdated", "why": "Muitas vezes a biblioteca já tem versão compatível." },
+        { "title": "Contorne", "command": "npm install --legacy-peer-deps", "why": "Instala como o npm 6 fazia; o conflito continua existindo." },
+        { "title": "Force uma versão", "command": "npm pkg set overrides.nome-do-pacote=1.2.3", "why": "Campo overrides no package.json (npm 8.3+)." }
+      ],
+      "related": ["npm-install", "npm-ls", "semver"]
+    },
+    {
+      "id": "error-npm-eacces",
+      "name": "Erro: npm EACCES (permissão)",
+      "kind": "recipe",
+      "summary": "O npm tentou gravar numa pasta do sistema, geralmente ao instalar algo global",
+      "aliases": ["code eacces", "eacces: permission denied", "npm err! code eacces", "missing write access to"],
+      "tags": ["erro", "node"],
+      "steps": [
+        { "title": "Não use sudo npm", "why": "Isso deixa arquivos do root no seu home e piora o problema." },
+        { "title": "Use o nvm", "command": "nvm install --lts", "why": "Com o Node do nvm, os globais ficam no seu home." },
+        { "title": "Ou mude a pasta global", "command": "npm config set prefix ~/.npm-global", "why": "Depois, ponha ~/.npm-global/bin no PATH." },
+        { "title": "Arquivos que ficaram do root", "command": "sudo chown -R $USER: ~/.npm", "why": "Devolve o cache ao seu usuário." }
+      ],
+      "related": ["nvm", "npm-config", "error-permission-denied"]
+    },
+    {
+      "id": "error-npm-no-package-json",
+      "name": "Erro: npm ENOENT package.json",
+      "kind": "recipe",
+      "summary": "O npm não achou um package.json: você não está na pasta do projeto",
+      "aliases": ["could not read package.json", "enoent: no such file or directory, open", "npm err! enoent", "no such file or directory, open package.json"],
+      "tags": ["erro", "node"],
+      "steps": [
+        { "title": "Onde você está", "command": "pwd && ls package.json", "why": "O npm usa a pasta atual." },
+        { "title": "Ache o projeto", "command": "find . -maxdepth 3 -name package.json -not -path '*/node_modules/*'", "why": "Procure o package.json mais próximo." },
+        { "title": "Projeto novo", "command": "npm init -y", "why": "Cria um package.json." }
+      ],
+      "related": ["package-json", "npm-init"]
+    },
+    {
+      "id": "error-npm-missing-script",
+      "name": "Erro: npm Missing script",
+      "kind": "recipe",
+      "summary": "O script pedido não existe no package.json",
+      "aliases": ["missing script:", "npm err! missing script", "npm error missing script"],
+      "tags": ["erro", "node"],
+      "steps": [
+        { "title": "Liste os scripts", "command": "npm run", "why": "O nome precisa ser exato." },
+        { "title": "Está em outra pasta ou workspace?", "command": "npm run build --workspace=web", "why": "Em monorepo, use --workspace." }
+      ],
+      "related": ["npm-run", "package-json"]
+    },
+    {
+      "id": "error-node-bin-not-found",
+      "name": "Erro: sh: comando: not found (script npm)",
+      "kind": "recipe",
+      "summary": "Um script chamou uma ferramenta do projeto (vite, tsc, jest) que não está instalada em node_modules",
+      "aliases": ["sh: 1:", "is not recognized as an internal or external command", "command not found: vite", "command not found: tsc"],
+      "tags": ["erro", "node"],
+      "steps": [
+        { "title": "Instale as dependências", "command": "npm ci", "why": "As ferramentas ficam em node_modules/.bin." },
+        { "title": "devDependencies foram puladas?", "command": "echo $NODE_ENV", "why": "Com NODE_ENV=production ou --omit=dev, ferramentas de build não entram." },
+        { "title": "A ferramenta está no package.json?", "command": "npm i -D vite", "why": "Senão, adicione." }
+      ],
+      "related": ["npm-ci", "npm-run", "npx"]
+    },
+    {
+      "id": "error-npm-elifecycle",
+      "name": "Erro: npm ELIFECYCLE (script falhou)",
+      "kind": "recipe",
+      "summary": "O script terminou com erro: a causa está nas linhas antes do npm ERR",
+      "aliases": ["elifecycle", "code elifecycle", "npm err! errno 1", "npm error command failed", "npm error lifecycle script"],
+      "tags": ["erro", "node"],
+      "steps": [
+        { "title": "Suba na saída", "why": "O erro real vem antes das linhas npm ERR!/npm error." },
+        { "title": "Rode o comando do script direto", "command": "npm pkg get scripts.build", "why": "Veja o comando e rode com npx." },
+        { "title": "Mais detalhes", "command": "npm run build --loglevel verbose", "why": "Log completo do npm." }
+      ],
+      "related": ["npm-run", "error-node-bin-not-found"]
+    },
+    {
+      "id": "error-node-heap",
+      "name": "Erro: JavaScript heap out of memory",
+      "kind": "recipe",
+      "summary": "O Node estourou o limite de memória do V8, comum em builds grandes",
+      "aliases": ["javascript heap out of memory", "reached heap limit", "allocation failed", "ineffective mark-compacts near heap limit"],
+      "tags": ["erro", "node", "memória"],
+      "steps": [
+        { "title": "Aumente o limite", "command": "NODE_OPTIONS=--max-old-space-size=4096 npm run build", "why": "Em MB; não passe da memória livre da máquina." },
+        { "title": "Veja a memória disponível", "command": "free -h", "why": "Em container ou WSL, o limite pode ser menor." }
+      ],
+      "related": ["node", "error-killed"]
+    },
+    {
+      "id": "error-corporate-cert",
+      "name": "Erro: self signed certificate in certificate chain",
+      "kind": "recipe",
+      "summary": "Um proxy corporativo inspeciona o HTTPS e a ferramenta não confia na CA dele (npm, git, curl, pip)",
+      "aliases": ["self signed certificate in certificate chain", "self_signed_cert_in_chain", "unable_to_get_issuer_cert_locally", "unable to get local issuer certificate", "certificate verify failed: self signed certificate in certificate chain"],
+      "tags": ["erro", "certificados"],
+      "steps": [
+        { "title": "Confirme o emissor", "command": "openssl s_client -connect registry.npmjs.org:443 -servername registry.npmjs.org </dev/null 2>/dev/null | openssl x509 -noout -issuer", "why": "Se o issuer é da sua empresa, é o proxy." },
+        { "title": "Instale a CA no sistema", "command": "sudo cp empresa-ca.crt /usr/local/share/ca-certificates/ && sudo update-ca-certificates", "why": "Arquivo .crt da TI; vale para curl, git e muitos outros." },
+        { "title": "npm e Node", "command": "export NODE_EXTRA_CA_CERTS=/usr/local/share/ca-certificates/empresa-ca.crt", "why": "O Node não lê a lista do sistema sozinho." },
+        { "title": "npm (alternativa)", "command": "npm config set cafile /etc/ssl/certs/ca-certificates.crt", "why": "Aponta o npm para o arquivo de CAs do sistema." },
+        { "title": "Java e Maven", "command": "keytool -printcert -sslserver repo.maven.apache.org:443", "why": "O Java tem truststore próprio: veja o erro PKIX." }
+      ],
+      "related": ["certificate-error", "error-pkix", "npm-config", "keytool"],
+      "warnings": ["Evite strict-ssl=false e NODE_TLS_REJECT_UNAUTHORIZED=0: desligam a verificação de todo site, não só do proxy."]
+    },
+    {
+      "id": "error-crashloopbackoff",
+      "name": "Erro: CrashLoopBackOff",
+      "kind": "recipe",
+      "summary": "O container morre logo depois de iniciar, e o cluster espera cada vez mais para tentar de novo",
+      "aliases": ["crashloopbackoff", "back-off restarting failed container", "crash loop"],
+      "tags": ["erro", "openshift"],
+      "steps": [
+        { "title": "Por que morreu da última vez", "command": "oc logs NOME -p", "why": "Mostra a saída da execução que falhou." },
+        { "title": "Código de saída", "command": "oc describe pod NOME", "why": "Last State: Exit Code 137 = memória (OOMKilled), 1 = erro da aplicação, 127 = comando não existe na imagem." },
+        { "title": "Falta configuração?", "command": "oc set env deployment/NOME --list", "why": "Variável, secret ou arquivo que a aplicação exige." },
+        { "title": "Probe matando o pod", "command": "oc describe pod NOME | grep -A3 -i probe", "why": "Liveness probe falhando reinicia o container; aplicações Java lentas precisam de startupProbe." },
+        { "title": "Investigue por dentro", "command": "oc debug deployment/NOME", "why": "Sobe a mesma imagem com um shell." }
+      ],
+      "related": ["ocp-pod-troubleshooting", "pod-states", "exit-code"]
+    },
+    {
+      "id": "error-imagepullbackoff",
+      "name": "Erro: ImagePullBackOff / ErrImagePull",
+      "kind": "recipe",
+      "summary": "O cluster não conseguiu baixar a imagem do container",
+      "aliases": ["imagepullbackoff", "errimagepull", "failed to pull image", "manifest unknown", "unauthorized: authentication required", "pull access denied"],
+      "tags": ["erro", "openshift"],
+      "steps": [
+        { "title": "A mensagem exata", "command": "oc describe pod NOME", "why": "Veja o evento Failed: nome errado, tag inexistente ou falta de credencial." },
+        { "title": "Nome e tag", "command": "oc get deployment NOME -o jsonpath='{.spec.template.spec.containers[*].image}'", "why": "Confira a imagem configurada." },
+        { "title": "Registro privado", "command": "oc create secret docker-registry registro --docker-server=REGISTRO --docker-username=USUARIO --docker-password=SENHA", "why": "Crie a credencial e associe à service account." },
+        { "title": "Associe para pull", "command": "oc secrets link default registro --for=pull", "why": "A service account default passa a usar a credencial." }
+      ],
+      "related": ["pod-states", "oc-create"]
+    },
+    {
+      "id": "error-oomkilled",
+      "name": "Erro: OOMKilled (container sem memória)",
+      "kind": "recipe",
+      "summary": "O container passou do limite de memória e foi morto (exit code 137)",
+      "aliases": ["oomkilled", "reason: oomkilled", "out of memory container", "memory limit exceeded"],
+      "tags": ["erro", "openshift", "memória"],
+      "steps": [
+        { "title": "Confirme", "command": "oc describe pod NOME", "why": "Last State: Terminated, Reason: OOMKilled." },
+        { "title": "Uso real", "command": "oc adm top pods", "why": "Compare com o limite." },
+        { "title": "Aumente o limite", "command": "oc set resources deployment/NOME --limits=memory=1Gi", "why": "Ou reduza o consumo da aplicação." },
+        { "title": "Aplicação Java", "command": "oc set env deployment/NOME JAVA_TOOL_OPTIONS='-XX:MaxRAMPercentage=75'", "why": "A JVM deve usar uma parte do limite, não tudo." },
+        { "title": "Docker local", "command": "docker inspect -f '{{.State.OOMKilled}}' CONTAINER", "why": "true confirma o mesmo problema." }
+      ],
+      "related": ["resource-units", "oc-set-resources", "error-java-heap-space", "error-killed"]
+    },
+    {
+      "id": "error-pod-pending",
+      "name": "Erro: pod parado em Pending",
+      "kind": "recipe",
+      "summary": "Nenhum nó aceita o pod: falta CPU ou memória, a quota acabou ou o volume não existe",
+      "aliases": ["insufficient cpu", "insufficient memory", "nodes are available", "failedscheduling", "unbound immediate persistentvolumeclaims", "exceeded quota"],
+      "tags": ["erro", "openshift"],
+      "steps": [
+        { "title": "O motivo", "command": "oc describe pod NOME", "why": "Evento FailedScheduling explica." },
+        { "title": "Requests altos demais", "command": "oc get pod NOME -o jsonpath='{.spec.containers[*].resources}'", "why": "O pod reserva mais do que qualquer nó tem livre." },
+        { "title": "Quota do projeto", "command": "oc describe quota", "why": "Used perto do Hard impede pods novos." },
+        { "title": "Volume", "command": "oc get pvc", "why": "PVC em Pending impede o pod." }
+      ],
+      "related": ["resource-units", "pvc-kind", "pod-states"]
+    },
+    {
+      "id": "error-createcontainerconfigerror",
+      "name": "Erro: CreateContainerConfigError",
+      "kind": "recipe",
+      "summary": "O pod referencia um ConfigMap, Secret ou chave que não existe",
+      "aliases": ["createcontainerconfigerror", "configmap not found", "secret not found", "couldn't find key"],
+      "tags": ["erro", "openshift"],
+      "steps": [
+        { "title": "Qual referência falhou", "command": "oc describe pod NOME", "why": "O evento diz o nome." },
+        { "title": "Existe?", "command": "oc get configmap,secret", "why": "No mesmo projeto do pod." },
+        { "title": "A chave existe?", "command": "oc get secret NOME -o jsonpath='{.data}'", "why": "Nome da chave dentro do secret ou configmap." }
+      ],
+      "related": ["configmap-kind", "secret-kind", "pod-states"]
+    },
+    {
+      "id": "error-oc-unauthorized",
+      "name": "Erro: You must be logged in to the server (Unauthorized)",
+      "kind": "recipe",
+      "summary": "O token expirou ou você está no cluster errado",
+      "aliases": ["you must be logged in to the server", "error: you must be logged in", "unauthorized"],
+      "tags": ["erro", "openshift"],
+      "steps": [
+        { "title": "Qual cluster", "command": "oc whoami --show-server", "why": "O kubeconfig pode apontar para outro." },
+        { "title": "Entre de novo", "command": "oc login --token=sha256~xxxx --server=https://api.cluster.exemplo.com:6443", "why": "Tokens expiram; pegue um novo no console (Copy login command)." }
+      ],
+      "related": ["oc-login", "ocp-login-project"]
+    },
+    {
+      "id": "error-oc-forbidden",
+      "name": "Erro: Forbidden (sem permissão no OpenShift)",
+      "kind": "recipe",
+      "summary": "Seu usuário não tem permissão para essa ação nesse projeto",
+      "aliases": ["is forbidden: user", "cannot list resource", "cannot get resource", "cannot create resource", "cannot patch resource", "forbidden:"],
+      "tags": ["erro", "openshift"],
+      "steps": [
+        { "title": "Projeto certo?", "command": "oc project", "why": "Talvez o recurso esteja em outro projeto." },
+        { "title": "O que você pode fazer", "command": "oc auth can-i get pods", "why": "yes ou no." },
+        { "title": "Peça acesso", "command": "oc adm policy add-role-to-user edit USUARIO -n PROJETO", "why": "Um administrador do projeto concede o papel (edit, view)." }
+      ],
+      "related": ["oc-project", "project-kind"]
+    },
+    {
+      "id": "error-x509-unknown-authority",
+      "name": "Erro: x509: certificate signed by unknown authority",
+      "kind": "recipe",
+      "summary": "O certificado da API do cluster (ou do registro) é de uma CA que esta máquina não conhece",
+      "aliases": ["x509: certificate signed by unknown authority", "certificate signed by unknown authority", "x509: certificate is not trusted"],
+      "tags": ["erro", "openshift", "certificados"],
+      "steps": [
+        { "title": "Com a CA do cluster", "command": "oc login --certificate-authority=ca.crt --server=https://api.cluster.exemplo.com:6443", "why": "Peça o arquivo ao administrador." },
+        { "title": "Ou instale no sistema", "command": "sudo cp ca.crt /usr/local/share/ca-certificates/cluster.crt && sudo update-ca-certificates", "why": "Vale também para docker, git e curl." }
+      ],
+      "related": ["oc-login", "certificate-error", "error-corporate-cert"],
+      "warnings": ["--insecure-skip-tls-verify resolve na hora, mas aceita qualquer servidor se passando pelo cluster."]
+    },
+    {
+      "id": "error-route-not-available",
+      "name": "Erro: Application is not available (rota 503)",
+      "kind": "recipe",
+      "summary": "A rota existe, mas não há pod pronto atrás do service",
+      "aliases": ["application is not available", "the application is currently not serving requests", "not serving requests at this endpoint"],
+      "tags": ["erro", "openshift"],
+      "steps": [
+        { "title": "Pods prontos?", "command": "oc get pods -l app=NOME", "why": "READY precisa ser 1/1 (ou n/n)." },
+        { "title": "O service acha os pods?", "command": "oc get endpoints NOME", "why": "Sem endpoints, o selector não bate com os labels dos pods." },
+        { "title": "Porta certa", "command": "oc describe svc NOME", "why": "targetPort do service e da rota devem ser a porta em que a aplicação escuta." },
+        { "title": "Readiness probe", "command": "oc describe pod NOME | grep -i readiness", "why": "Pod rodando mas não pronto não recebe tráfego." }
+      ],
+      "related": ["route-kind", "service-kind", "error-probe-failed"]
+    },
+    {
+      "id": "error-scc-permission",
+      "name": "Erro: permissão negada no OpenShift (UID aleatório)",
+      "kind": "recipe",
+      "summary": "A imagem espera rodar como root ou como um usuário fixo; no OpenShift ela roda com UID aleatório",
+      "aliases": ["unable to validate against any security context constraint", "restricted-v2", "must run as non-root", "runasuser"],
+      "tags": ["erro", "openshift"],
+      "steps": [
+        { "title": "Veja o erro no pod", "command": "oc logs NOME", "why": "Permission denied ao gravar em pastas da imagem é o sintoma típico." },
+        { "title": "Corrija a imagem", "why": "No Dockerfile, dê ao grupo 0 as permissões do dono nas pastas graváveis: RUN chgrp -R 0 /app && chmod -R g=u /app." },
+        { "title": "Escreva em volumes", "command": "oc set volume deployment/NOME --add --type=emptyDir --mount-path=/tmp", "why": "Pastas temporárias em emptyDir evitam gravar na imagem." },
+        { "title": "Qual SCC o pod recebeu", "command": "oc get pod NOME -o jsonpath='{.metadata.annotations.openshift\\.io/scc}'", "why": "Anotação openshift.io/scc." }
+      ],
+      "related": ["scc-kind", "error-permission-denied"],
+      "warnings": ["Liberar a SCC anyuid resolve rápido, mas deixa o container rodar como root: só com aprovação de quem administra o cluster."]
+    },
+    {
+      "id": "error-probe-failed",
+      "name": "Erro: Readiness/Liveness probe failed",
+      "kind": "recipe",
+      "summary": "A verificação de saúde do pod falhou: ele não recebe tráfego ou é reiniciado",
+      "aliases": ["readiness probe failed", "liveness probe failed", "startup probe failed"],
+      "tags": ["erro", "openshift"],
+      "steps": [
+        { "title": "Qual probe e por quê", "command": "oc describe pod NOME", "why": "Evento com o código HTTP ou o erro de conexão." },
+        { "title": "Caminho e porta", "command": "oc exec NOME -- curl -s -o /dev/null -w '%{http_code}' localhost:8080/actuator/health", "why": "Teste de dentro do pod." },
+        { "title": "Aplicação lenta para subir", "command": "oc set probe deployment/NOME --startup --get-url=http://:8080/actuator/health --failure-threshold=30 --period-seconds=5", "why": "Java e Spring demoram: use startupProbe ou aumente initialDelaySeconds." }
+      ],
+      "related": ["error-crashloopbackoff", "error-route-not-available"]
     }
   ]
 }

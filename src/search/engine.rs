@@ -9,32 +9,16 @@
 //! visited. The cost of a keystroke depends on how many tokens match, not on
 //! the size of the base. See [`super::ranking`].
 
-use std::collections::HashMap;
-use std::hash::{BuildHasherDefault, Hasher};
-
+use super::index::{self, Index, Indexed};
 use super::ranking::{self, Hit, MatchKind, TieBreak};
-use super::tokenizer::{
-    for_each_term, is_stopword, normalize, normalize_into, search_terms, terms,
-};
-use crate::knowledge::template::render_default;
-use crate::knowledge::{Entry, Repository};
+use super::tokenizer::{normalize, search_terms};
+use crate::knowledge::Repository;
 
-/// Per-entry data for whole-query matching (names are short).
-#[derive(Debug)]
-struct Indexed {
-    id: String,
-    name: String,
-    /// `name` as chars, for the typo check (avoids an allocation per query).
-    name_chars: Vec<char>,
-    name_tokens: Vec<String>,
-    aliases: Vec<String>,
-    /// Aliases with more than one word: index in `aliases`, word count.
-    phrases: Vec<(usize, u32)>,
-    tags: Vec<String>,
-    entry_kind: u8,
-}
+/// Index of the built-in knowledge, built at compile time by `build.rs`.
+const EMBEDDED_INDEX: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/index.bin"));
 
 /// Searchable fields, strongest first; the order breaks weight ties.
+/// Positions match the field numbers of [`index`].
 const FIELDS: [(MatchKind, usize); 7] = [
     (MatchKind::Token, 2),
     (MatchKind::Alias, 3),
@@ -49,17 +33,11 @@ const EXACT: u8 = 1;
 const STEM: u8 = 2;
 const PREFIX: u8 = 4;
 
-/// Search index built from a [`Repository`]. Hits refer to repository
-/// indices, so the engine never borrows the repository.
+/// Search over a [`Repository`]. Hits refer to repository indices, so the
+/// engine never borrows the repository.
 #[derive(Debug)]
 pub struct SearchEngine {
-    index: Vec<Indexed>,
-    /// Unique tokens of every field, sorted.
-    vocab: Vec<String>,
-    /// `(entry, field)` pairs of every token, field = index in [`FIELDS`];
-    /// token `t` owns `postings[offsets[t]..offsets[t + 1]]`.
-    postings: Vec<(u32, u8)>,
-    offsets: Vec<u32>,
+    index: Index,
 }
 
 /// Best match of one query term in one entry.
@@ -71,26 +49,35 @@ struct TermHit {
 }
 
 impl SearchEngine {
+    /// Uses the index built at compile time when the repository holds only
+    /// the built-in knowledge (the usual case: startup just decodes it);
+    /// with user knowledge files, indexes everything now.
     pub fn new(repo: &Repository) -> Self {
-        let mut builder = Builder::with_entries(repo.len());
-        let index = repo
-            .entries()
-            .iter()
-            .enumerate()
-            .map(|(i, e)| builder.entry(repo, i as u32, e))
-            .collect();
-        let (vocab, postings, offsets) = builder.finish();
+        if repo.builtin_only()
+            && let Some(index) = Index::decode(EMBEDDED_INDEX).filter(|i| i.matches(repo.entries()))
+        {
+            return Self { index };
+        }
+        Self::build(repo)
+    }
+
+    /// Indexes the repository now, ignoring the precompiled index.
+    pub fn build(repo: &Repository) -> Self {
         Self {
-            index,
-            vocab,
-            postings,
-            offsets,
+            index: index::build(repo.entries()),
         }
     }
 
     fn postings(&self, token: u32) -> &[(u32, u8)] {
         let t = token as usize;
-        &self.postings[self.offsets[t] as usize..self.offsets[t + 1] as usize]
+        let o = &self.index.offsets;
+        &self.index.postings[o[t] as usize..o[t + 1] as usize]
+    }
+
+    /// The whole query is a multi-word alias of a recipe or concept.
+    pub fn is_topic(&self, query: &str) -> bool {
+        let q = collapse(&normalize(query));
+        self.index.topics.binary_search(&q).is_ok()
     }
 
     /// Returns up to `limit` hits, best first.
@@ -104,7 +91,7 @@ impl SearchEngine {
             text: &q,
             chars: q.chars().collect(),
         };
-        let n = self.index.len();
+        let n = self.index.entries.len();
         let mut sum = vec![0u32; n];
         let mut matched = vec![0usize; n];
         let mut best: Vec<Option<(MatchKind, bool)>> = vec![None; n];
@@ -160,6 +147,7 @@ impl SearchEngine {
 
         let mut hits: Vec<Hit> = self
             .index
+            .entries
             .iter()
             .enumerate()
             .filter_map(|(i, e)| {
@@ -185,7 +173,7 @@ impl SearchEngine {
     fn term_matches(&self, term: &str, out: &mut Vec<(u32, u8)>) {
         out.clear();
         if term.len() < 2 {
-            if let Ok(i) = self.vocab.binary_search_by(|t| t.as_str().cmp(term)) {
+            if let Ok(i) = self.index.vocab.binary_search_by(|t| t.as_str().cmp(term)) {
                 out.push((i as u32, EXACT));
             }
             return;
@@ -195,8 +183,8 @@ impl SearchEngine {
             key_len -= 1;
         }
         let key = &term[..key_len];
-        let start = self.vocab.partition_point(|t| t.as_str() < key);
-        for (i, t) in self.vocab[start..].iter().enumerate() {
+        let start = self.index.vocab.partition_point(|t| t.as_str() < key);
+        for (i, t) in self.index.vocab[start..].iter().enumerate() {
             if !t.starts_with(key) {
                 break;
             }
@@ -219,233 +207,12 @@ impl SearchEngine {
     }
 
     fn tie(&self, hit: &Hit) -> TieBreak<'_> {
-        let e = &self.index[hit.index];
+        let e = &self.index.entries[hit.index];
         TieBreak {
             entry_kind: e.entry_kind,
             name: &e.name,
         }
     }
-}
-
-/// Collects the vocabulary and postings while entries are indexed. Built
-/// once at startup, so it avoids small allocations: pairs go to one flat
-/// list and field text is normalized into a reused buffer.
-struct Builder {
-    ids: HashMap<String, u32, BuildHasherDefault<WordHasher>>,
-    /// Whether each token is a stop word, decided once per unique token.
-    stop: Vec<bool>,
-    /// Last `(entry, field)` recorded for each token, to skip repeats.
-    last: Vec<(u32, u8)>,
-    /// `(token, entry, field)` in indexing order.
-    pairs: Vec<(u32, u32, u8)>,
-    buf: String,
-}
-
-impl Builder {
-    /// Sized from the number of entries (about 12 unique tokens and 60
-    /// postings each), so the collections rarely grow while indexing.
-    fn with_entries(entries: usize) -> Self {
-        Self {
-            ids: HashMap::with_capacity_and_hasher(entries * 12, Default::default()),
-            stop: Vec::with_capacity(entries * 12),
-            last: Vec::with_capacity(entries * 12),
-            pairs: Vec::with_capacity(entries * 64),
-            buf: String::with_capacity(4096),
-        }
-    }
-}
-
-/// Multiplicative hash (FxHash) for the tens of thousands of short words
-/// hashed at startup. The default SipHash resists adversarial keys, which a
-/// built-in vocabulary does not have, and costs several times more.
-#[derive(Default)]
-struct WordHasher(u64);
-
-impl Hasher for WordHasher {
-    fn write(&mut self, bytes: &[u8]) {
-        const K: u64 = 0x517c_c1b7_2722_0a95;
-        let (chunks, rest) = bytes.as_chunks::<8>();
-        for c in chunks {
-            let v = u64::from_le_bytes(*c);
-            self.0 = (self.0.rotate_left(5) ^ v).wrapping_mul(K);
-        }
-        for &b in rest {
-            self.0 = (self.0.rotate_left(5) ^ u64::from(b)).wrapping_mul(K);
-        }
-    }
-
-    fn finish(&self) -> u64 {
-        self.0
-    }
-}
-
-impl Builder {
-    fn entry(&mut self, repo: &Repository, index: u32, e: &Entry) -> Indexed {
-        let name = normalize_collapsed(&e.name);
-        let aliases: Vec<String> = e.aliases.iter().map(|a| normalize_collapsed(a)).collect();
-        let tags: Vec<String> = e.tags.iter().map(|t| normalize(t)).collect();
-
-        self.add_terms(index, 0, &name, false);
-        for a in &aliases {
-            self.add_terms(index, 1, a, true);
-        }
-        for t in &tags {
-            self.add(index, 2, t, false);
-        }
-
-        let mut buf = std::mem::take(&mut self.buf);
-        buf.clear();
-        push_all(&mut buf, [&e.summary]);
-        push_all(&mut buf, e.description.iter());
-        for s in &e.sections {
-            push_all(&mut buf, [&s.title]);
-            push_all(&mut buf, s.text.iter());
-            push_all(&mut buf, &s.items);
-            for row in &s.rows {
-                push_all(&mut buf, row);
-            }
-        }
-        self.add_terms(index, 3, &buf, true);
-
-        buf.clear();
-        for o in &e.options {
-            push_all(&mut buf, o.short.iter().chain(&o.long).chain(&o.arg));
-            push_all(&mut buf, [&o.description]);
-        }
-        self.add_terms(index, 4, &buf, true);
-
-        buf.clear();
-        for x in &e.examples {
-            push_command(&mut buf, &x.command);
-            push_all(&mut buf, [&x.description]);
-        }
-        for s in &e.steps {
-            push_all(&mut buf, [&s.title, &s.why]);
-            if let Some(c) = &s.command {
-                push_command(&mut buf, c);
-            }
-        }
-        self.add_terms(index, 5, &buf, true);
-
-        buf.clear();
-        for r in &e.related {
-            push_all(&mut buf, [r]);
-            if let Some(entry) = repo.get(r) {
-                push_all(&mut buf, [&entry.name]);
-            }
-        }
-        self.add_terms(index, 6, &buf, true);
-        self.buf = buf;
-
-        let mut name_tokens: Vec<String> = terms(&name).into_iter().map(str::to_string).collect();
-        name_tokens.sort();
-        name_tokens.dedup();
-        let phrases = aliases
-            .iter()
-            .enumerate()
-            .filter(|(_, a)| a.contains(' '))
-            .map(|(i, a)| (i, a.split(' ').count() as u32))
-            .collect();
-        Indexed {
-            id: e.id.clone(),
-            name_chars: name.chars().collect(),
-            name_tokens,
-            name,
-            aliases,
-            phrases,
-            tags,
-            entry_kind: e.kind.rank(),
-        }
-    }
-
-    fn add_terms(&mut self, entry: u32, field: u8, normalized: &str, drop_stopwords: bool) {
-        for_each_term(normalized, |t| self.add(entry, field, t, drop_stopwords));
-    }
-
-    fn add(&mut self, entry: u32, field: u8, token: &str, drop_stopwords: bool) {
-        let id = match self.ids.get(token) {
-            Some(&id) => id,
-            None => {
-                let id = self.stop.len() as u32;
-                self.ids.insert(token.to_string(), id);
-                self.stop.push(is_stopword(token));
-                self.last.push((u32::MAX, u8::MAX));
-                id
-            }
-        };
-        let i = id as usize;
-        if (drop_stopwords && self.stop[i]) || self.last[i] == (entry, field) {
-            return;
-        }
-        self.last[i] = (entry, field);
-        self.pairs.push((id, entry, field));
-    }
-
-    /// Sorted vocabulary with its postings, laid out by token. Stop words
-    /// seen only in fields that drop them have no postings and are left out.
-    fn finish(self) -> (Vec<String>, Vec<(u32, u8)>, Vec<u32>) {
-        let mut count = vec![0u32; self.stop.len()];
-        for &(token, ..) in &self.pairs {
-            count[token as usize] += 1;
-        }
-        let mut tokens: Vec<(String, u32)> = self
-            .ids
-            .into_iter()
-            .filter(|(_, id)| count[*id as usize] > 0)
-            .collect();
-        tokens.sort_unstable();
-        // Old id → position in the sorted vocabulary.
-        let mut rank = vec![u32::MAX; count.len()];
-        let mut offsets = Vec::with_capacity(tokens.len() + 1);
-        let mut vocab = Vec::with_capacity(tokens.len());
-        let mut total = 0u32;
-        for (new, (token, old)) in tokens.into_iter().enumerate() {
-            rank[old as usize] = new as u32;
-            offsets.push(total);
-            total += count[old as usize];
-            vocab.push(token);
-        }
-        offsets.push(total);
-        // Stable placement: each token keeps its pairs in indexing order.
-        let mut next: Vec<u32> = offsets[..vocab.len()].to_vec();
-        let mut postings = vec![(0u32, 0u8); total as usize];
-        for &(token, entry, field) in &self.pairs {
-            let slot = &mut next[rank[token as usize] as usize];
-            postings[*slot as usize] = (entry, field);
-            *slot += 1;
-        }
-        (vocab, postings, offsets)
-    }
-}
-
-/// Appends normalized `parts`, each followed by a space.
-fn push_all<'a>(buf: &mut String, parts: impl IntoIterator<Item = &'a String>) {
-    for p in parts {
-        normalize_into(buf, p);
-        buf.push(' ');
-    }
-}
-
-/// A command with its template placeholders rendered, normalized.
-fn push_command(buf: &mut String, command: &str) {
-    if command.contains("{{") {
-        normalize_into(buf, &render_default(command));
-    } else {
-        normalize_into(buf, command);
-    }
-    buf.push(' ');
-}
-
-/// `collapse(&normalize(s))` in one pass and one allocation.
-fn normalize_collapsed(s: &str) -> String {
-    let mut out = String::with_capacity(s.len());
-    for word in s.split_whitespace() {
-        if !out.is_empty() {
-            out.push(' ');
-        }
-        normalize_into(&mut out, word);
-    }
-    out
 }
 
 fn collapse(s: &str) -> String {
@@ -496,7 +263,7 @@ fn score(
 fn whole_query(e: &Indexed, query: &Query<'_>) -> Option<(u32, MatchKind)> {
     use MatchKind::*;
     let q = query.text;
-    if e.name == q || e.id == q {
+    if e.name == q || e.id == q || e.names.iter().any(|n| n == q) {
         return Some((Exact.tier(), Exact));
     }
     if e.name.starts_with(q) {
@@ -637,6 +404,17 @@ mod tests {
             .iter()
             .map(|h| repo.entry(h.index).id.clone())
             .collect()
+    }
+
+    #[test]
+    fn precompiled_index_matches_a_fresh_build() {
+        let (repo, _) = fixture();
+        let embedded = Index::decode(EMBEDDED_INDEX).expect("índice embutido válido");
+        assert!(
+            embedded == index::build(repo.entries()),
+            "o índice gerado pelo build.rs difere do construído agora"
+        );
+        assert!(embedded.matches(repo.entries()));
     }
 
     #[test]

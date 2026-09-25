@@ -1,0 +1,541 @@
+{
+  "category": "java",
+  "entries": [
+    {
+      "name": "java",
+      "kind": "command",
+      "summary": "Executa programas Java: classes, JARs ou um arquivo-fonte",
+      "description": "Opções começando com -X e -XX: ajustam a JVM (memória, coletor de lixo); -D define propriedades lidas pela aplicação (System.getProperty, Spring). java -version escreve em stderr.",
+      "usage": "java [OPÇÕES] CLASSE [ARGS] | java [OPÇÕES] -jar APP.jar [ARGS] | java Arquivo.java",
+      "install": "Debian/Ubuntu: sudo apt install openjdk-21-jdk (ou openjdk-17-jdk). Várias versões lado a lado: SDKMAN (sdk install java).",
+      "aliases": ["jvm", "rodar java", "executar jar", "run jar", "jre", "jdk", "java runtime"],
+      "tags": ["java", "jvm"],
+      "options": [
+        { "short": "-cp", "long": "--class-path", "arg": "CAMINHOS", "description": "Onde procurar as classes: pastas e JARs separados por : (; no Windows)" },
+        { "short": "-classpath", "arg": "CAMINHOS", "description": "O mesmo que -cp" },
+        { "short": "-jar", "arg": "ARQUIVO.jar", "description": "Executa um JAR executável (a classe principal vem do manifesto)" },
+        { "short": "-D", "arg": "PROPRIEDADE=VALOR", "description": "Propriedade de sistema: -Dspring.profiles.active=dev, -Dfile.encoding=UTF-8" },
+        { "short": "-Xmx", "arg": "TAMANHO", "prefix": true, "description": "Memória máxima do heap: -Xmx2g, -Xmx512m" },
+        { "short": "-Xms", "arg": "TAMANHO", "prefix": true, "description": "Heap inicial" },
+        { "short": "-Xss", "arg": "TAMANHO", "prefix": true, "description": "Pilha de cada thread (StackOverflowError em recursões profundas)" },
+        { "short": "-XX:", "arg": "OPÇÃO", "prefix": true, "description": "Opção avançada da JVM: -XX:+Liga, -XX:-Desliga, -XX:Nome=valor (ex.: -XX:MaxRAMPercentage=75, -XX:+HeapDumpOnOutOfMemoryError)" },
+        { "short": "-agentlib:", "arg": "AGENTE", "prefix": true, "description": "Agente nativo; -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005 abre depuração remota" },
+        { "short": "-javaagent:", "arg": "JAR", "prefix": true, "description": "Agente Java (APM, OpenTelemetry)" },
+        { "short": "-ea", "long": "--enable-assertions", "description": "Liga os assert" },
+        { "short": "-version", "description": "Versão (em stderr)" },
+        { "long": "--version", "description": "Versão (em stdout)" },
+        { "long": "--enable-preview", "description": "Permite recursos em prévia da linguagem" }
+      ],
+      "arguments": [
+        { "name": "CLASSE", "kind": "text", "description": "Classe com main, com o pacote (com.exemplo.App), sem .class" },
+        { "name": "ARGS", "kind": "text", "description": "Argumentos para o programa", "repeat": true }
+      ],
+      "examples": [
+        { "command": "java -version", "description": "Versão do Java em uso" },
+        { "command": "java -jar app.jar", "description": "Roda um JAR executável" },
+        { "command": "java -cp target/classes com.exemplo.App", "description": "Roda uma classe compilada" },
+        { "command": "java -Xmx2g -jar app.jar", "description": "Com até 2 GiB de heap" },
+        { "command": "java -Dspring.profiles.active=dev -jar app.jar", "description": "Ativa um profile do Spring" },
+        { "command": "java Ola.java", "description": "Roda um arquivo-fonte direto, sem javac (Java 11+)" },
+        { "command": "java -XX:+PrintFlagsFinal -version | grep -E 'MaxHeapSize|UseG1GC'", "description": "Valores padrão da JVM nesta máquina" },
+        { "command": "java -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005 -jar app.jar", "description": "Depuração remota na porta 5005" }
+      ],
+      "related": ["javac", "jar", "java-home", "classpath", "jcmd", "mvn"]
+    },
+    {
+      "name": "javac",
+      "kind": "command",
+      "summary": "Compila código Java (.java) em bytecode (.class)",
+      "usage": "javac [OPÇÕES] ARQUIVOS.java",
+      "install": "Vem com o JDK: sudo apt install openjdk-21-jdk (só o JRE não tem javac).",
+      "aliases": ["compilar java", "compile java", "compilador java"],
+      "tags": ["java", "compilação"],
+      "options": [
+        { "short": "-d", "arg": "DIR", "description": "Pasta onde gravar os .class (cria a árvore de pacotes)" },
+        { "short": "-cp", "long": "--class-path", "arg": "CAMINHOS", "description": "Classes e JARs de que o código depende" },
+        { "long": "--release", "arg": "VERSÃO", "description": "Compila para rodar em uma versão do Java (ex.: --release 17)" },
+        { "short": "-encoding", "arg": "CHARSET", "description": "Codificação dos fontes (UTF-8)" },
+        { "short": "-g", "description": "Inclui informações de depuração" },
+        { "short": "-Xlint", "arg": "AVISOS", "prefix": true, "description": "Avisos extras: -Xlint:all, -Xlint:unchecked" },
+        { "short": "-Werror", "description": "Trata avisos como erros" }
+      ],
+      "arguments": [
+        { "name": "ARQUIVOS", "kind": "path", "description": "Arquivos .java", "repeat": true }
+      ],
+      "examples": [
+        { "command": "javac Ola.java && java Ola", "description": "Compila e roda uma classe sem pacote" },
+        { "command": "javac -d out $(find src -name '*.java')", "description": "Compila um projeto inteiro para out/" },
+        { "command": "java -cp out com.exemplo.App", "description": "Roda o resultado" },
+        { "command": "javac --release 17 -d out src/com/exemplo/*.java", "description": "Gera bytecode que roda no Java 17" },
+        { "command": "javac -Xlint:all Ola.java", "description": "Com todos os avisos" }
+      ],
+      "related": ["java", "jar", "mvn", "java-compile-run"]
+    },
+    {
+      "name": "jar",
+      "kind": "command",
+      "summary": "Cria, lista e extrai arquivos JAR",
+      "description": "A forma clássica usa letras sem hífen, como o tar: c cria, t lista, x extrai, f indica o arquivo, v detalha, e define a classe principal. Um JAR é um zip: unzip -l também lista.",
+      "usage": "jar {c|t|x}[vfe] [ARQUIVO.jar] [CLASSE] [ARQUIVOS]",
+      "aliases": ["arquivo jar", "listar jar", "extrair jar", "criar jar", "manifest"],
+      "tags": ["java", "empacotamento"],
+      "options": [
+        { "short": "-C", "arg": "DIR", "description": "Entra na pasta antes de adicionar os arquivos" },
+        { "long": "--list", "description": "Lista o conteúdo (forma nova)" },
+        { "long": "--file", "arg": "ARQUIVO.jar", "description": "O JAR (forma nova)" }
+      ],
+      "arguments": [
+        { "name": "OPERAÇÃO", "kind": "text", "description": "Letras sem hífen: c cria, t lista, x extrai, f arquivo, v detalhado, e classe principal" }
+      ],
+      "examples": [
+        { "command": "jar tf app.jar", "description": "Lista o conteúdo" },
+        { "command": "jar tf app.jar | grep Pedido", "description": "A classe está no JAR?" },
+        { "command": "jar xf app.jar META-INF/MANIFEST.MF", "description": "Extrai só o manifesto" },
+        { "command": "jar cfe app.jar com.exemplo.App -C out .", "description": "Cria um JAR executável a partir de out/" },
+        { "command": "unzip -p app.jar META-INF/MANIFEST.MF", "description": "Lê o manifesto sem extrair" }
+      ],
+      "related": ["java", "javac", "unzip"]
+    },
+    {
+      "name": "jps",
+      "kind": "command",
+      "summary": "Lista as JVMs em execução, com PID e classe principal",
+      "usage": "jps [-l] [-v]",
+      "aliases": ["processos java", "pid do java", "quais java estão rodando"],
+      "tags": ["java", "diagnóstico", "processos"],
+      "options": [
+        { "short": "-l", "description": "Nome completo da classe principal ou caminho do JAR" },
+        { "short": "-v", "description": "Argumentos passados à JVM" },
+        { "short": "-m", "description": "Argumentos passados ao main" }
+      ],
+      "examples": [
+        { "command": "jps -lv", "description": "Cada JVM com seu JAR e suas opções" },
+        { "command": "pgrep -af java", "description": "Alternativa sem o JDK" }
+      ],
+      "related": ["jcmd", "jstack", "ps"]
+    },
+    {
+      "name": "jstack",
+      "kind": "command",
+      "summary": "Mostra a pilha de todas as threads de uma JVM (thread dump)",
+      "description": "Serve para aplicação travada, lenta ou em deadlock: tire dois ou três dumps com alguns segundos de intervalo e compare onde as threads estão paradas.",
+      "usage": "jstack [-l] PID",
+      "aliases": ["thread dump", "aplicação java travada", "deadlock java", "java travou"],
+      "tags": ["java", "diagnóstico"],
+      "options": [
+        { "short": "-l", "description": "Inclui informações de locks" }
+      ],
+      "arguments": [
+        { "name": "PID", "kind": "number", "description": "PID da JVM (veja com jps)" }
+      ],
+      "examples": [
+        { "command": "jstack -l 1234 > threads-1.txt", "description": "Grava um thread dump" },
+        { "command": "jcmd 1234 Thread.print", "description": "O mesmo com jcmd" },
+        { "command": "kill -3 1234", "description": "Pede o dump pelo sinal QUIT: sai no log da aplicação" }
+      ],
+      "related": ["jcmd", "jps", "jvm-diagnose"]
+    },
+    {
+      "name": "jcmd",
+      "kind": "command",
+      "summary": "Envia comandos de diagnóstico a uma JVM em execução",
+      "usage": "jcmd [PID COMANDO]",
+      "aliases": ["heap dump", "diagnóstico da jvm", "flags da jvm", "memória do java"],
+      "tags": ["java", "diagnóstico", "memória"],
+      "arguments": [
+        { "name": "PID", "kind": "number", "description": "PID da JVM (sem argumentos, jcmd lista as JVMs)" },
+        { "name": "COMANDO", "kind": "text", "description": "VM.flags, GC.heap_info, Thread.print, GC.heap_dump... (help lista todos)" }
+      ],
+      "examples": [
+        { "command": "jcmd", "description": "Lista as JVMs" },
+        { "command": "jcmd 1234 help", "description": "Comandos disponíveis" },
+        { "command": "jcmd 1234 VM.flags", "description": "Opções efetivas (heap máximo, coletor)" },
+        { "command": "jcmd 1234 GC.heap_info", "description": "Uso do heap agora" },
+        { "command": "jcmd 1234 GC.heap_dump /tmp/heap.hprof", "description": "Heap dump para analisar vazamento (arquivo grande)" },
+        { "command": "jcmd 1234 Thread.print", "description": "Thread dump" },
+        { "command": "jcmd 1234 VM.system_properties", "description": "Propriedades -D em uso" }
+      ],
+      "related": ["jps", "jstack", "jvm-diagnose", "error-java-heap-space"]
+    },
+    {
+      "name": "keytool",
+      "kind": "command",
+      "summary": "Gerencia chaves e certificados do Java (keystores e o truststore cacerts)",
+      "description": "O Java não usa os certificados do sistema: ele confia no próprio arquivo cacerts. Atrás de um proxy corporativo que inspeciona HTTPS, é preciso importar a CA do proxy nele (erro PKIX).",
+      "usage": "keytool -list | -importcert | -printcert | -genkeypair [OPÇÕES]",
+      "aliases": ["cacerts", "truststore", "keystore", "importar certificado java", "certificado java"],
+      "tags": ["java", "certificados", "segurança"],
+      "options": [
+        { "short": "-list", "description": "Lista as entradas" },
+        { "short": "-importcert", "description": "Importa um certificado" },
+        { "short": "-printcert", "description": "Mostra um certificado (-sslserver HOST:PORTA lê o de um servidor)" },
+        { "short": "-sslserver", "arg": "HOST:PORTA", "description": "Com -printcert: busca o certificado no servidor" },
+        { "short": "-genkeypair", "description": "Gera um par de chaves" },
+        { "short": "-cacerts", "description": "Usa o truststore padrão do JDK" },
+        { "short": "-keystore", "arg": "ARQUIVO", "description": "Keystore a usar" },
+        { "short": "-alias", "arg": "NOME", "description": "Nome da entrada" },
+        { "short": "-file", "arg": "ARQUIVO", "description": "Certificado a importar ou exportar" },
+        { "short": "-storepass", "arg": "SENHA", "description": "Senha do keystore (a do cacerts é changeit)" },
+        { "short": "-noprompt", "description": "Não pede confirmação" }
+      ],
+      "examples": [
+        { "command": "keytool -printcert -sslserver repo.maven.apache.org:443", "description": "Certificado que o servidor (ou o proxy) apresenta" },
+        { "command": "sudo keytool -importcert -cacerts -alias proxy-empresa -file proxy.crt -storepass changeit -noprompt", "description": "Faz o Java confiar na CA do proxy" },
+        { "command": "keytool -list -cacerts -storepass changeit | grep -i empresa", "description": "Confere se entrou" },
+        { "command": "keytool -genkeypair -alias app -keyalg RSA -keysize 2048 -keystore app.p12 -storetype PKCS12", "description": "Keystore para HTTPS da aplicação" }
+      ],
+      "related": ["error-pkix", "certificate-error", "openssl", "java-home"],
+      "warnings": ["Cada JDK tem o seu cacerts: importe no JDK que o programa usa (java -version, JAVA_HOME)."]
+    },
+    {
+      "name": "mvn",
+      "kind": "command",
+      "summary": "Maven: compila, testa, empacota e gerencia dependências de projetos Java",
+      "description": "Fases rodam em ordem e cada uma inclui as anteriores: validate → compile → test → package → verify → install → deploy. Vários passos podem vir juntos (mvn clean install). Goals de plugins usam plugin:goal (dependency:tree). ./mvnw usa a versão do Maven fixada no projeto.",
+      "usage": "mvn [OPÇÕES] FASE|PLUGIN:GOAL...",
+      "install": "Debian/Ubuntu: sudo apt install maven. Projetos com ./mvnw não precisam do Maven instalado, só do Java.",
+      "aliases": ["maven", "mvnw", "build java", "pom.xml", "compilar projeto java", "maven build"],
+      "tags": ["java", "maven", "build"],
+      "options": [
+        { "short": "-D", "arg": "PROPRIEDADE=VALOR", "description": "Propriedade: -DskipTests, -Dtest=Classe#metodo, -Dmaven.compiler.release=17" },
+        { "short": "-P", "arg": "PERFIS", "description": "Ativa profiles do pom.xml (-Pprod ou -P prod,docker)" },
+        { "short": "-pl", "long": "--projects", "arg": "MÓDULOS", "description": "Só estes módulos de um projeto multi-módulo" },
+        { "short": "-am", "long": "--also-make", "description": "Com -pl: também constrói os módulos dos quais eles dependem" },
+        { "short": "-o", "long": "--offline", "description": "Sem rede: só o repositório local (~/.m2)" },
+        { "short": "-U", "long": "--update-snapshots", "description": "Força baixar de novo SNAPSHOTs e metadados" },
+        { "short": "-q", "long": "--quiet", "description": "Só mostra erros" },
+        { "short": "-X", "long": "--debug", "description": "Saída de depuração (muito detalhada)" },
+        { "short": "-e", "long": "--errors", "description": "Mostra o stack trace dos erros" },
+        { "short": "-T", "long": "--threads", "arg": "N", "description": "Build paralelo (-T 1C = uma thread por núcleo)" },
+        { "short": "-f", "long": "--file", "arg": "POM", "description": "Usa outro pom.xml" },
+        { "short": "-s", "long": "--settings", "arg": "SETTINGS", "description": "Usa outro settings.xml (proxy, mirrors, credenciais)" },
+        { "short": "-B", "long": "--batch-mode", "description": "Sem cores nem perguntas (scripts e CI)" },
+        { "short": "-v", "long": "--version", "description": "Versões do Maven e do Java que ele usa" }
+      ],
+      "examples": [
+        { "command": "mvn clean install", "description": "Build completo: apaga target/, compila, testa, empacota e instala no ~/.m2" },
+        { "command": "mvn -DskipTests package", "description": "Gera o JAR sem rodar os testes" },
+        { "command": "mvn test -Dtest=PedidoServiceTest", "description": "Roda uma classe de teste" },
+        { "command": "mvn test -Dtest='PedidoServiceTest#deveCalcularTotal'", "description": "Roda um método de teste" },
+        { "command": "mvn dependency:tree -Dincludes=org.slf4j", "description": "De onde vem uma dependência" },
+        { "command": "mvn -pl api -am package", "description": "Só o módulo api e o que ele precisa" },
+        { "command": "./mvnw spring-boot:run", "description": "Sobe a aplicação Spring Boot com o Maven do projeto" },
+        { "command": "mvn -v", "description": "Qual Java o Maven está usando" },
+        { "command": "mvn -U clean install", "description": "Rebaixa dependências SNAPSHOT" }
+      ],
+      "related": ["maven-lifecycle", "java", "java-home", "maven-settings", "maven-run-single-test"],
+      "phases": true,
+      "names": ["mvnw", "maven"]
+    },
+    {
+      "id": "mvn-clean",
+      "name": "mvn clean",
+      "kind": "command",
+      "parent": "mvn",
+      "summary": "Apaga a pasta target/ (resultados de builds anteriores)",
+      "aliases": ["limpar build maven"],
+      "examples": [
+        { "command": "mvn clean", "description": "Apaga target/" },
+        { "command": "mvn clean package", "description": "Build do zero" }
+      ],
+      "related": ["mvn-package", "mvn-install"]
+    },
+    {
+      "id": "mvn-compile",
+      "name": "mvn compile",
+      "kind": "command",
+      "parent": "mvn",
+      "summary": "Compila o código principal (src/main/java)",
+      "examples": [
+        { "command": "mvn compile", "description": "Só compila" },
+        { "command": "mvn -q compile", "description": "Mostra só os erros de compilação" }
+      ],
+      "related": ["mvn-test", "error-maven-compilation-failure"]
+    },
+    {
+      "id": "mvn-test",
+      "name": "mvn test",
+      "kind": "command",
+      "parent": "mvn",
+      "summary": "Compila e roda os testes unitários (plugin Surefire)",
+      "aliases": ["testes maven", "rodar testes java", "maven test"],
+      "examples": [
+        { "command": "mvn test", "description": "Todos os testes" },
+        { "command": "mvn test -Dtest=PedidoServiceTest", "description": "Uma classe" },
+        { "command": "mvn test -Dtest='Pedido*Test'", "description": "Classes que casam com o padrão" },
+        { "command": "mvn test -Dsurefire.failIfNoSpecifiedTests=false -pl api -Dtest=PedidoServiceTest", "description": "Um teste em projeto multi-módulo" }
+      ],
+      "related": ["maven-run-single-test", "error-maven-tests-failed"]
+    },
+    {
+      "id": "mvn-package",
+      "name": "mvn package",
+      "kind": "command",
+      "parent": "mvn",
+      "summary": "Gera o artefato (JAR ou WAR) em target/, depois de compilar e testar",
+      "aliases": ["gerar jar maven", "empacotar"],
+      "examples": [
+        { "command": "mvn package", "description": "Gera target/*.jar" },
+        { "command": "mvn -DskipTests package", "description": "Sem rodar os testes" }
+      ],
+      "related": ["mvn-install", "maven-skip-tests"]
+    },
+    {
+      "id": "mvn-verify",
+      "name": "mvn verify",
+      "kind": "command",
+      "parent": "mvn",
+      "summary": "Roda os testes de integração (plugin Failsafe) e as verificações de qualidade",
+      "examples": [
+        { "command": "mvn verify", "description": "Tudo até as verificações finais" }
+      ],
+      "related": ["mvn-test", "mvn-install"]
+    },
+    {
+      "id": "mvn-install",
+      "name": "mvn install",
+      "kind": "command",
+      "parent": "mvn",
+      "summary": "Instala o artefato no repositório local (~/.m2) para outros projetos usarem",
+      "aliases": ["maven install", "instalar no m2"],
+      "examples": [
+        { "command": "mvn clean install", "description": "Build completo" },
+        { "command": "mvn install -DskipTests", "description": "Instala sem testes" }
+      ],
+      "related": ["mvn-package", "mvn-deploy"]
+    },
+    {
+      "id": "mvn-deploy",
+      "name": "mvn deploy",
+      "kind": "command",
+      "parent": "mvn",
+      "summary": "Publica o artefato no repositório remoto (Nexus, Artifactory)",
+      "examples": [
+        { "command": "mvn deploy -DskipTests", "description": "Publica (as credenciais ficam no settings.xml)" }
+      ],
+      "related": ["mvn-install", "maven-settings"]
+    },
+    {
+      "id": "mvn-dependency-tree",
+      "name": "mvn dependency:tree",
+      "kind": "command",
+      "parent": "mvn",
+      "summary": "Árvore de dependências, com as transitivas: mostra conflitos de versão",
+      "aliases": ["árvore de dependências", "dependency tree", "conflito de versão maven", "de onde vem essa dependência"],
+      "examples": [
+        { "command": "mvn dependency:tree", "description": "Árvore completa" },
+        { "command": "mvn dependency:tree -Dincludes=com.fasterxml.jackson.core", "description": "Só um grupo" },
+        { "command": "mvn dependency:tree -Dverbose", "description": "Inclui as versões descartadas por conflito" }
+      ],
+      "related": ["maven-dependency-conflict"]
+    },
+    {
+      "id": "mvn-spring-boot-run",
+      "name": "mvn spring-boot:run",
+      "kind": "command",
+      "parent": "mvn",
+      "summary": "Sobe uma aplicação Spring Boot a partir do código",
+      "aliases": ["rodar spring boot", "subir aplicação spring", "spring boot run"],
+      "examples": [
+        { "command": "./mvnw spring-boot:run", "description": "Sobe a aplicação" },
+        { "command": "./mvnw spring-boot:run -Dspring-boot.run.profiles=dev", "description": "Com um profile" },
+        { "command": "./mvnw spring-boot:run -Dspring-boot.run.jvmArguments='-Xmx1g'", "description": "Com opções da JVM" }
+      ],
+      "related": ["java", "mvn-package"]
+    },
+    {
+      "id": "mvn-versions-display-dependency-updates",
+      "name": "mvn versions:display-dependency-updates",
+      "kind": "command",
+      "parent": "mvn",
+      "summary": "Lista dependências que têm versões mais novas",
+      "aliases": ["dependências desatualizadas maven", "atualizar dependências maven"],
+      "examples": [
+        { "command": "mvn versions:display-dependency-updates", "description": "O que pode ser atualizado" }
+      ],
+      "related": ["mvn-dependency-tree"]
+    },
+    {
+      "id": "mvn-help-effective-pom",
+      "name": "mvn help:effective-pom",
+      "kind": "command",
+      "parent": "mvn",
+      "summary": "Mostra o pom.xml final, com herança, profiles e propriedades aplicados",
+      "aliases": ["effective pom", "pom efetivo"],
+      "examples": [
+        { "command": "mvn help:effective-pom -Doutput=efetivo.xml", "description": "Grava em arquivo" }
+      ],
+      "related": ["maven-lifecycle"]
+    },
+    {
+      "id": "java-home",
+      "name": "JAVA_HOME",
+      "kind": "concept",
+      "summary": "Variável que diz ao Maven, ao Gradle e às IDEs qual JDK usar",
+      "description": "O java do PATH e o JAVA_HOME podem apontar para JDKs diferentes: é o motivo clássico de \"no terminal funciona, no Maven não\". mvn -v mostra qual o Maven usa.",
+      "aliases": ["java_home", "qual jdk", "versão do java do maven", "jdk padrão"],
+      "tags": ["java", "variáveis"],
+      "examples": [
+        { "command": "echo $JAVA_HOME", "description": "JDK configurado" },
+        { "command": "readlink -f $(which java)", "description": "JDK do java que está no PATH" },
+        { "command": "ls /usr/lib/jvm", "description": "JDKs instalados (Debian/Ubuntu)" },
+        { "command": "export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64", "description": "Troca para esta sessão (salve no ~/.bashrc)" },
+        { "command": "mvn -v", "description": "Confirma o Java do Maven" }
+      ],
+      "related": ["java", "java-switch-version", "environment-variables"]
+    },
+    {
+      "id": "classpath",
+      "name": "Classpath",
+      "kind": "concept",
+      "summary": "Lista de pastas e JARs onde a JVM procura as classes",
+      "description": "As pastas devem ser a raiz dos pacotes: a classe com.exemplo.App fica em RAIZ/com/exemplo/App.class, e é RAIZ que vai no -cp. JARs entram pelo caminho do arquivo; pasta/* inclui todos os JARs da pasta.",
+      "aliases": ["class path", "-cp", "classpath java"],
+      "tags": ["java"],
+      "examples": [
+        { "command": "java -cp out:lib/* com.exemplo.App", "description": "Pasta de classes mais todos os JARs de lib/" },
+        { "command": "mvn dependency:build-classpath", "description": "O classpath que o Maven montou" }
+      ],
+      "related": ["java", "error-class-not-found", "error-main-class"]
+    },
+    {
+      "id": "maven-lifecycle",
+      "name": "Ciclo de vida do Maven",
+      "kind": "concept",
+      "summary": "As fases de um build Maven, em ordem: cada uma roda as anteriores",
+      "aliases": ["fases do maven", "maven lifecycle", "maven phases", "goals maven"],
+      "tags": ["java", "maven"],
+      "examples": [
+        { "command": "mvn clean verify", "description": "Build completo sem instalar" }
+      ],
+      "sections": [
+        {
+          "title": "Fases",
+          "rows": [
+            ["validate", "confere se o projeto está correto"],
+            ["compile", "compila src/main/java"],
+            ["test", "roda os testes unitários (Surefire)"],
+            ["package", "gera o JAR ou WAR em target/"],
+            ["verify", "testes de integração (Failsafe) e verificações"],
+            ["install", "copia o artefato para o ~/.m2 local"],
+            ["deploy", "publica no repositório remoto"]
+          ]
+        },
+        {
+          "title": "Além disso",
+          "items": ["clean é outro ciclo: só apaga target/ (mvn clean install roda os dois)", "plugin:goal roda um goal isolado, sem as fases (dependency:tree, spring-boot:run)"]
+        }
+      ],
+      "related": ["mvn", "mvn-test", "mvn-package", "mvn-install"]
+    },
+    {
+      "id": "maven-settings",
+      "name": "settings.xml do Maven",
+      "kind": "concept",
+      "summary": "Configuração do Maven do usuário: proxy, mirrors e credenciais de repositórios",
+      "description": "Fica em ~/.m2/settings.xml (o global, em $MAVEN_HOME/conf). Não vai para o repositório do projeto porque guarda senhas.",
+      "aliases": ["settings.xml", "proxy maven", "mirror maven", "nexus", "artifactory", ".m2"],
+      "tags": ["java", "maven", "configuração"],
+      "examples": [
+        { "command": "cat ~/.m2/settings.xml", "description": "Configuração atual" },
+        { "command": "mvn help:effective-settings", "description": "O que está valendo de fato" },
+        { "command": "ls ~/.m2/repository", "description": "O repositório local de dependências" }
+      ],
+      "sections": [
+        { "title": "Proxy", "text": "<settings>\n  <proxies>\n    <proxy>\n      <id>empresa</id>\n      <active>true</active>\n      <protocol>http</protocol>\n      <host>proxy.empresa.com</host>\n      <port>8080</port>\n      <nonProxyHosts>localhost|*.empresa.com</nonProxyHosts>\n    </proxy>\n  </proxies>\n</settings>" }
+      ],
+      "related": ["mvn", "error-maven-dependency-resolution", "error-pkix"]
+    },
+    {
+      "id": "java-compile-run",
+      "name": "Compilar e rodar Java sem Maven",
+      "kind": "recipe",
+      "summary": "javac, java e jar direto no terminal",
+      "aliases": ["compilar java", "rodar java", "compilar e executar java", "compile and run java", "hello world java"],
+      "tags": ["java"],
+      "steps": [
+        { "title": "Compile", "command": "javac -d out $(find src -name '*.java')", "why": "-d out cria a árvore de pacotes em out/." },
+        { "title": "Rode", "command": "java -cp out com.exemplo.App", "why": "Nome completo da classe, com pacote e sem .class." },
+        { "title": "Empacote", "command": "jar cfe app.jar com.exemplo.App -C out .", "why": "e define a classe principal no manifesto." },
+        { "title": "Rode o JAR", "command": "java -jar app.jar", "why": "Para um arquivo só, sem compilar: java Ola.java." }
+      ],
+      "related": ["javac", "java", "jar"]
+    },
+    {
+      "id": "maven-run-single-test",
+      "name": "Rodar um teste específico no Maven",
+      "kind": "recipe",
+      "summary": "Uma classe, um método ou um padrão de nomes",
+      "aliases": ["rodar um teste maven", "executar um teste java", "rodar só um teste maven", "rodar um teste java", "run single test maven", "-dtest"],
+      "tags": ["java", "maven", "testes"],
+      "examples": [
+        { "command": "mvn test -Dtest=PedidoServiceTest", "description": "Uma classe" },
+        { "command": "mvn test -Dtest='PedidoServiceTest#deveCalcularTotal'", "description": "Um método" },
+        { "command": "mvn test -Dtest='PedidoServiceTest#deve*'", "description": "Métodos que começam com deve" },
+        { "command": "mvn verify -Dit.test=PedidoIT", "description": "Um teste de integração (Failsafe)" },
+        { "command": "mvn test -pl api -Dtest=PedidoServiceTest -Dsurefire.failIfNoSpecifiedTests=false", "description": "Em projeto multi-módulo" }
+      ],
+      "related": ["mvn-test", "error-maven-tests-failed"]
+    },
+    {
+      "id": "maven-skip-tests",
+      "name": "Pular os testes no Maven",
+      "kind": "recipe",
+      "summary": "Gerar o artefato sem rodar (ou sem compilar) os testes",
+      "aliases": ["pular testes", "skip tests", "sem testes maven", "skiptests"],
+      "tags": ["java", "maven", "testes"],
+      "examples": [
+        { "command": "mvn package -DskipTests", "description": "Compila os testes, mas não roda" },
+        { "command": "mvn package -Dmaven.test.skip=true", "description": "Nem compila os testes (quebra se outro módulo usa as classes de teste)" }
+      ],
+      "related": ["mvn-package", "mvn-test"]
+    },
+    {
+      "id": "java-switch-version",
+      "name": "Trocar a versão do Java",
+      "kind": "recipe",
+      "summary": "Escolher qual JDK roda no terminal e no Maven",
+      "aliases": ["trocar versão do java", "mudar versão do java", "mudar jdk", "java 17 e java 21", "switch java version", "sdkman"],
+      "tags": ["java"],
+      "steps": [
+        { "title": "Veja o atual", "command": "java -version; javac -version", "why": "java e javac podem vir de JDKs diferentes." },
+        { "title": "Troque o padrão do sistema", "command": "sudo update-alternatives --config java", "why": "Debian/Ubuntu: escolha na lista (faça o mesmo com javac)." },
+        { "title": "Ou só para o Maven e a sessão", "command": "export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64", "why": "O Maven segue o JAVA_HOME." },
+        { "title": "Com SDKMAN", "command": "sdk use java 21.0.4-tem", "why": "Várias versões por usuário, sem sudo." },
+        { "title": "Confira", "command": "mvn -v", "why": "Linha Java version: deve mostrar a nova." }
+      ],
+      "related": ["java-home", "java", "error-unsupported-class-version"]
+    },
+    {
+      "id": "maven-dependency-conflict",
+      "name": "Resolver conflito de versão de dependência (Maven)",
+      "kind": "recipe",
+      "summary": "NoSuchMethodError e afins: duas versões da mesma biblioteca no classpath",
+      "aliases": ["conflito de dependência", "nosuchmethoderror", "dependência duplicada", "versão errada da dependência"],
+      "tags": ["java", "maven", "dependências"],
+      "steps": [
+        { "title": "Ache quem traz cada versão", "command": "mvn dependency:tree -Dverbose -Dincludes=GRUPO:ARTEFATO", "why": "Mostra também as versões descartadas." },
+        { "title": "Fixe a versão", "why": "Declare a versão desejada em <dependencyManagement> do pom.xml: ela vale para as transitivas." },
+        { "title": "Ou exclua a transitiva", "why": "<exclusions> na dependência que traz a versão indesejada." },
+        { "title": "Confira", "command": "mvn dependency:tree -Dincludes=GRUPO:ARTEFATO", "why": "Deve sobrar uma versão só." }
+      ],
+      "related": ["mvn-dependency-tree", "classpath"]
+    },
+    {
+      "id": "jvm-diagnose",
+      "name": "Diagnosticar uma JVM lenta ou travada",
+      "kind": "recipe",
+      "summary": "Threads, memória e CPU de uma aplicação Java em execução",
+      "aliases": ["java lento", "aplicação java travada", "java consumindo cpu", "java usando muita memória", "diagnóstico java"],
+      "tags": ["java", "diagnóstico"],
+      "steps": [
+        { "title": "Ache o PID", "command": "jps -l", "why": "Cada JVM com seu JAR." },
+        { "title": "Memória", "command": "jcmd 1234 GC.heap_info", "why": "Heap usado versus máximo; perto do máximo, o GC trabalha sem parar." },
+        { "title": "Threads", "command": "jcmd 1234 Thread.print > dump-1.txt", "why": "Tire 2 ou 3 com intervalo: threads paradas no mesmo ponto indicam o gargalo." },
+        { "title": "Qual thread gasta CPU", "command": "top -H -p 1234", "why": "O TID em hexadecimal (printf '%x') é o nid= do thread dump." },
+        { "title": "Vazamento de memória", "command": "jcmd 1234 GC.heap_dump /tmp/heap.hprof", "why": "Abra no Eclipse MAT ou no VisualVM." }
+      ],
+      "related": ["jcmd", "jstack", "jps", "error-java-heap-space"]
+    }
+  ]
+}

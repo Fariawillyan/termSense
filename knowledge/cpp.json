@@ -1,0 +1,412 @@
+{
+  "category": "cpp",
+  "entries": [
+    {
+      "id": "gpp",
+      "name": "g++",
+      "kind": "command",
+      "summary": "Compilador C++ do GCC (gcc compila C, com as mesmas opções)",
+      "description": "Compila e liga em um passo só, ou em etapas (-c gera objetos, depois o g++ liga). Bibliotecas (-l) vêm depois dos arquivos que as usam.",
+      "usage": "g++ [OPÇÕES] ARQUIVOS... [-o SAÍDA]",
+      "install": "Debian/Ubuntu: sudo apt install build-essential (gcc, g++, make e cabeçalhos da libc).",
+      "aliases": ["gcc", "compilar c++", "compilar c", "compilador c++", "compile cpp"],
+      "tags": ["c++", "compilação"],
+      "options": [
+        { "short": "-o", "arg": "ARQUIVO", "description": "Nome do arquivo gerado (padrão: a.out)" },
+        { "short": "-c", "description": "Só compila para objeto (.o), sem ligar" },
+        { "short": "-std", "arg": "PADRÃO", "description": "Versão da linguagem: -std=c++17, -std=c++20, -std=c11" },
+        { "short": "-Wall", "description": "Liga os avisos mais importantes" },
+        { "short": "-Wextra", "description": "Avisos adicionais" },
+        { "short": "-Werror", "description": "Trata avisos como erros" },
+        { "short": "-Wpedantic", "description": "Avisa sobre extensões fora do padrão" },
+        { "short": "-W", "arg": "AVISO", "prefix": true, "description": "Liga um aviso específico: -Wshadow, -Wconversion" },
+        { "short": "-Wl,", "arg": "OPÇÕES", "prefix": true, "description": "Repassa opções ao linker, separadas por vírgula: -Wl,-rpath,/opt/lib" },
+        { "short": "-O", "arg": "NÍVEL", "description": "Otimização: -O0 (nenhuma, padrão), -O2 (produção), -O3, -Os (tamanho), -Og (depuração)" },
+        { "short": "-g", "description": "Inclui símbolos de depuração (para gdb e sanitizers)" },
+        { "short": "-I", "arg": "DIR", "description": "Pasta extra de cabeçalhos para #include (-Iinclude)" },
+        { "short": "-L", "arg": "DIR", "description": "Pasta extra de bibliotecas" },
+        { "short": "-l", "arg": "BIBLIOTECA", "description": "Liga uma biblioteca: -lpthread liga libpthread; vem depois dos arquivos" },
+        { "short": "-D", "arg": "MACRO", "description": "Define uma macro: -DDEBUG, -DVERSAO=2" },
+        { "short": "-fsanitize", "arg": "VERIFICADORES", "description": "Sanitizers: -fsanitize=address,undefined acha acesso inválido à memória e comportamento indefinido" },
+        { "short": "-f", "arg": "OPÇÃO", "prefix": true, "description": "Opção de geração de código: -fPIC, -fno-exceptions" },
+        { "short": "-march", "arg": "CPU", "description": "Gera código para uma CPU: -march=native usa tudo o que esta máquina tem" },
+        { "short": "-m", "arg": "OPÇÃO", "prefix": true, "description": "Opção de arquitetura: -m64, -mavx2" },
+        { "short": "-pthread", "description": "Suporte a threads (compilar e ligar)" },
+        { "short": "-shared", "description": "Gera uma biblioteca dinâmica (.so); use com -fPIC" },
+        { "short": "-E", "description": "Só roda o pré-processador" },
+        { "short": "-S", "description": "Gera assembly (.s)" },
+        { "short": "-v", "description": "Mostra os passos e as pastas de busca" }
+      ],
+      "arguments": [
+        { "name": "ARQUIVOS", "kind": "path", "description": "Fontes (.cpp, .c), objetos (.o) e bibliotecas (.a)", "repeat": true }
+      ],
+      "examples": [
+        { "command": "g++ -std=c++17 -Wall -Wextra -g -o app main.cpp", "description": "Compilação de desenvolvimento" },
+        { "command": "g++ -std=c++20 -O2 -o app *.cpp", "description": "Otimizado, vários arquivos" },
+        { "command": "gcc -Wall -o prog prog.c", "description": "Programa em C" },
+        { "command": "g++ -c util.cpp -o util.o", "description": "Só o objeto" },
+        { "command": "g++ main.o util.o -o app -lpthread", "description": "Liga objetos e bibliotecas" },
+        { "command": "g++ -g -fsanitize=address,undefined -o app main.cpp", "description": "Acha acessos inválidos à memória ao rodar" },
+        { "command": "g++ -Iinclude -Llib -o app src/main.cpp -lminhalib", "description": "Cabeçalhos e bibliotecas em pastas próprias" },
+        { "command": "g++ -std=c++17 -E main.cpp | less", "description": "Vê o código depois do pré-processador" }
+      ],
+      "related": ["clangpp", "make", "cmake", "compile-link", "error-undefined-reference"],
+      "names": ["gcc", "c++"]
+    },
+    {
+      "id": "clangpp",
+      "name": "clang++",
+      "kind": "command",
+      "summary": "Compilador C++ do LLVM, compatível com as opções do g++",
+      "description": "Aceita as mesmas flags do GCC e costuma dar mensagens de erro mais claras. clang compila C.",
+      "usage": "clang++ [OPÇÕES] ARQUIVOS... [-o SAÍDA]",
+      "install": "Debian/Ubuntu: sudo apt install clang.",
+      "aliases": ["clang", "llvm", "compilador clang"],
+      "tags": ["c++", "compilação"],
+      "options": [
+        { "short": "-o", "arg": "ARQUIVO", "description": "Nome do arquivo gerado (padrão: a.out)" },
+        { "short": "-c", "description": "Só compila para objeto (.o), sem ligar" },
+        { "short": "-std", "arg": "PADRÃO", "description": "Versão da linguagem: -std=c++17, -std=c++20, -std=c11" },
+        { "short": "-Wall", "description": "Liga os avisos mais importantes" },
+        { "short": "-Wextra", "description": "Avisos adicionais" },
+        { "short": "-Werror", "description": "Trata avisos como erros" },
+        { "short": "-Wpedantic", "description": "Avisa sobre extensões fora do padrão" },
+        { "short": "-W", "arg": "AVISO", "prefix": true, "description": "Liga um aviso específico: -Wshadow, -Wconversion" },
+        { "short": "-Wl,", "arg": "OPÇÕES", "prefix": true, "description": "Repassa opções ao linker, separadas por vírgula: -Wl,-rpath,/opt/lib" },
+        { "short": "-O", "arg": "NÍVEL", "description": "Otimização: -O0 (nenhuma, padrão), -O2 (produção), -O3, -Os (tamanho), -Og (depuração)" },
+        { "short": "-g", "description": "Inclui símbolos de depuração (para gdb e sanitizers)" },
+        { "short": "-I", "arg": "DIR", "description": "Pasta extra de cabeçalhos para #include (-Iinclude)" },
+        { "short": "-L", "arg": "DIR", "description": "Pasta extra de bibliotecas" },
+        { "short": "-l", "arg": "BIBLIOTECA", "description": "Liga uma biblioteca: -lpthread liga libpthread; vem depois dos arquivos" },
+        { "short": "-D", "arg": "MACRO", "description": "Define uma macro: -DDEBUG, -DVERSAO=2" },
+        { "short": "-fsanitize", "arg": "VERIFICADORES", "description": "Sanitizers: -fsanitize=address,undefined acha acesso inválido à memória e comportamento indefinido" },
+        { "short": "-f", "arg": "OPÇÃO", "prefix": true, "description": "Opção de geração de código: -fPIC, -fno-exceptions" },
+        { "short": "-march", "arg": "CPU", "description": "Gera código para uma CPU: -march=native usa tudo o que esta máquina tem" },
+        { "short": "-m", "arg": "OPÇÃO", "prefix": true, "description": "Opção de arquitetura: -m64, -mavx2" },
+        { "short": "-pthread", "description": "Suporte a threads (compilar e ligar)" },
+        { "short": "-shared", "description": "Gera uma biblioteca dinâmica (.so); use com -fPIC" },
+        { "short": "-E", "description": "Só roda o pré-processador" },
+        { "short": "-S", "description": "Gera assembly (.s)" },
+        { "short": "-v", "description": "Mostra os passos e as pastas de busca" }
+      ],
+      "arguments": [
+        { "name": "ARQUIVOS", "kind": "path", "description": "Fontes e objetos", "repeat": true }
+      ],
+      "examples": [
+        { "command": "clang++ -std=c++20 -Wall -g -o app main.cpp", "description": "Compilação de desenvolvimento" },
+        { "command": "clang++ -fsanitize=address -g -o app main.cpp", "description": "Com AddressSanitizer" },
+        { "command": "clang-tidy main.cpp -- -std=c++17", "description": "Análise estática (pacote clang-tidy)" }
+      ],
+      "related": ["gpp", "cmake"],
+      "names": ["clang"]
+    },
+    {
+      "name": "make",
+      "kind": "command",
+      "summary": "Executa as regras de um Makefile, recompilando só o que mudou",
+      "usage": "make [OPÇÕES] [ALVO...] [VAR=VALOR]",
+      "install": "Debian/Ubuntu: sudo apt install make (vem no build-essential).",
+      "aliases": ["makefile", "compilar com make", "make build"],
+      "tags": ["c++", "build"],
+      "options": [
+        { "short": "-j", "long": "--jobs", "arg": "N", "description": "Tarefas em paralelo: -j$(nproc) usa todos os núcleos" },
+        { "short": "-C", "long": "--directory", "arg": "DIR", "description": "Roda em outra pasta (como cd DIR && make)" },
+        { "short": "-f", "long": "--file", "arg": "ARQUIVO", "description": "Usa outro Makefile" },
+        { "short": "-n", "long": "--dry-run", "description": "Mostra os comandos sem executar" },
+        { "short": "-B", "long": "--always-make", "description": "Refaz tudo, mesmo o que está em dia" },
+        { "short": "-k", "long": "--keep-going", "description": "Continua depois de um erro" }
+      ],
+      "arguments": [
+        { "name": "ALVO", "kind": "text", "description": "Regras do Makefile: all (padrão), clean, install, test...", "repeat": true }
+      ],
+      "examples": [
+        { "command": "make", "description": "Constrói o alvo padrão" },
+        { "command": "make -j$(nproc)", "description": "Em paralelo, um processo por núcleo" },
+        { "command": "make clean", "description": "Apaga os resultados" },
+        { "command": "make -C build", "description": "Constrói na pasta build/ (ex.: gerada pelo CMake)" },
+        { "command": "make VERBOSE=1", "description": "Mostra os comandos completos (Makefiles do CMake)" },
+        { "command": "make -n install", "description": "O que o install faria" }
+      ],
+      "related": ["cmake", "gpp"]
+    },
+    {
+      "name": "cmake",
+      "kind": "command",
+      "summary": "Configura e gera o build de projetos C/C++ a partir do CMakeLists.txt",
+      "description": "Dois passos: configurar (cmake -S . -B build gera os arquivos de build) e compilar (cmake --build build). A pasta de build fica separada do código; apagá-la é o jeito de reconfigurar do zero.",
+      "usage": "cmake -S FONTE -B BUILD [-D VAR=VALOR] | cmake --build BUILD [--target ALVO]",
+      "install": "Debian/Ubuntu: sudo apt install cmake (e ninja-build para usar -G Ninja).",
+      "aliases": ["cmakelists", "cmakelists.txt", "configurar projeto c++", "cmake build"],
+      "tags": ["c++", "build"],
+      "options": [
+        { "short": "-S", "arg": "DIR", "description": "Pasta do código (onde está o CMakeLists.txt)" },
+        { "short": "-B", "arg": "DIR", "description": "Pasta do build (criada se não existir)" },
+        { "short": "-G", "arg": "GERADOR", "description": "Ninja, \"Unix Makefiles\"..." },
+        { "short": "-D", "arg": "VAR=VALOR", "description": "Variável de cache: -DCMAKE_BUILD_TYPE=Release, -DCMAKE_PREFIX_PATH=/opt/lib" },
+        { "long": "--build", "arg": "DIR", "description": "Compila uma pasta de build já configurada" },
+        { "long": "--target", "arg": "ALVO", "description": "Com --build: só este alvo" },
+        { "short": "-j", "long": "--parallel", "arg": "N", "description": "Com --build: tarefas em paralelo" },
+        { "long": "--config", "arg": "CONFIG", "description": "Com --build em geradores multi-config: Debug, Release" },
+        { "long": "--install", "arg": "DIR", "description": "Instala o que foi construído" },
+        { "long": "--prefix", "arg": "DIR", "description": "Com --install: onde instalar" },
+        { "long": "--preset", "arg": "NOME", "description": "Usa um preset do CMakePresets.json" },
+        { "long": "--list-presets", "description": "Lista os presets" },
+        { "long": "--fresh", "description": "Reconfigura do zero, ignorando o cache (CMake 3.24+)" }
+      ],
+      "examples": [
+        { "command": "cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug", "description": "Configura em build/" },
+        { "command": "cmake --build build -j", "description": "Compila em paralelo" },
+        { "command": "cmake --build build --target testes", "description": "Só um alvo" },
+        { "command": "cmake -S . -B build -G Ninja", "description": "Usa o Ninja (mais rápido que make)" },
+        { "command": "cmake --install build --prefix ~/.local", "description": "Instala para o seu usuário" },
+        { "command": "cmake --preset debug", "description": "Configura por preset" },
+        { "command": "cmake -S . -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON", "description": "Gera compile_commands.json para a IDE e o clang-tidy" }
+      ],
+      "related": ["ctest", "make", "cpp-build-cmake", "error-cmake-package"]
+    },
+    {
+      "name": "ctest",
+      "kind": "command",
+      "summary": "Roda os testes registrados no CMake (add_test, gtest_discover_tests)",
+      "usage": "ctest --test-dir BUILD [OPÇÕES]",
+      "aliases": ["rodar testes cmake", "testes c++", "cmake test"],
+      "tags": ["c++", "testes"],
+      "options": [
+        { "long": "--test-dir", "arg": "DIR", "description": "Pasta de build (ou rode dentro dela)" },
+        { "short": "-R", "long": "--tests-regex", "arg": "REGEX", "kind": "regex", "description": "Só os testes cujo nome casa com a regex" },
+        { "short": "-E", "long": "--exclude-regex", "arg": "REGEX", "kind": "regex", "description": "Exclui os testes que casam" },
+        { "long": "--output-on-failure", "description": "Mostra a saída dos testes que falharam" },
+        { "short": "-j", "long": "--parallel", "arg": "N", "description": "Testes em paralelo" },
+        { "long": "--rerun-failed", "description": "Só os que falharam na última execução" },
+        { "long": "--repeat", "arg": "MODO:N", "description": "Repete: until-fail:20 acha testes instáveis" },
+        { "short": "-N", "long": "--show-only", "description": "Lista os testes sem rodar" },
+        { "short": "-V", "long": "--verbose", "description": "Saída completa" },
+        { "short": "-L", "long": "--label-regex", "arg": "REGEX", "description": "Só testes com o label" }
+      ],
+      "examples": [
+        { "command": "ctest --test-dir build --output-on-failure", "description": "Todos, mostrando as falhas" },
+        { "command": "ctest --test-dir build -R Pedido", "description": "Só os que têm Pedido no nome" },
+        { "command": "ctest --test-dir build --rerun-failed --output-on-failure", "description": "De novo só os que falharam" },
+        { "command": "ctest --test-dir build -j 8", "description": "Em paralelo" },
+        { "command": "ctest --test-dir build -N", "description": "Lista os testes" },
+        { "command": "ctest --test-dir build --repeat until-fail:50 -R Flaky", "description": "Caça um teste instável" }
+      ],
+      "related": ["cmake", "gtest", "gtest-run-one"]
+    },
+    {
+      "id": "gtest",
+      "name": "GoogleTest",
+      "kind": "concept",
+      "summary": "Framework de testes unitários C++: o binário de testes aceita as flags --gtest_*",
+      "description": "Os testes viram um executável do seu projeto (ex.: build/testes). Todas as flags também funcionam como variáveis de ambiente: --gtest_filter=X equivale a GTEST_FILTER=X.",
+      "aliases": ["googletest", "gtest", "google test", "gtest filter", "testes unitários c++", "unit test c++", "gmock"],
+      "tags": ["c++", "testes"],
+      "options": [
+        { "long": "--gtest_filter", "arg": "PADRÃO", "description": "Só os testes que casam: Suite.Teste, Suite.*, *Pedido*; depois de - vêm os excluídos (Suite.*-Suite.Lento)" },
+        { "long": "--gtest_list_tests", "description": "Lista os testes sem rodar" },
+        { "long": "--gtest_repeat", "arg": "N", "description": "Repete N vezes (-1 = para sempre): acha testes instáveis" },
+        { "long": "--gtest_shuffle", "description": "Embaralha a ordem: revela testes que dependem de outros" },
+        { "long": "--gtest_random_seed", "arg": "N", "description": "Semente do embaralhamento, para reproduzir" },
+        { "long": "--gtest_break_on_failure", "description": "Para no depurador na primeira falha" },
+        { "long": "--gtest_fail_fast", "description": "Para na primeira falha" },
+        { "long": "--gtest_output", "arg": "xml:ARQUIVO", "description": "Relatório JUnit XML (para CI)" },
+        { "long": "--gtest_brief", "arg": "1", "description": "Só mostra as falhas" },
+        { "long": "--gtest_also_run_disabled_tests", "description": "Roda também os DISABLED_" },
+        { "long": "--gtest_color", "arg": "yes|no|auto", "description": "Cores na saída" }
+      ],
+      "examples": [
+        { "command": "./build/testes --gtest_filter=PedidoTest.*", "description": "Só a suíte PedidoTest" },
+        { "command": "./build/testes --gtest_filter='*Pedido*-*Lento*'", "description": "Tudo com Pedido, menos os Lento" },
+        { "command": "./build/testes --gtest_list_tests", "description": "Nomes dos testes" },
+        { "command": "./build/testes --gtest_repeat=200 --gtest_break_on_failure --gtest_filter=Fila.Concorrente", "description": "Caça uma falha intermitente" },
+        { "command": "./build/testes --gtest_output=xml:relatorio.xml", "description": "Relatório para o CI" },
+        { "command": "GTEST_FILTER='PedidoTest.*' ctest --test-dir build -V", "description": "Filtro por variável de ambiente" }
+      ],
+      "sections": [
+        {
+          "title": "Macros",
+          "rows": [
+            ["TEST(Suite, Nome)", "um teste; o nome completo é Suite.Nome"],
+            ["TEST_F(Fixture, Nome)", "teste com SetUp/TearDown de uma classe fixture"],
+            ["EXPECT_EQ(a, b)", "falha, mas continua o teste"],
+            ["ASSERT_EQ(a, b)", "falha e encerra o teste"],
+            ["EXPECT_TRUE / EXPECT_FALSE", "condições"],
+            ["EXPECT_NEAR(a, b, erro)", "números de ponto flutuante"],
+            ["EXPECT_THROW(expr, Tipo)", "exceções"]
+          ]
+        }
+      ],
+      "related": ["ctest", "cmake", "gtest-run-one", "gtest-flaky"],
+      "flag_prefix": "--gtest_"
+    },
+    {
+      "name": "gdb",
+      "kind": "command",
+      "summary": "Depurador: roda o programa passo a passo e mostra onde ele quebrou",
+      "usage": "gdb [--args] PROGRAMA [ARGS] | gdb -p PID",
+      "install": "Debian/Ubuntu: sudo apt install gdb. Compile com -g para ver arquivos e linhas.",
+      "aliases": ["depurar c++", "debugger", "backtrace", "core dump", "debugar"],
+      "tags": ["c++", "depuração"],
+      "options": [
+        { "long": "--args", "description": "Tudo depois do programa vira argumento dele" },
+        { "short": "-p", "arg": "PID", "description": "Anexa a um processo em execução" },
+        { "short": "-ex", "arg": "COMANDO", "description": "Executa um comando do gdb ao iniciar" },
+        { "short": "-batch", "description": "Sai ao terminar os comandos (-ex)" }
+      ],
+      "examples": [
+        { "command": "gdb ./app", "description": "Abre; digite run para rodar" },
+        { "command": "gdb --args ./app --porta 8080", "description": "Com argumentos" },
+        { "command": "gdb -batch -ex run -ex bt ./app", "description": "Roda e mostra o backtrace se quebrar" },
+        { "command": "gdb ./app core", "description": "Analisa um core dump" },
+        { "command": "gdb -p 1234", "description": "Anexa a um processo travado" }
+      ],
+      "sections": [
+        {
+          "title": "Comandos",
+          "rows": [
+            ["run (r)", "roda o programa"],
+            ["bt", "pilha de chamadas (backtrace)"],
+            ["break arquivo.cpp:42 (b)", "ponto de parada"],
+            ["next (n) / step (s)", "próxima linha / entra na função"],
+            ["print var (p)", "mostra um valor"],
+            ["continue (c)", "continua até o próximo ponto de parada"],
+            ["quit (q)", "sai"]
+          ]
+        }
+      ],
+      "related": ["gpp", "valgrind", "cpp-debug-crash", "error-segfault"]
+    },
+    {
+      "name": "ldd",
+      "kind": "command",
+      "summary": "Lista as bibliotecas dinâmicas de que um executável precisa",
+      "usage": "ldd EXECUTÁVEL",
+      "aliases": ["bibliotecas do executável", "biblioteca não encontrada", "shared library", ".so"],
+      "tags": ["c++", "bibliotecas"],
+      "examples": [
+        { "command": "ldd ./app", "description": "Cada biblioteca e onde foi achada" },
+        { "command": "ldd ./app | grep 'not found'", "description": "Só as que faltam" },
+        { "command": "export LD_LIBRARY_PATH=/opt/minhalib/lib:$LD_LIBRARY_PATH", "description": "Pasta extra de bibliotecas (esta sessão)" }
+      ],
+      "related": ["gpp", "error-shared-library"],
+      "warnings": ["Não use ldd em executáveis de origem desconhecida: ele pode executar código deles. Prefira objdump -p ARQUIVO | grep NEEDED."]
+    },
+    {
+      "name": "valgrind",
+      "kind": "command",
+      "wrapper": true,
+      "summary": "Acha vazamentos de memória e acessos inválidos, rodando o programa sob inspeção",
+      "usage": "valgrind [OPÇÕES] PROGRAMA [ARGS]",
+      "install": "Debian/Ubuntu: sudo apt install valgrind.",
+      "aliases": ["vazamento de memória", "memory leak", "leak c++"],
+      "tags": ["c++", "memória", "depuração"],
+      "options": [
+        { "long": "--leak-check", "arg": "MODO", "description": "full detalha cada vazamento" },
+        { "long": "--track-origins", "arg": "yes", "description": "Mostra de onde veio o valor não inicializado" },
+        { "long": "--show-leak-kinds", "arg": "TIPOS", "description": "all inclui os ainda alcançáveis" }
+      ],
+      "examples": [
+        { "command": "valgrind --leak-check=full ./app", "description": "Vazamentos com a pilha de onde a memória foi alocada" },
+        { "command": "valgrind --track-origins=yes ./app", "description": "Uso de variáveis não inicializadas" }
+      ],
+      "related": ["gdb", "gpp", "cpp-debug-crash"]
+    },
+    {
+      "id": "compile-link",
+      "name": "Compilação e linkagem",
+      "kind": "concept",
+      "summary": "As etapas que transformam fontes C/C++ em executável, e o erro típico de cada uma",
+      "aliases": ["compilação c++", "linker", "linkagem", "linkedição", "objeto .o"],
+      "tags": ["c++", "compilação"],
+      "examples": [
+        { "command": "g++ -c a.cpp -o a.o && g++ -c b.cpp -o b.o && g++ a.o b.o -o app", "description": "As etapas separadas" },
+        { "command": "nm -C app.o | grep ' U '", "description": "Símbolos que o objeto usa, mas não define" }
+      ],
+      "sections": [
+        {
+          "title": "Etapas",
+          "rows": [
+            ["pré-processador", "resolve #include e #define; erro típico: arquivo.h: No such file or directory"],
+            ["compilador", "gera um objeto (.o) por arquivo; erros de sintaxe e de tipos, com arquivo:linha"],
+            ["linker (ld)", "junta objetos e bibliotecas; erros: undefined reference, multiple definition, cannot find -l"]
+          ]
+        }
+      ],
+      "related": ["gpp", "error-undefined-reference", "error-include-not-found"]
+    },
+    {
+      "id": "cpp-compile-simple",
+      "name": "Compilar um programa C++ simples",
+      "kind": "recipe",
+      "summary": "Um ou poucos arquivos, sem CMake",
+      "aliases": ["compilar c++", "compilar programa c++", "hello world c++", "compile c++"],
+      "tags": ["c++"],
+      "steps": [
+        { "title": "Compile", "command": "g++ -std=c++17 -Wall -Wextra -g -o app main.cpp", "why": "-g para depurar; troque por -O2 na versão final." },
+        { "title": "Rode", "command": "./app", "why": "O executável fica na pasta atual." },
+        { "title": "Vários arquivos", "command": "g++ -std=c++17 -o app src/*.cpp -lpthread", "why": "Liste todos os .cpp; bibliotecas (-l) no fim." }
+      ],
+      "related": ["gpp", "make", "cpp-build-cmake"]
+    },
+    {
+      "id": "cpp-build-cmake",
+      "name": "Compilar um projeto CMake",
+      "kind": "recipe",
+      "summary": "Configurar, compilar e testar um projeto com CMakeLists.txt",
+      "aliases": ["compilar projeto cmake", "build cmake", "como compilar com cmake"],
+      "tags": ["c++", "build"],
+      "steps": [
+        { "title": "Configure", "command": "cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug", "why": "Gera o build em build/; Debug inclui símbolos de depuração." },
+        { "title": "Compile", "command": "cmake --build build -j", "why": "-j usa vários núcleos." },
+        { "title": "Teste", "command": "ctest --test-dir build --output-on-failure", "why": "Roda os testes registrados, mostrando as falhas." },
+        { "title": "Reconfigure do zero", "command": "rm -rf build && cmake -S . -B build", "why": "Depois de mudar o compilador ou opções de cache." }
+      ],
+      "related": ["cmake", "ctest", "make"]
+    },
+    {
+      "id": "gtest-run-one",
+      "name": "Rodar só um teste do GoogleTest",
+      "kind": "recipe",
+      "summary": "Filtrar por suíte, por teste ou por padrão de nome",
+      "aliases": ["rodar um teste gtest", "rodar só um teste gtest", "rodar um teste c++", "rodar só um teste c++", "filtrar testes gtest", "gtest_filter"],
+      "tags": ["c++", "testes"],
+      "steps": [
+        { "title": "Veja os nomes", "command": "./build/testes --gtest_list_tests", "why": "Suíte e testes, no formato Suite.Teste." },
+        { "title": "Um teste", "command": "./build/testes --gtest_filter=PedidoTest.CalculaTotal", "why": "Nome completo." },
+        { "title": "Uma suíte", "command": "./build/testes --gtest_filter='PedidoTest.*'", "why": "* casa com qualquer coisa." },
+        { "title": "Pelo CTest", "command": "ctest --test-dir build -R PedidoTest --output-on-failure", "why": "Com gtest_discover_tests, cada teste vira um teste do CTest." }
+      ],
+      "related": ["gtest", "ctest"]
+    },
+    {
+      "id": "gtest-flaky",
+      "name": "Achar um teste instável (GoogleTest)",
+      "kind": "recipe",
+      "summary": "O teste às vezes passa, às vezes falha",
+      "aliases": ["teste instável", "flaky test", "teste falha às vezes", "teste intermitente"],
+      "tags": ["c++", "testes"],
+      "steps": [
+        { "title": "Repita até falhar", "command": "./build/testes --gtest_filter=Suite.Teste --gtest_repeat=500 --gtest_break_on_failure", "why": "Para no depurador quando falhar." },
+        { "title": "Embaralhe", "command": "./build/testes --gtest_shuffle --gtest_repeat=20", "why": "Se falha só em certa ordem, um teste depende de outro." },
+        { "title": "Reproduza a ordem", "command": "./build/testes --gtest_shuffle --gtest_random_seed=12345", "why": "Use a semente mostrada na saída." },
+        { "title": "Concorrência", "command": "g++ -g -fsanitize=thread -o testes testes.cpp -lgtest -lgtest_main -pthread", "why": "ThreadSanitizer acha condições de corrida." }
+      ],
+      "related": ["gtest", "ctest"]
+    },
+    {
+      "id": "cpp-debug-crash",
+      "name": "Depurar um programa C/C++ que quebra",
+      "kind": "recipe",
+      "summary": "Segmentation fault, abort ou comportamento estranho",
+      "aliases": ["programa c++ quebra", "segfault c++", "crash c++", "debug crash"],
+      "tags": ["c++", "depuração"],
+      "steps": [
+        { "title": "Recompile com símbolos e sanitizers", "command": "g++ -g -O0 -fsanitize=address,undefined -o app main.cpp", "why": "O AddressSanitizer aponta a linha do acesso inválido." },
+        { "title": "Rode", "command": "./app", "why": "O relatório sai em stderr, com a pilha." },
+        { "title": "Veja onde quebrou", "command": "gdb -batch -ex run -ex bt --args ./app", "why": "Backtrace da falha." },
+        { "title": "Vazamentos", "command": "valgrind --leak-check=full ./app", "why": "Sem recompilar com sanitizers." }
+      ],
+      "related": ["gdb", "valgrind", "error-segfault"]
+    }
+  ]
+}

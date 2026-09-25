@@ -92,6 +92,21 @@ impl<'r> Segment<'r> {
     fn find_short(&self, c: char) -> Option<&'r CommandOption> {
         self.chain.iter().rev().find_map(|e| e.find_short(c))
     }
+
+    /// Longest prefix option starting `text`: `-Xmx` for `-Xmx512m`.
+    fn find_prefix(&self, text: &str) -> Option<&'r CommandOption> {
+        self.chain
+            .iter()
+            .rev()
+            .flat_map(|e| e.options.iter())
+            .filter(|o| o.prefix && text.len() > o.key().len() && text.starts_with(o.key()))
+            .max_by_key(|o| o.key().len())
+    }
+
+    /// Nearest entry of the chain whose subcommands may repeat (`mvn`).
+    fn phases_owner(&self) -> Option<&'r Entry> {
+        self.chain.iter().rev().find(|e| e.phases).copied()
+    }
 }
 
 /// What the user is typing at the end of the line.
@@ -181,8 +196,14 @@ impl<'r> LineAnalysis<'r> {
         }
         match &self.roles[self.roles.len() - 1] {
             Role::Command(_) | Role::UnknownCommand => Cursor::Command,
-            Role::Subcommand(_) if seg.chain.len() >= 2 => Cursor::Subcommand {
-                parent: seg.chain[seg.chain.len() - 2],
+            Role::Subcommand(e) if seg.chain.len() >= 2 => Cursor::Subcommand {
+                // The real parent: with phases the chain is `mvn clean install`.
+                parent: seg
+                    .chain
+                    .iter()
+                    .find(|p| e.parent.as_deref() == Some(p.id.as_str()))
+                    .copied()
+                    .unwrap_or(seg.chain[seg.chain.len() - 2]),
                 prefix: last.value.clone(),
             },
             Role::Option { .. } | Role::OptionCluster(_) | Role::UnknownOption => {
@@ -457,7 +478,7 @@ pub fn analyze<'r>(repo: &'r Repository, line: &str) -> LineAnalysis<'r> {
         // lexer sees a new command position there.
         let dash_in_test = g.test.is_some() && t.text.len() > 1 && t.text.starts_with('-');
         if (t.kind == TokenKind::Option || dash_in_test) && !end_of_options {
-            let role = resolve_option(&mut seg, t);
+            let role = resolve_option(repo, &mut seg, t);
             if let Role::Option {
                 option,
                 inline: None,
@@ -477,9 +498,15 @@ pub fn analyze<'r>(repo: &'r Repository, line: &str) -> LineAnalysis<'r> {
         }
         // Positional word: subcommand, wrapped command or argument.
         if let Some(entry) = seg.entry() {
+            // `mvn clean install`: after a phase, another phase of the same
+            // parent is still a subcommand.
+            let child = repo.child(&entry.id, &t.value).or_else(|| {
+                seg.phases_owner()
+                    .and_then(|owner| repo.child(&owner.id, &t.value))
+            });
             if subcommand_allowed
                 && t.kind == TokenKind::Word
-                && let Some(child) = repo.child(&entry.id, &t.value)
+                && let Some(child) = child
             {
                 seg.chain.push(child);
                 roles.push(Role::Subcommand(child));
@@ -495,7 +522,9 @@ pub fn analyze<'r>(repo: &'r Repository, line: &str) -> LineAnalysis<'r> {
             }
         }
         if subcommand_allowed && seg.positionals == 0 && t.kind == TokenKind::Word {
-            seg.unknown_subcommand = seg.entry().filter(|e| repo.has_children(&e.id));
+            seg.unknown_subcommand = seg
+                .phases_owner()
+                .or_else(|| seg.entry().filter(|e| repo.has_children(&e.id)));
         }
         subcommand_allowed = false;
         let spec = seg.entry().and_then(|e| e.argument_at(seg.positionals));
@@ -591,10 +620,15 @@ fn resolve_command<'r>(repo: &'r Repository, seg: &mut Segment<'r>, t: &Token) -
     }
 }
 
-fn resolve_option<'r>(seg: &mut Segment<'r>, t: &Token) -> Role<'r> {
+fn resolve_option<'r>(repo: &'r Repository, seg: &mut Segment<'r>, t: &Token) -> Role<'r> {
     let text = t.value.as_str();
     if seg.chain.is_empty() {
-        return Role::UnknownOption;
+        // Flags of a known family identify a program outside the base:
+        // `./build/testes --gtest_filter=X` is a GoogleTest binary.
+        match repo.flag_owner(text) {
+            Some(owner) => seg.chain = vec![owner],
+            None => return Role::UnknownOption,
+        }
     }
     if text.starts_with("--") {
         let (name, inline) = match text.split_once('=') {
@@ -615,6 +649,25 @@ fn resolve_option<'r>(seg: &mut Segment<'r>, t: &Token) -> Role<'r> {
         return Role::Option {
             option,
             inline: None,
+        };
+    }
+    // gcc style: `-std=c++17`, `-fsanitize=address`. Before prefixes, so
+    // `-fsanitize=` wins over the generic `-f`.
+    if let Some((name, value)) = text.split_once('=')
+        && let Some(option) = seg.find_option(name)
+    {
+        seg.flags.push(option.key().to_string());
+        return Role::Option {
+            option,
+            inline: Some(value.to_string()),
+        };
+    }
+    // A flag glued to its value: `-Xmx512m`, `-XX:+UseG1GC`, `-Wl,-rpath`.
+    if let Some(option) = seg.find_prefix(text) {
+        seg.flags.push(option.key().to_string());
+        return Role::Option {
+            option,
+            inline: Some(text[option.key().len()..].to_string()),
         };
     }
     let letters: Vec<char> = text[1..].chars().collect();
@@ -888,6 +941,59 @@ mod tests {
         assert_eq!(a.current().entry().unwrap().id, "grep");
         assert!(matches!(a.cursor(), Cursor::Option(p) if p == "-"));
         assert!(a.starts_with_keyword());
+    }
+
+    #[test]
+    fn build_tools_and_clusters() {
+        assert_eq!(
+            role_names("mvn clean install -DskipTests"),
+            [
+                "cmd:mvn",
+                "sub:mvn-clean",
+                "sub:mvn-install",
+                "opt:-D=skipTests"
+            ]
+        );
+        assert_eq!(role_names("./mvnw test")[..2], ["cmd:mvn", "sub:mvn-test"]);
+        assert_eq!(
+            role_names("java -Xmx512m -XX:+UseG1GC -jar app.jar"),
+            [
+                "cmd:java",
+                "opt:-Xmx=512m",
+                "opt:-XX:=+UseG1GC",
+                "opt:-jar",
+                "val:-jar"
+            ]
+        );
+        assert_eq!(
+            role_names("g++ -std=c++17 -fsanitize=address -O2 -o app main.cpp -lpthread"),
+            [
+                "cmd:gpp",
+                "opt:-std=c++17",
+                "opt:-fsanitize=address",
+                "opt:-O=2",
+                "opt:-o",
+                "val:-o",
+                "arg:ARQUIVOS",
+                "opt:-l=pthread"
+            ]
+        );
+        assert_eq!(
+            role_names("./build/testes --gtest_filter=A.* --gtest_repeat=3"),
+            ["cmd:?", "opt:--gtest_filter=A.*", "opt:--gtest_repeat=3"]
+        );
+        assert_eq!(
+            role_names("kubectl logs -f deploy/api"),
+            ["cmd:oc", "sub:oc-logs", "opt:-f", "arg:RECURSO"]
+        );
+        assert_eq!(
+            role_names("oc rollout restart deployment/api")[..3],
+            ["cmd:oc", "sub:oc-rollout", "sub:oc-rollout-restart"]
+        );
+        let a = analyze(repo(), "mvn clean ins");
+        assert!(
+            matches!(a.cursor(), Cursor::Subcommand { parent, prefix } if parent.id == "mvn" && prefix == "ins")
+        );
     }
 
     #[test]

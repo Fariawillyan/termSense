@@ -15,8 +15,12 @@ pub struct Repository {
     /// Top-level command name → entry (subcommands are reached via `children`).
     commands: HashMap<String, usize>,
     children: HashMap<String, Vec<usize>>,
+    /// Entries with a `flag_prefix`, in load order.
+    flag_owners: Vec<usize>,
     categories: Vec<Category>,
     warnings: Vec<String>,
+    /// No entry came from the user's files: the precompiled index applies.
+    builtin_only: bool,
 }
 
 impl Repository {
@@ -25,19 +29,27 @@ impl Repository {
             entries,
             categories,
             warnings,
+            user_entries,
             ..
         } = loaded;
         let mut by_id = HashMap::with_capacity(entries.len());
         let mut commands = HashMap::new();
         let mut children: HashMap<String, Vec<usize>> = HashMap::new();
+        let mut flag_owners = Vec::new();
         for (i, e) in entries.iter().enumerate() {
             by_id.insert(e.id.clone(), i);
             match &e.parent {
                 Some(parent) => children.entry(parent.clone()).or_default().push(i),
                 None if e.kind == EntryKind::Command => {
                     commands.insert(e.name.to_lowercase(), i);
+                    for name in &e.names {
+                        commands.entry(name.to_lowercase()).or_insert(i);
+                    }
                 }
                 None => {}
+            }
+            if e.flag_prefix.is_some() {
+                flag_owners.push(i);
             }
         }
         for list in children.values_mut() {
@@ -48,8 +60,10 @@ impl Repository {
             by_id,
             commands,
             children,
+            flag_owners,
             categories,
             warnings,
+            builtin_only: user_entries == 0,
         }
     }
 
@@ -68,6 +82,11 @@ impl Repository {
         &self.entries
     }
 
+    /// Only the built-in knowledge was loaded (no user files).
+    pub fn builtin_only(&self) -> bool {
+        self.builtin_only
+    }
+
     pub fn len(&self) -> usize {
         self.entries.len()
     }
@@ -84,11 +103,46 @@ impl Repository {
         self.by_id.get(id).map(|&i| &self.entries[i])
     }
 
-    /// Top-level command by executable name (`grep`, `git`).
+    /// Top-level command by executable name (`grep`, `git`, or an
+    /// alternative name such as `mvnw`). A path resolves by its last
+    /// component: `/usr/bin/grep`, `./mvnw`.
     pub fn command(&self, name: &str) -> Option<&Entry> {
-        self.commands
-            .get(&name.to_lowercase())
+        let lookup = |n: &str| {
+            self.commands
+                .get(&n.to_lowercase())
+                .map(|&i| &self.entries[i])
+        };
+        lookup(name).or_else(|| {
+            let (_, base) = name.rsplit_once('/')?;
+            (!base.is_empty()).then(|| lookup(base)).flatten()
+        })
+    }
+
+    /// Entry whose `flag_prefix` starts `flag` (`--gtest_filter` → GoogleTest).
+    pub fn flag_owner(&self, flag: &str) -> Option<&Entry> {
+        self.flag_owners
+            .iter()
             .map(|&i| &self.entries[i])
+            .find(|e| {
+                e.flag_prefix
+                    .as_deref()
+                    .is_some_and(|p| flag.starts_with(p))
+            })
+    }
+
+    /// A Kubernetes/OpenShift resource kind (a concept tagged `recurso`) by
+    /// any of its spellings: name, alias or tag (`Deployment`, `deployments`,
+    /// `deploy`). Short names live in tags so they never annotate other
+    /// commands' arguments.
+    pub fn resource_kind(&self, word: &str) -> Option<&Entry> {
+        let word = word.to_lowercase();
+        self.entries.iter().find(|e| {
+            e.kind == EntryKind::Concept
+                && e.tags.iter().any(|t| t == "recurso")
+                && (e.name.to_lowercase() == word
+                    || e.aliases.iter().any(|a| a.to_lowercase() == word)
+                    || e.tags.contains(&word))
+        })
     }
 
     /// Subcommands of `parent_id`, sorted by name.
@@ -121,7 +175,13 @@ impl Repository {
     /// `name`: `POST`, `Content-Type`, `MX`. Used to annotate argument values;
     /// aliases are case-sensitive so a lowercase `a` is not the DNS record `A`.
     pub fn concept(&self, name: &str) -> Option<&Entry> {
-        let concepts = || self.entries.iter().filter(|e| e.kind == EntryKind::Concept);
+        // Resource kinds (`build`, `secret`, `pod`) are common words: they
+        // are recognized only where a resource is expected (`resource_kind`).
+        let concepts = || {
+            self.entries
+                .iter()
+                .filter(|e| e.kind == EntryKind::Concept && !e.tags.iter().any(|t| t == "recurso"))
+        };
         concepts()
             .find(|e| e.name.eq_ignore_ascii_case(name))
             .or_else(|| concepts().find(|e| e.aliases.iter().any(|a| a == name)))
@@ -340,8 +400,31 @@ mod tests {
             "crlf",
             "git-reflog",
             "docker-compose-up",
+            // Java, C++, Node, OpenShift
+            "java",
+            "javac",
+            "mvn",
+            "mvn-install",
+            "keytool",
+            "gpp",
+            "cmake",
+            "ctest",
+            "gtest",
+            "npm",
+            "npm-install",
+            "npx",
+            "nvm",
+            "oc",
+            "oc-get",
+            "oc-logs",
+            "oc-rollout-restart",
+            "pod-kind",
             // Error messages
             "error-command-not-found",
+            "error-crashloopbackoff",
+            "error-pkix",
+            "error-undefined-reference",
+            "error-npm-eresolve",
             "error-permission-denied",
             "error-ssh-publickey",
             "error-no-space",

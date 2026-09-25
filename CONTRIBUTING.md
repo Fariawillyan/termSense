@@ -33,9 +33,12 @@ Os arquivos ficam em `knowledge/`, um por tema:
 | `network-concepts.json`, `http.json` | conceitos de rede, HTTP e TLS |
 | `ssh.json`, `git.json`, `docker.json` | SSH, Git, Docker |
 | `packages.json`, `editors.json`, `wsl.json` | apt/dpkg/dnf; vim, nano e tmux; WSL |
+| `openshift.json`, `java.json`, `cpp.json`, `node.json` | OpenShift (`oc`/`kubectl`); Java e Maven; C/C++, CMake e GoogleTest; Node.js e npm |
 | `errors.json` | catálogo de mensagens de erro (veja abaixo) |
 
 Para testar sem recompilar, coloque um JSON em `~/.config/termsense/knowledge/` e rode `ts --check`, depois `ts`. Para incorporar à base, edite o arquivo do tema. Se criar um arquivo novo, registre-o em `EMBEDDED` (`src/knowledge/loader.rs`).
+
+O índice de busca da base embutida é montado na compilação (`build.rs`): qualquer `cargo build` depois de editar `knowledge/` o refaz sozinho. Um JSON embutido inválido faz a compilação falhar, com a mensagem do erro.
 
 ### Estrutura de um arquivo
 
@@ -63,9 +66,12 @@ O `category` do arquivo é o padrão das entradas que não declaram o seu.
 | `parent` | não | Id do comando pai, para subcomandos |
 | `wrapper` | não | `true` se o comando executa outro (`sudo`, `nohup`, `xargs`) |
 | `builtin` | não | `true` para recursos do shell sem executável no `PATH` (`cd`, `export`, `for`, `[[`): a página diz isso em vez de "não encontrado" |
+| `names` | não | Outros nomes do mesmo comando: `["mvnw"]` em `mvn`, `["kubectl"]` em `oc`. Contam como nome exato na busca e na explicação (`./mvnw` resolve pelo nome do arquivo) |
+| `phases` | não | `true` se os subcomandos podem vir em sequência: `mvn clean install` |
+| `flag_prefix` | não | Flags com este prefixo identificam o programa mesmo com um executável do projeto: `"--gtest_"` no GoogleTest |
 | `aliases` | não | Sinônimos e frases em linguagem natural (pt/en): é o que faz `quem usa a porta` achar a receita |
 | `tags` | não | Palavras-chave curtas |
-| `options` | não | `{ "short": "-i", "long": "--ignore-case", "arg": "VALOR", "kind": "...", "description": "..." }` (`kind` opcional, exige `arg`) |
+| `options` | não | `{ "short": "-i", "long": "--ignore-case", "arg": "VALOR", "kind": "...", "prefix": false, "description": "..." }` (`kind` opcional, exige `arg`; `prefix: true` para flags coladas ao valor, como `-Xmx` em `-Xmx512m`) |
 | `arguments` | não | `{ "name": "PADRÃO", "kind": "regex", "description": "...", "repeat": false }` |
 | `examples` | não | `{ "command": "...", "description": "..." }` |
 | `steps` | não | `{ "title": "...", "command": "...", "why": "..." }`: passos ordenados de receitas |
@@ -74,13 +80,20 @@ O `category` do arquivo é o padrão das entradas que não declaram o seu.
 | `install` | não | Como instalar, quando o comando pode não vir por padrão |
 | `warnings` | não | Riscos (aparecem em destaque nas páginas e nas explicações) |
 
-Os tipos de `arguments[].kind` (e de `options[].kind`) são `text`, `regex`, `path`, `host`, `url`, `port`, `command`, `number`, `user`, `mode`, `umask`, `sed` e `awk`. O explicador usa o tipo:
+Os tipos de `arguments[].kind` (e de `options[].kind`) são `text`, `regex`, `path`, `host`, `url`, `port`, `command`, `number`, `user`, `mode`, `umask`, `sed`, `awk` e `resource`. O explicador usa o tipo:
 
 - `regex`: recebe a interpretação do padrão;
 - `url` e `host`: são decompostos em esquema, host, porta e caminho;
 - `mode`: permissões do `chmod` (`755` → `rwxr-xr-x`, `u+x` em palavras), inclusive as formas `-644` e `/111` do `find -perm`;
 - `umask`: mostra as permissões que arquivos e diretórios novos recebem;
-- `sed` e `awk`: o script ou programa é decomposto peça por peça (`sed -e SCRIPT` usa `"kind": "sed"` na opção).
+- `sed` e `awk`: o script ou programa é decomposto peça por peça (`sed -e SCRIPT` usa `"kind": "sed"` na opção);
+- `resource`: recurso do OpenShift/Kubernetes (`pods`, `deployment/api`). O tipo é procurado entre os conceitos com a tag `recurso`: nome, aliases (`deployments`) ou tags com os nomes curtos (`deploy`). Ponha nomes curtos só em tags, para eles não anotarem argumentos de outros comandos.
+
+### Opções no estilo do GCC e da JVM
+
+- `-std=c++17`: declare a opção `-std` com `arg`; o `=` é separado sozinho.
+- `-lpthread`, `-Iinclude`, `-O2`, `-DskipTests`: opção de uma letra com `arg`; o resto do token vira o valor.
+- `-Xmx512m`, `-XX:+UseG1GC`, `-Wl,-rpath`: declare com `"prefix": true`. Entre um prefixo genérico (`-W`) e um específico (`-Wl,`), vence o mais longo, e uma opção exata (`-Wall`) vence qualquer prefixo.
 
 ### Opções que recebem valor
 
@@ -145,6 +158,7 @@ Leia [ARCHITECTURE.md](ARCHITECTURE.md) antes. Resumo das regras:
 | mudar a pontuação da busca | `search/ranking.rs` (níveis e pesos) e `search/engine.rs` (campos e índice invertido); rode os testes de `engine` e o `golden_queries` |
 | reconhecer uma nova sintaxe de shell | `search/tokenizer.rs` (lexer/forma) e `search/context.rs` (papel; palavras reservadas em `Grammar`) |
 | um novo tipo de análise (como permissões, cron, exit code) | módulo em `analysis/`, função no `Assistant` que devolve `Suggestion::analysis(...)` e página em `pages.rs` |
+| mudar o que vai para o índice (campos, tokens) | `search/index.rs`; o `build.rs` e o teste `precompiled_index_matches_a_fresh_build` acompanham. Se mudar o formato binário, aumente `FORMAT` |
 | um novo bloco visual | variante em `document::Block`, renderização em `ui.rs` (e contagem de links, se tiver links) |
 | uma nova tecla | `input::map_key` → `Action` → `App::handle_*` |
 | um novo aviso de comando perigoso | lista `checks` em `assistant/explain.rs` |

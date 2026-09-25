@@ -101,13 +101,25 @@ fn explain_token(
                     .link(Link::Entry(e.id.clone())),
             ]
         }
-        Role::UnknownCommand => {
-            let desc = format!(
-                "Comando fora da base de conhecimento: consulte man {0} ou {0} --help",
-                t.value
-            );
-            vec![Row::new([text, "comando".into(), desc]).tone(Tone::Warning)]
-        }
+        Role::UnknownCommand => match owner(a, index) {
+            // Recognized by its flags (`--gtest_*`): say what it is.
+            Some(e) => vec![
+                Row::new([
+                    text,
+                    "comando".into(),
+                    format!("Executável do projeto; pelas flags, é um programa {}", e.name),
+                ])
+                .tone(Tone::Accent)
+                .link(Link::Entry(e.id.clone())),
+            ],
+            None => {
+                let desc = format!(
+                    "Comando fora da base de conhecimento: consulte man {0} ou {0} --help",
+                    t.value
+                );
+                vec![Row::new([text, "comando".into(), desc]).tone(Tone::Warning)]
+            }
+        },
         Role::Keyword { construct } => {
             let id = construct.map_or("", |e| e.id.as_str());
             let (label, desc) = keyword_text(&t.text, id, a, index);
@@ -189,11 +201,15 @@ fn explain_token(
         Role::OptionValue(option) => {
             let arg = option.arg.as_deref().unwrap_or("VALOR");
             let mut desc = format!("Valor de {} ({arg})", option.key());
-            if let Some(extra) = option
-                .kind
-                .and_then(|k| describe_kind(k, &t.value))
-                .or_else(|| annotate_value(repo, t))
-            {
+            let extra = match option.kind {
+                Some(ArgKind::Regex) if !t.value.is_empty() => {
+                    Some(format!("regex: {}", regex.analyze(&t.value).interpretation))
+                }
+                Some(ArgKind::Resource) => describe_resource(repo, &t.value),
+                Some(k) => describe_kind(k, &t.value),
+                None => None,
+            };
+            if let Some(extra) = extra.or_else(|| annotate_value(repo, t)) {
                 desc.push_str(" · ");
                 desc.push_str(&extra);
             }
@@ -224,10 +240,12 @@ fn explain_token(
                 let analysis = regex.analyze(&t.value);
                 parts.push(format!("regex: {}", analysis.interpretation));
             }
-            if let Some(extra) = kind
-                .and_then(|k| describe_kind(k, &t.value))
-                .or_else(|| annotate_value(repo, t))
-            {
+            let extra = match kind {
+                Some(ArgKind::Resource) => describe_resource(repo, &t.value),
+                Some(k) => describe_kind(k, &t.value),
+                None => None,
+            };
+            if let Some(extra) = extra.or_else(|| annotate_value(repo, t)) {
                 parts.push(extra);
             }
             let mut rows = vec![Row::new([text, label, parts.join(" · ")]).indent(1)];
@@ -355,6 +373,24 @@ fn keyword_text(
         _ => "palavra-chave",
     };
     (label, text.to_string())
+}
+
+/// `deployment/app` → the kind (with its summary) and the name; `pods` →
+/// the kind only.
+fn describe_resource(repo: &Repository, value: &str) -> Option<String> {
+    let (kind, name) = match value.split_once('/') {
+        Some((k, n)) => (k, Some(n)),
+        None => (value, None),
+    };
+    let described = repo
+        .resource_kind(kind)
+        .map(|e| format!("{}: {}", e.name, e.summary));
+    match (described, name) {
+        (Some(d), Some(n)) => Some(format!("{d} · nome {n}")),
+        (Some(d), None) => Some(d),
+        (None, Some(n)) => Some(format!("tipo {kind}, nome {n}")),
+        (None, None) => None,
+    }
 }
 
 /// One-line meaning of a typed value: permissions, umask.
@@ -944,6 +980,39 @@ mod tests {
             r.iter()
                 .any(|x| x[0] == "<<<" && x[2].contains("Here-string"))
         );
+    }
+
+    #[test]
+    fn build_tools_and_clusters() {
+        let find = |doc: &Document, text: &str| {
+            rows(doc)
+                .into_iter()
+                .find(|r| r[0] == text)
+                .unwrap_or_else(|| panic!("{text}"))
+        };
+        let doc = explain("mvn clean install -DskipTests");
+        assert_eq!(find(&doc, "install")[1], "subcomando");
+        assert!(find(&doc, "-DskipTests")[2].contains("valor: skipTests"));
+
+        let doc = explain("java -Xmx512m -XX:+UseG1GC -jar app.jar");
+        assert!(find(&doc, "-Xmx512m")[2].contains("valor: 512m"));
+        assert!(find(&doc, "-XX:+UseG1GC")[2].contains("valor: +UseG1GC"));
+
+        let doc = explain("g++ -std=c++17 -fsanitize=address -Wshadow -o app main.cpp");
+        assert!(find(&doc, "-std=c++17")[2].contains("valor: c++17"));
+        assert!(find(&doc, "-fsanitize=address")[2].starts_with("Sanitizers"));
+        assert!(find(&doc, "-Wshadow")[2].contains("valor: shadow"));
+
+        let doc = explain("./build/testes --gtest_filter=Pedido.*");
+        assert!(find(&doc, "./build/testes")[2].contains("GoogleTest"));
+        assert_eq!(find(&doc, "--gtest_filter=Pedido.*")[1], "opção");
+
+        let doc = explain("oc logs -f deployment/api");
+        assert!(find(&doc, "deployment/api")[2].contains("Deployment:"));
+
+        // Resource kinds are not annotations of ordinary words.
+        let doc = explain("ctest --test-dir build");
+        assert!(!find(&doc, "build")[2].contains("BuildConfig"));
     }
 
     #[test]

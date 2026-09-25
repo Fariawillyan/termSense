@@ -1,0 +1,833 @@
+{
+  "category": "openshift",
+  "entries": [
+    {
+      "name": "oc",
+      "kind": "command",
+      "summary": "CLI do OpenShift: projetos, pods, deploys e rotas (aceita os comandos do kubectl)",
+      "description": "O oc inclui todos os comandos do kubectl e acrescenta os do OpenShift (login, project, rsh, new-app, start-build). Recursos são escritos como tipo (pods) ou tipo/nome (deployment/api).",
+      "usage": "oc SUBCOMANDO [RECURSO] [NOME] [OPÇÕES]",
+      "install": "Baixe pelo console do cluster (? → Command line tools) ou em mirror.openshift.com: é um binário só; ponha no PATH.",
+      "aliases": ["openshift", "ocp", "openshift cli", "kubernetes", "k8s", "kubectl"],
+      "tags": ["openshift", "kubernetes"],
+      "options": [
+        { "short": "-n", "long": "--namespace", "arg": "PROJETO", "description": "Projeto (namespace) do comando, em vez do atual" },
+        { "short": "-o", "long": "--output", "arg": "FORMATO", "description": "wide, yaml, json, name, jsonpath={...}, custom-columns=..." },
+        { "short": "-l", "long": "--selector", "arg": "RÓTULOS", "description": "Filtra por labels: -l app=api,tier=web" },
+        { "short": "-A", "long": "--all-namespaces", "description": "Todos os projetos" },
+        { "short": "-w", "long": "--watch", "description": "Continua mostrando as mudanças" },
+        { "long": "--context", "arg": "CONTEXTO", "description": "Outro cluster ou usuário do kubeconfig" }
+      ],
+      "examples": [
+        { "command": "oc whoami --show-server", "description": "Em qual cluster você está" },
+        { "command": "oc project", "description": "Projeto atual" },
+        { "command": "oc get pods", "description": "Pods do projeto" },
+        { "command": "oc logs -f deployment/api", "description": "Logs da aplicação" },
+        { "command": "oc rsh deployment/api", "description": "Shell dentro de um pod" },
+        { "command": "oc get events --sort-by=.lastTimestamp", "description": "O que aconteceu por último" }
+      ],
+      "related": ["oc-get", "oc-logs", "ocp-pod-troubleshooting", "pod-states"],
+      "names": ["kubectl", "openshift"]
+    },
+    {
+      "id": "oc-login",
+      "name": "oc login",
+      "kind": "command",
+      "parent": "oc",
+      "summary": "Entra no cluster (com token ou usuário e senha)",
+      "description": "O jeito mais fácil: no console web, menu do usuário → Copy login command, e cole o comando pronto.",
+      "aliases": ["logar no openshift", "login ocp", "copy login command", "token openshift"],
+      "options": [
+        { "long": "--token", "arg": "TOKEN", "description": "Token de acesso (sha256~...)" },
+        { "short": "-s", "long": "--server", "arg": "URL", "description": "API do cluster (https://api.cluster:6443)" },
+        { "short": "-u", "long": "--username", "arg": "USUÁRIO", "description": "Login com usuário e senha" },
+        { "long": "--certificate-authority", "arg": "ARQUIVO", "description": "CA do cluster, quando não é confiável pelo sistema" },
+        { "long": "--insecure-skip-tls-verify", "description": "Não verifica o certificado (evite)" }
+      ],
+      "examples": [
+        { "command": "oc login --token=sha256~xxxx --server=https://api.cluster.exemplo.com:6443", "description": "Comando copiado do console" },
+        { "command": "oc login -u desenvolvedor https://api.cluster.exemplo.com:6443", "description": "Com usuário e senha" }
+      ],
+      "related": ["oc-whoami", "oc-project", "error-oc-unauthorized"],
+      "warnings": ["--insecure-skip-tls-verify desliga a verificação do certificado: prefira --certificate-authority com a CA do cluster."]
+    },
+    {
+      "id": "oc-whoami",
+      "name": "oc whoami",
+      "kind": "command",
+      "parent": "oc",
+      "summary": "Mostra o usuário logado (e o servidor, o console ou o token)",
+      "options": [
+        { "long": "--show-server", "description": "URL da API do cluster" },
+        { "long": "--show-console", "description": "URL do console web" },
+        { "short": "-t", "long": "--show-token", "description": "O token atual (é um segredo)" }
+      ],
+      "examples": [
+        { "command": "oc whoami", "description": "Seu usuário" },
+        { "command": "oc whoami --show-console", "description": "Endereço do console" }
+      ],
+      "related": ["oc-login"]
+    },
+    {
+      "id": "oc-project",
+      "name": "oc project",
+      "kind": "command",
+      "parent": "oc",
+      "summary": "Mostra ou troca o projeto (namespace) atual",
+      "aliases": ["trocar de projeto", "mudar namespace", "namespace atual"],
+      "arguments": [
+        { "name": "PROJETO", "kind": "text", "description": "Projeto para onde ir" }
+      ],
+      "examples": [
+        { "command": "oc project", "description": "Projeto atual" },
+        { "command": "oc project minha-app", "description": "Troca de projeto" },
+        { "command": "oc projects", "description": "Projetos a que você tem acesso" }
+      ],
+      "related": ["oc-projects", "project-kind"]
+    },
+    {
+      "id": "oc-projects",
+      "name": "oc projects",
+      "kind": "command",
+      "parent": "oc",
+      "summary": "Lista os projetos a que você tem acesso",
+      "examples": [
+        { "command": "oc projects", "description": "Todos os seus projetos" }
+      ],
+      "related": ["oc-project"]
+    },
+    {
+      "id": "oc-get",
+      "name": "oc get",
+      "kind": "command",
+      "parent": "oc",
+      "summary": "Lista recursos: pods, deployments, services, rotas e outros",
+      "aliases": ["listar pods", "ver pods", "kubectl get"],
+      "options": [
+        { "long": "--show-labels", "description": "Mostra os labels" },
+        { "long": "--sort-by", "arg": "CAMPO", "description": "Ordena por um campo: .lastTimestamp, .status.startTime" }
+      ],
+      "arguments": [
+        { "name": "RECURSO", "kind": "resource", "description": "Tipo (pods, deploy, svc...) ou tipo/nome (deployment/api)" },
+        { "name": "NOME", "kind": "text", "description": "Nome do recurso (quando o tipo veio separado)" }
+      ],
+      "examples": [
+        { "command": "oc get pods", "description": "Pods e seus estados" },
+        { "command": "oc get pods -o wide", "description": "Com nó e IP" },
+        { "command": "oc get all", "description": "Pods, deployments, services, rotas..." },
+        { "command": "oc get deploy,svc,route", "description": "Vários tipos de uma vez" },
+        { "command": "oc get pod api-7d9f-x2k -o yaml", "description": "Definição completa de um pod" },
+        { "command": "oc get pods -l app=api -w", "description": "Acompanha os pods de uma aplicação" },
+        { "command": "oc get events --sort-by=.lastTimestamp", "description": "Eventos recentes do projeto" },
+        { "command": "oc get secret db -o jsonpath='{.data.password}' | base64 -d", "description": "Lê um valor de um secret" }
+      ],
+      "related": ["oc-describe", "pod-states"]
+    },
+    {
+      "id": "oc-describe",
+      "name": "oc describe",
+      "kind": "command",
+      "parent": "oc",
+      "summary": "Detalhes e eventos de um recurso: o primeiro lugar para ver por que um pod não sobe",
+      "aliases": ["detalhes do pod", "eventos do pod", "kubectl describe"],
+      "arguments": [
+        { "name": "RECURSO", "kind": "resource", "description": "Tipo (pods, deploy, svc...) ou tipo/nome (deployment/api)" },
+        { "name": "NOME", "kind": "text", "description": "Nome do recurso (quando o tipo veio separado)" }
+      ],
+      "examples": [
+        { "command": "oc describe pod api-7d9f-x2k", "description": "Estado, eventos e último motivo de saída" },
+        { "command": "oc describe deployment/api", "description": "Réplicas, imagem e condições" }
+      ],
+      "related": ["oc-get", "ocp-pod-troubleshooting"]
+    },
+    {
+      "id": "oc-logs",
+      "name": "oc logs",
+      "kind": "command",
+      "parent": "oc",
+      "summary": "Mostra os logs de um pod, deployment ou build",
+      "aliases": ["logs do pod", "logs openshift", "kubectl logs"],
+      "options": [
+        { "short": "-f", "long": "--follow", "description": "Acompanha" },
+        { "short": "-p", "long": "--previous", "description": "Logs da execução anterior (depois de um restart ou CrashLoopBackOff)" },
+        { "short": "-c", "long": "--container", "arg": "NOME", "description": "Container do pod (quando há mais de um)" },
+        { "long": "--tail", "arg": "N", "description": "Só as últimas N linhas" },
+        { "long": "--since", "arg": "DURAÇÃO", "description": "Só os recentes: 10m, 1h" },
+        { "long": "--all-containers", "description": "De todos os containers do pod" }
+      ],
+      "arguments": [
+        { "name": "RECURSO", "kind": "resource", "description": "Tipo (pods, deploy, svc...) ou tipo/nome (deployment/api)" }
+      ],
+      "examples": [
+        { "command": "oc logs -f deployment/api", "description": "Acompanha um pod da aplicação" },
+        { "command": "oc logs api-7d9f-x2k -p", "description": "Por que o container anterior morreu" },
+        { "command": "oc logs api-7d9f-x2k -c sidecar --tail 100", "description": "Um container específico" },
+        { "command": "oc logs --since=10m -l app=api", "description": "Últimos 10 minutos de todos os pods da aplicação" }
+      ],
+      "related": ["oc-get", "error-crashloopbackoff"]
+    },
+    {
+      "id": "oc-rsh",
+      "name": "oc rsh",
+      "kind": "command",
+      "parent": "oc",
+      "summary": "Abre um shell dentro de um pod",
+      "aliases": ["entrar no pod", "shell no pod", "acessar pod"],
+      "options": [
+        { "short": "-c", "long": "--container", "arg": "NOME", "description": "Container do pod" }
+      ],
+      "arguments": [
+        { "name": "RECURSO", "kind": "resource", "description": "Tipo (pods, deploy, svc...) ou tipo/nome (deployment/api)" }
+      ],
+      "examples": [
+        { "command": "oc rsh api-7d9f-x2k", "description": "Shell no pod" },
+        { "command": "oc rsh deployment/api", "description": "Em um pod da aplicação" }
+      ],
+      "related": ["oc-exec", "oc-debug"]
+    },
+    {
+      "id": "oc-exec",
+      "name": "oc exec",
+      "kind": "command",
+      "parent": "oc",
+      "summary": "Executa um comando dentro de um pod",
+      "aliases": ["kubectl exec", "comando no pod"],
+      "options": [
+        { "short": "-i", "long": "--stdin", "description": "Mantém a entrada aberta" },
+        { "short": "-t", "long": "--tty", "description": "Aloca um terminal" },
+        { "short": "-c", "long": "--container", "arg": "NOME", "description": "Container do pod" }
+      ],
+      "arguments": [
+        { "name": "RECURSO", "kind": "resource", "description": "Tipo (pods, deploy, svc...) ou tipo/nome (deployment/api)" }
+      ],
+      "examples": [
+        { "command": "oc exec api-7d9f-x2k -- env", "description": "Variáveis de ambiente do container" },
+        { "command": "oc exec -it api-7d9f-x2k -- bash", "description": "Shell interativo" }
+      ],
+      "related": ["oc-rsh"]
+    },
+    {
+      "id": "oc-cp",
+      "name": "oc cp",
+      "kind": "command",
+      "parent": "oc",
+      "summary": "Copia arquivos entre a máquina e um pod",
+      "aliases": ["copiar arquivo do pod", "copiar para o pod"],
+      "examples": [
+        { "command": "oc cp api-7d9f-x2k:/tmp/heap.hprof ./heap.hprof", "description": "Do pod para a máquina" },
+        { "command": "oc cp config.yml api-7d9f-x2k:/tmp/", "description": "Da máquina para o pod" }
+      ],
+      "related": ["oc-rsh"]
+    },
+    {
+      "id": "oc-port-forward",
+      "name": "oc port-forward",
+      "kind": "command",
+      "parent": "oc",
+      "summary": "Encaminha uma porta local para um pod ou serviço do cluster",
+      "aliases": ["acessar serviço do cluster", "port forward", "túnel para o pod"],
+      "arguments": [
+        { "name": "RECURSO", "kind": "resource", "description": "Tipo (pods, deploy, svc...) ou tipo/nome (deployment/api)" },
+        { "name": "PORTAS", "kind": "text", "description": "LOCAL:REMOTA, ou uma porta só" }
+      ],
+      "examples": [
+        { "command": "oc port-forward svc/postgres 5432:5432", "description": "Banco do cluster em localhost:5432" },
+        { "command": "oc port-forward deployment/api 8080", "description": "API em localhost:8080" }
+      ],
+      "related": ["ocp-access-local"]
+    },
+    {
+      "id": "oc-apply",
+      "name": "oc apply",
+      "kind": "command",
+      "parent": "oc",
+      "summary": "Cria ou atualiza recursos a partir de arquivos YAML",
+      "aliases": ["kubectl apply", "aplicar yaml"],
+      "options": [
+        { "short": "-f", "long": "--filename", "arg": "ARQUIVO", "description": "Arquivo, pasta ou URL" },
+        { "short": "-k", "long": "--kustomize", "arg": "DIR", "description": "Pasta com kustomization.yaml" },
+        { "long": "--dry-run", "arg": "MODO", "description": "server valida no cluster sem aplicar; client só localmente" }
+      ],
+      "examples": [
+        { "command": "oc apply -f deployment.yaml", "description": "Aplica um arquivo" },
+        { "command": "oc apply -f k8s/", "description": "Toda a pasta" },
+        { "command": "oc apply -f app.yaml --dry-run=server", "description": "Valida sem aplicar" }
+      ],
+      "related": ["oc-delete", "oc-get"]
+    },
+    {
+      "id": "oc-delete",
+      "name": "oc delete",
+      "kind": "command",
+      "parent": "oc",
+      "summary": "Apaga recursos",
+      "aliases": ["kubectl delete", "apagar pod"],
+      "options": [
+        { "short": "-f", "long": "--filename", "arg": "ARQUIVO", "description": "Apaga o que está no arquivo" },
+        { "long": "--grace-period", "arg": "SEGUNDOS", "description": "Tempo para o encerramento limpo" },
+        { "long": "--force", "description": "Remove sem esperar o encerramento (último recurso)" }
+      ],
+      "arguments": [
+        { "name": "RECURSO", "kind": "resource", "description": "Tipo (pods, deploy, svc...) ou tipo/nome (deployment/api)" },
+        { "name": "NOME", "kind": "text", "description": "Nome do recurso (quando o tipo veio separado)" }
+      ],
+      "examples": [
+        { "command": "oc delete pod api-7d9f-x2k", "description": "O deployment cria outro: reinício rápido de um pod" },
+        { "command": "oc delete -f app.yaml", "description": "Apaga o que o arquivo criou" }
+      ],
+      "related": ["oc-apply", "oc-rollout-restart"],
+      "warnings": ["Não há lixeira. oc delete project apaga tudo que há dentro do projeto."]
+    },
+    {
+      "id": "oc-scale",
+      "name": "oc scale",
+      "kind": "command",
+      "parent": "oc",
+      "summary": "Muda o número de réplicas de um deployment",
+      "aliases": ["escalar", "aumentar réplicas", "desligar aplicação"],
+      "options": [
+        { "long": "--replicas", "arg": "N", "description": "Quantidade de pods" }
+      ],
+      "arguments": [
+        { "name": "RECURSO", "kind": "resource", "description": "Tipo (pods, deploy, svc...) ou tipo/nome (deployment/api)" }
+      ],
+      "examples": [
+        { "command": "oc scale deployment/api --replicas=3", "description": "Três pods" },
+        { "command": "oc scale deployment/api --replicas=0", "description": "Desliga sem apagar" }
+      ],
+      "related": ["oc-rollout", "deployment-kind"]
+    },
+    {
+      "id": "oc-rollout",
+      "name": "oc rollout",
+      "kind": "command",
+      "parent": "oc",
+      "summary": "Acompanha e controla implantações: status, restart, undo e histórico",
+      "aliases": ["kubectl rollout", "implantação"],
+      "examples": [
+        { "command": "oc rollout status deployment/api", "description": "Espera terminar" },
+        { "command": "oc rollout restart deployment/api", "description": "Recria os pods" }
+      ],
+      "related": ["ocp-restart-app", "ocp-rollback"]
+    },
+    {
+      "id": "oc-rollout-status",
+      "name": "oc rollout status",
+      "kind": "command",
+      "parent": "oc-rollout",
+      "summary": "Espera e mostra o andamento de uma implantação",
+      "arguments": [
+        { "name": "RECURSO", "kind": "resource", "description": "Tipo (pods, deploy, svc...) ou tipo/nome (deployment/api)" }
+      ],
+      "examples": [
+        { "command": "oc rollout status deployment/api", "description": "Termina quando todos os pods novos estão prontos" }
+      ],
+      "related": ["oc-rollout-restart"]
+    },
+    {
+      "id": "oc-rollout-restart",
+      "name": "oc rollout restart",
+      "kind": "command",
+      "parent": "oc-rollout",
+      "summary": "Recria os pods de um deployment, um de cada vez",
+      "aliases": ["reiniciar deployment", "reiniciar aplicação", "restart pods"],
+      "arguments": [
+        { "name": "RECURSO", "kind": "resource", "description": "Tipo (pods, deploy, svc...) ou tipo/nome (deployment/api)" }
+      ],
+      "examples": [
+        { "command": "oc rollout restart deployment/api", "description": "Aplica um ConfigMap ou Secret alterado" }
+      ],
+      "related": ["oc-rollout-status", "ocp-restart-app"]
+    },
+    {
+      "id": "oc-rollout-undo",
+      "name": "oc rollout undo",
+      "kind": "command",
+      "parent": "oc-rollout",
+      "summary": "Volta para a versão anterior de um deployment",
+      "aliases": ["rollback", "voltar versão", "desfazer deploy"],
+      "options": [
+        { "long": "--to-revision", "arg": "N", "description": "Uma revisão específica (veja em history)" }
+      ],
+      "arguments": [
+        { "name": "RECURSO", "kind": "resource", "description": "Tipo (pods, deploy, svc...) ou tipo/nome (deployment/api)" }
+      ],
+      "examples": [
+        { "command": "oc rollout undo deployment/api", "description": "Revisão anterior" },
+        { "command": "oc rollout undo deployment/api --to-revision=3", "description": "Revisão 3" }
+      ],
+      "related": ["oc-rollout-history", "ocp-rollback"]
+    },
+    {
+      "id": "oc-rollout-history",
+      "name": "oc rollout history",
+      "kind": "command",
+      "parent": "oc-rollout",
+      "summary": "Lista as revisões de um deployment",
+      "arguments": [
+        { "name": "RECURSO", "kind": "resource", "description": "Tipo (pods, deploy, svc...) ou tipo/nome (deployment/api)" }
+      ],
+      "examples": [
+        { "command": "oc rollout history deployment/api", "description": "Revisões" },
+        { "command": "oc rollout history deployment/api --revision=3", "description": "O que tinha na revisão 3" }
+      ],
+      "related": ["oc-rollout-undo"]
+    },
+    {
+      "id": "oc-set",
+      "name": "oc set",
+      "kind": "command",
+      "parent": "oc",
+      "summary": "Altera partes de um recurso: variáveis, imagem, recursos",
+      "examples": [
+        { "command": "oc set env deployment/api LOG_LEVEL=debug", "description": "Define uma variável" }
+      ],
+      "related": ["oc-set-env", "oc-set-image", "oc-set-resources"]
+    },
+    {
+      "id": "oc-set-env",
+      "name": "oc set env",
+      "kind": "command",
+      "parent": "oc-set",
+      "summary": "Define, remove ou lista variáveis de ambiente",
+      "aliases": ["variável de ambiente openshift", "mudar env do deployment"],
+      "options": [
+        { "long": "--list", "description": "Lista as variáveis" },
+        { "long": "--from", "arg": "FONTE", "description": "Importa de secret/NOME ou configmap/NOME" }
+      ],
+      "arguments": [
+        { "name": "RECURSO", "kind": "resource", "description": "Tipo (pods, deploy, svc...) ou tipo/nome (deployment/api)" },
+        { "name": "VARIÁVEIS", "kind": "text", "description": "NOME=valor; NOME- remove", "repeat": true }
+      ],
+      "examples": [
+        { "command": "oc set env deployment/api LOG_LEVEL=debug", "description": "Define (recria os pods)" },
+        { "command": "oc set env deployment/api --list", "description": "Lista" },
+        { "command": "oc set env deployment/api --from=secret/db", "description": "Variáveis a partir de um secret" },
+        { "command": "oc set env deployment/api LOG_LEVEL-", "description": "Remove" }
+      ],
+      "related": ["configmap-kind", "secret-kind"]
+    },
+    {
+      "id": "oc-set-image",
+      "name": "oc set image",
+      "kind": "command",
+      "parent": "oc-set",
+      "summary": "Troca a imagem de um container",
+      "arguments": [
+        { "name": "RECURSO", "kind": "resource", "description": "Tipo (pods, deploy, svc...) ou tipo/nome (deployment/api)" },
+        { "name": "CONTAINER=IMAGEM", "kind": "text", "description": "Container e nova imagem" }
+      ],
+      "examples": [
+        { "command": "oc set image deployment/api api=registry.exemplo.com/api:1.4.2", "description": "Nova versão" }
+      ],
+      "related": ["oc-rollout-status"]
+    },
+    {
+      "id": "oc-set-resources",
+      "name": "oc set resources",
+      "kind": "command",
+      "parent": "oc-set",
+      "summary": "Define requests e limits de CPU e memória",
+      "aliases": ["limite de memória", "limits", "requests"],
+      "options": [
+        { "long": "--limits", "arg": "RECURSOS", "description": "Máximo: cpu=500m,memory=512Mi" },
+        { "long": "--requests", "arg": "RECURSOS", "description": "Reservado para agendar o pod" }
+      ],
+      "arguments": [
+        { "name": "RECURSO", "kind": "resource", "description": "Tipo (pods, deploy, svc...) ou tipo/nome (deployment/api)" }
+      ],
+      "examples": [
+        { "command": "oc set resources deployment/api --limits=memory=1Gi,cpu=1 --requests=memory=512Mi,cpu=200m", "description": "Limites e reservas" }
+      ],
+      "related": ["resource-units", "error-oomkilled"]
+    },
+    {
+      "id": "oc-expose",
+      "name": "oc expose",
+      "kind": "command",
+      "parent": "oc",
+      "summary": "Cria um service para um deployment, ou uma rota para um service",
+      "aliases": ["criar rota", "expor serviço", "url externa"],
+      "options": [
+        { "long": "--port", "arg": "PORTA", "description": "Porta do service" }
+      ],
+      "arguments": [
+        { "name": "RECURSO", "kind": "resource", "description": "Tipo (pods, deploy, svc...) ou tipo/nome (deployment/api)" }
+      ],
+      "examples": [
+        { "command": "oc expose svc/api", "description": "Cria uma rota (URL externa)" },
+        { "command": "oc expose deployment/api --port=8080", "description": "Cria um service" }
+      ],
+      "related": ["route-kind", "service-kind"]
+    },
+    {
+      "id": "oc-create",
+      "name": "oc create",
+      "kind": "command",
+      "parent": "oc",
+      "summary": "Cria recursos: secrets, configmaps, rotas, a partir de valores ou arquivos",
+      "examples": [
+        { "command": "oc create secret generic db --from-literal=password=segredo", "description": "Secret com um valor" },
+        { "command": "oc create configmap app-config --from-file=application.yml", "description": "ConfigMap a partir de um arquivo" },
+        { "command": "oc create route edge api --service=api", "description": "Rota HTTPS com TLS no roteador" },
+        { "command": "oc create secret docker-registry registro --docker-server=registry.exemplo.com --docker-username=USUARIO --docker-password=SENHA", "description": "Credencial para baixar imagens" }
+      ],
+      "related": ["secret-kind", "configmap-kind", "route-kind"]
+    },
+    {
+      "id": "oc-new-app",
+      "name": "oc new-app",
+      "kind": "command",
+      "parent": "oc",
+      "summary": "Cria uma aplicação a partir de uma imagem ou de um repositório Git (S2I)",
+      "examples": [
+        { "command": "oc new-app --name=api registry.exemplo.com/api:latest", "description": "A partir de uma imagem" },
+        { "command": "oc new-app https://github.com/dono/repo.git", "description": "A partir do código (Source-to-Image)" }
+      ],
+      "related": ["oc-start-build", "oc-expose"]
+    },
+    {
+      "id": "oc-start-build",
+      "name": "oc start-build",
+      "kind": "command",
+      "parent": "oc",
+      "summary": "Dispara um build de um BuildConfig",
+      "options": [
+        { "long": "--follow", "description": "Acompanha o log do build" },
+        { "long": "--from-dir", "arg": "DIR", "description": "Envia uma pasta local como fonte" }
+      ],
+      "examples": [
+        { "command": "oc start-build api --follow", "description": "Build e log" },
+        { "command": "oc start-build api --from-dir=. --follow", "description": "Build do código local" }
+      ],
+      "related": ["buildconfig-kind", "oc-logs"]
+    },
+    {
+      "id": "oc-debug",
+      "name": "oc debug",
+      "kind": "command",
+      "parent": "oc",
+      "summary": "Sobe uma cópia de um pod (ou um shell em um nó) para investigar",
+      "description": "Útil quando o container morre antes de dar tempo de entrar: o oc debug sobe a mesma imagem com um shell no lugar do comando.",
+      "aliases": ["depurar pod", "pod não sobe shell"],
+      "arguments": [
+        { "name": "RECURSO", "kind": "resource", "description": "Tipo (pods, deploy, svc...) ou tipo/nome (deployment/api)" }
+      ],
+      "examples": [
+        { "command": "oc debug deployment/api", "description": "Shell com a imagem e as variáveis da aplicação" },
+        { "command": "oc debug node/worker-1", "description": "Shell no nó (exige administrador)" }
+      ],
+      "related": ["ocp-pod-troubleshooting", "oc-rsh"]
+    },
+    {
+      "id": "oc-explain",
+      "name": "oc explain",
+      "kind": "command",
+      "parent": "oc",
+      "summary": "Documentação dos campos de um tipo de recurso",
+      "examples": [
+        { "command": "oc explain deployment.spec.template.spec.containers.resources", "description": "O que são requests e limits" },
+        { "command": "oc explain route.spec.tls", "description": "Opções de TLS da rota" }
+      ],
+      "related": ["oc-get"]
+    },
+    {
+      "id": "oc-edit",
+      "name": "oc edit",
+      "kind": "command",
+      "parent": "oc",
+      "summary": "Abre um recurso no editor e aplica ao salvar",
+      "examples": [
+        { "command": "oc edit configmap app-config", "description": "Edita um ConfigMap" },
+        { "command": "EDITOR=nano oc edit deployment/api", "description": "Com o nano" }
+      ],
+      "related": ["oc-apply"]
+    },
+    {
+      "id": "oc-adm",
+      "name": "oc adm",
+      "kind": "command",
+      "parent": "oc",
+      "summary": "Comandos de administração do cluster",
+      "examples": [
+        { "command": "oc adm top pods", "description": "Uso de CPU e memória" }
+      ],
+      "related": ["oc-adm-top"]
+    },
+    {
+      "id": "oc-adm-top",
+      "name": "oc adm top",
+      "kind": "command",
+      "parent": "oc-adm",
+      "summary": "Uso de CPU e memória de pods ou nós",
+      "aliases": ["uso de memória do pod", "cpu dos pods", "kubectl top"],
+      "examples": [
+        { "command": "oc adm top pods", "description": "Pods do projeto" },
+        { "command": "oc adm top pods --containers", "description": "Por container" },
+        { "command": "oc adm top node", "description": "Nós (exige permissão)" }
+      ],
+      "related": ["resource-units", "error-oomkilled"]
+    },
+    {
+      "id": "pod-kind",
+      "name": "Pod",
+      "kind": "concept",
+      "summary": "Um ou mais containers que rodam juntos: a menor unidade que o cluster agenda",
+      "aliases": ["pod", "pods"],
+      "tags": ["recurso", "po"],
+      "related": ["oc-get", "oc-logs", "pod-states"]
+    },
+    {
+      "id": "deployment-kind",
+      "name": "Deployment",
+      "kind": "concept",
+      "summary": "Mantém N réplicas de um pod e troca as versões de forma gradual",
+      "description": "Substitui o DeploymentConfig (obsoleto desde o OpenShift 4.14).",
+      "aliases": ["deployment", "deployments"],
+      "tags": ["recurso", "deploy"],
+      "related": ["oc-rollout", "oc-scale"]
+    },
+    {
+      "id": "deploymentconfig-kind",
+      "name": "DeploymentConfig",
+      "kind": "concept",
+      "summary": "Implantação antiga do OpenShift, obsoleta desde o 4.14: prefira Deployment",
+      "aliases": ["deploymentconfig", "deploymentconfigs"],
+      "tags": ["recurso", "dc"],
+      "related": ["deployment-kind"]
+    },
+    {
+      "id": "service-kind",
+      "name": "Service",
+      "kind": "concept",
+      "summary": "Endereço estável e balanceamento para os pods de uma aplicação, dentro do cluster",
+      "description": "Acha os pods pelo selector de labels: se o selector não bate com os labels dos pods, o service fica sem endpoints.",
+      "aliases": ["service", "services"],
+      "tags": ["recurso", "svc"],
+      "related": ["oc-expose", "route-kind"]
+    },
+    {
+      "id": "route-kind",
+      "name": "Route",
+      "kind": "concept",
+      "summary": "URL externa do OpenShift que leva ao service de uma aplicação",
+      "aliases": ["route", "routes", "rota"],
+      "tags": ["recurso"],
+      "related": ["oc-expose", "error-route-not-available"]
+    },
+    {
+      "id": "configmap-kind",
+      "name": "ConfigMap",
+      "kind": "concept",
+      "summary": "Configuração não secreta, usada como variáveis ou arquivos no pod",
+      "aliases": ["configmap", "configmaps"],
+      "tags": ["recurso", "cm"],
+      "related": ["oc-set-env", "oc-rollout-restart"]
+    },
+    {
+      "id": "secret-kind",
+      "name": "Secret",
+      "kind": "concept",
+      "summary": "Senhas, tokens e certificados, entregues ao pod como variáveis ou arquivos",
+      "description": "Os valores ficam em base64, que não é criptografia: quem pode ler o secret lê o valor.",
+      "aliases": ["secret", "secrets"],
+      "tags": ["recurso"],
+      "related": ["oc-create", "oc-set-env"]
+    },
+    {
+      "id": "project-kind",
+      "name": "Project",
+      "kind": "concept",
+      "summary": "Namespace do OpenShift: isola aplicações, permissões e quotas",
+      "aliases": ["project", "projects", "namespace", "namespaces"],
+      "tags": ["recurso", "ns"],
+      "related": ["oc-project"]
+    },
+    {
+      "id": "pvc-kind",
+      "name": "PersistentVolumeClaim",
+      "kind": "concept",
+      "summary": "Pedido de disco persistente para um pod",
+      "aliases": ["persistentvolumeclaim", "persistentvolumeclaims"],
+      "tags": ["recurso", "pvc"],
+      "related": ["error-pod-pending"]
+    },
+    {
+      "id": "buildconfig-kind",
+      "name": "BuildConfig",
+      "kind": "concept",
+      "summary": "Receita de build do OpenShift (S2I ou Dockerfile) que gera uma imagem",
+      "aliases": ["buildconfig", "buildconfigs", "build", "builds"],
+      "tags": ["recurso", "bc"],
+      "related": ["oc-start-build"]
+    },
+    {
+      "id": "imagestream-kind",
+      "name": "ImageStream",
+      "kind": "concept",
+      "summary": "Referência do OpenShift a uma imagem e suas tags, que pode disparar deploys",
+      "aliases": ["imagestream", "imagestreams", "imagestreamtag"],
+      "tags": ["recurso", "is", "istag"],
+      "related": ["buildconfig-kind"]
+    },
+    {
+      "id": "events-kind",
+      "name": "Eventos",
+      "kind": "concept",
+      "summary": "Registro do que o cluster fez: agendamento, pull de imagem, probes, falhas",
+      "aliases": ["event", "events"],
+      "tags": ["recurso", "ev"],
+      "related": ["ocp-pod-troubleshooting"]
+    },
+    {
+      "id": "node-kind",
+      "name": "Node",
+      "kind": "concept",
+      "summary": "Máquina do cluster onde os pods rodam",
+      "aliases": ["node", "nodes"],
+      "tags": ["recurso", "no"],
+      "related": ["oc-adm-top"]
+    },
+    {
+      "id": "scc-kind",
+      "name": "SecurityContextConstraints",
+      "kind": "concept",
+      "summary": "Regras do OpenShift sobre o que um pod pode fazer: usuário, privilégios, volumes",
+      "description": "Por padrão (restricted-v2), o container roda com um UID aleatório no grupo 0, nunca como root.",
+      "aliases": ["scc", "securitycontextconstraints", "security context constraints"],
+      "tags": ["recurso"],
+      "related": ["error-scc-permission"]
+    },
+    {
+      "id": "pod-states",
+      "name": "Estados de um pod",
+      "kind": "concept",
+      "summary": "O que significa cada STATUS do oc get pods",
+      "aliases": ["status do pod", "pod status", "estado do pod", "pod parado"],
+      "tags": ["openshift"],
+      "examples": [
+        { "command": "oc get pods", "description": "Coluna STATUS" },
+        { "command": "oc describe pod NOME", "description": "Seção Events e Last State" }
+      ],
+      "sections": [
+        {
+          "title": "Estados",
+          "rows": [
+            ["Pending", "esperando um nó: falta CPU/memória, quota ou volume"],
+            ["ContainerCreating", "baixando a imagem e montando volumes"],
+            ["Running", "rodando (veja READY: 1/1 significa pronto)"],
+            ["Completed", "terminou com sucesso (jobs)"],
+            ["Error", "terminou com erro"],
+            ["CrashLoopBackOff", "morre ao iniciar; o cluster espera cada vez mais para tentar de novo"],
+            ["ImagePullBackOff / ErrImagePull", "não conseguiu baixar a imagem"],
+            ["CreateContainerConfigError", "falta um ConfigMap ou Secret referenciado"],
+            ["OOMKilled", "passou do limite de memória"],
+            ["Terminating", "encerrando; preso aqui, veja finalizers"]
+          ]
+        }
+      ],
+      "related": ["ocp-pod-troubleshooting", "error-crashloopbackoff", "error-imagepullbackoff", "error-oomkilled"]
+    },
+    {
+      "id": "resource-units",
+      "name": "Unidades de CPU e memória (requests e limits)",
+      "kind": "concept",
+      "summary": "500m, 1Gi, 512Mi: como o cluster mede CPU e memória",
+      "description": "requests é o que o pod reserva para ser agendado; limits é o teto. Passar do limite de CPU só deixa o pod lento; passar do de memória mata o container (OOMKilled).",
+      "aliases": ["requests e limits", "500m", "512mi", "1gi", "millicores", "limite de cpu"],
+      "tags": ["openshift", "recursos"],
+      "examples": [
+        { "command": "oc adm top pods", "description": "Uso real" },
+        { "command": "oc describe quota", "description": "Quota do projeto" }
+      ],
+      "sections": [
+        {
+          "title": "Unidades",
+          "rows": [
+            ["1 ou 1000m", "um núcleo de CPU"],
+            ["500m", "meio núcleo (m = milicores)"],
+            ["512Mi", "512 mebibytes (Mi, Gi: base 1024)"],
+            ["1Gi", "1 gibibyte"],
+            ["1G", "10^9 bytes (base 1000; cuidado: G ≠ Gi)"]
+          ]
+        }
+      ],
+      "related": ["oc-set-resources", "error-oomkilled", "error-pod-pending"]
+    },
+    {
+      "id": "ocp-login-project",
+      "name": "Entrar no cluster e escolher o projeto",
+      "kind": "recipe",
+      "summary": "Do console web para o terminal",
+      "aliases": ["como logar no openshift", "acessar cluster", "conectar no openshift"],
+      "tags": ["openshift"],
+      "steps": [
+        { "title": "Pegue o comando pronto", "why": "Console web → seu usuário → Copy login command → Display token." },
+        { "title": "Entre", "command": "oc login --token=sha256~xxxx --server=https://api.cluster.exemplo.com:6443", "why": "Cole o comando copiado." },
+        { "title": "Veja seus projetos", "command": "oc projects", "why": "Os que você pode acessar." },
+        { "title": "Escolha", "command": "oc project minha-app", "why": "Os próximos comandos usam este projeto." },
+        { "title": "Confira", "command": "oc whoami --show-server", "why": "Usuário e cluster." }
+      ],
+      "related": ["oc-login", "oc-project"]
+    },
+    {
+      "id": "ocp-pod-troubleshooting",
+      "name": "Investigar um pod com problema",
+      "kind": "recipe",
+      "summary": "Pod que não sobe, reinicia ou não fica pronto",
+      "aliases": ["pod não sobe", "pod reiniciando", "pod com erro", "debug pod", "aplicação não sobe no openshift"],
+      "tags": ["openshift", "troubleshooting"],
+      "steps": [
+        { "title": "Estado", "command": "oc get pods", "why": "STATUS, READY e RESTARTS dizem por onde começar." },
+        { "title": "Eventos e último término", "command": "oc describe pod NOME", "why": "Veja Events e Last State (Reason, Exit Code)." },
+        { "title": "Logs da execução que morreu", "command": "oc logs NOME -p", "why": "-p mostra o container anterior." },
+        { "title": "Eventos do projeto", "command": "oc get events --sort-by=.lastTimestamp", "why": "Falhas de agendamento, pull e probes." },
+        { "title": "Uso de memória e CPU", "command": "oc adm top pods", "why": "Perto do limite = risco de OOMKilled." },
+        { "title": "Entre sem o comando que falha", "command": "oc debug deployment/NOME", "why": "Mesma imagem e variáveis, com um shell." }
+      ],
+      "related": ["pod-states", "error-crashloopbackoff", "error-imagepullbackoff", "error-oomkilled", "error-pod-pending"]
+    },
+    {
+      "id": "ocp-restart-app",
+      "name": "Reiniciar uma aplicação no OpenShift",
+      "kind": "recipe",
+      "summary": "Recriar os pods, por exemplo depois de mudar um ConfigMap ou Secret",
+      "aliases": ["reiniciar deployment", "reiniciar aplicação openshift", "restart openshift", "recriar pods"],
+      "tags": ["openshift"],
+      "steps": [
+        { "title": "Reinicie", "command": "oc rollout restart deployment/api", "why": "Um pod por vez, sem derrubar a aplicação (se houver mais de uma réplica)." },
+        { "title": "Acompanhe", "command": "oc rollout status deployment/api", "why": "Termina quando os pods novos ficam prontos." },
+        { "title": "Um pod só", "command": "oc delete pod NOME", "why": "O deployment cria outro no lugar." }
+      ],
+      "related": ["oc-rollout-restart", "oc-rollout-status"]
+    },
+    {
+      "id": "ocp-rollback",
+      "name": "Voltar para a versão anterior (rollback)",
+      "kind": "recipe",
+      "summary": "Desfazer um deploy que deu problema",
+      "aliases": ["rollback openshift", "voltar versão", "desfazer deploy"],
+      "tags": ["openshift"],
+      "steps": [
+        { "title": "Veja as revisões", "command": "oc rollout history deployment/api", "why": "Cada mudança no template do pod gera uma." },
+        { "title": "Volte", "command": "oc rollout undo deployment/api", "why": "Sem argumento, a revisão anterior." },
+        { "title": "Acompanhe", "command": "oc rollout status deployment/api", "why": "Confirme que os pods ficaram prontos." }
+      ],
+      "related": ["oc-rollout-undo", "oc-rollout-history"]
+    },
+    {
+      "id": "ocp-access-local",
+      "name": "Acessar localmente um serviço do cluster",
+      "kind": "recipe",
+      "summary": "Banco, API ou fila do cluster em localhost, sem criar rota",
+      "aliases": ["acessar banco do cluster", "port forward openshift", "conectar no banco do openshift"],
+      "tags": ["openshift", "rede"],
+      "steps": [
+        { "title": "Ache o service", "command": "oc get svc", "why": "Nome e porta." },
+        { "title": "Encaminhe", "command": "oc port-forward svc/postgres 5432:5432", "why": "Fica ativo enquanto o comando roda." },
+        { "title": "Use", "command": "psql -h localhost -p 5432 -U app", "why": "Em outro terminal." }
+      ],
+      "related": ["oc-port-forward", "service-kind"]
+    }
+  ]
+}

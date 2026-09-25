@@ -795,6 +795,77 @@ pub fn exit_code_page(repo: &Repository, info: &ExitInfo, program: Option<&str>)
     doc
 }
 
+/// Class file versions → Java releases (`UnsupportedClassVersionError`).
+pub fn class_version_page(repo: &Repository, versions: &[u16]) -> Document {
+    use crate::analysis::java::java_version;
+    let java = |v: u16| java_version(v).unwrap_or_default();
+    let title = match versions {
+        [compiled, runtime] => format!("Java {} × Java {}", java(*compiled), java(*runtime)),
+        _ => versions
+            .iter()
+            .map(|v| format!("class file {v} = Java {}", java(*v)))
+            .collect::<Vec<_>>()
+            .join(" · "),
+    };
+    let mut doc = Document::new(title).subtitle("versão de class file");
+    doc.table(
+        versions
+            .iter()
+            .map(|v| {
+                Row::new([format!("class file {v}"), format!("Java {}", java(*v))])
+                    .tone(Tone::Accent)
+            })
+            .collect(),
+    );
+    let target = match versions {
+        [compiled, runtime] => {
+            doc.paragraph(format!(
+                "A classe foi compilada para Java {} (class file {compiled}), mas a JVM que está rodando é Java {} e só aceita até o class file {runtime}. Rode com Java {} ou mais novo, ou compile para Java {}.",
+                java(*compiled),
+                java(*runtime),
+                java(*compiled),
+                java(*runtime)
+            ));
+            java(*runtime)
+        }
+        _ => {
+            doc.paragraph("Desde o Java 5 (class file 49), cada versão do Java soma 1: Java N usa class file N + 44.");
+            versions.first().map(|v| java(*v)).unwrap_or_default()
+        }
+    };
+    doc.heading("COMANDOS");
+    for (line, caption) in [
+        (
+            "java -version".to_string(),
+            "Versão do Java que roda de fato".to_string(),
+        ),
+        (
+            "echo $JAVA_HOME".to_string(),
+            "Qual JDK as ferramentas (Maven, Gradle) usam".to_string(),
+        ),
+        (
+            "sudo update-alternatives --config java".to_string(),
+            "Troca o Java padrão (Debian/Ubuntu)".to_string(),
+        ),
+        (
+            format!("mvn -Dmaven.compiler.release={target} clean package"),
+            format!("Compila para Java {target}"),
+        ),
+        (
+            "javap -v App.class | grep major".to_string(),
+            "Class file de um .class".to_string(),
+        ),
+    ] {
+        let link = command_link(&line, &caption);
+        doc.example(line, &caption, Some(link));
+    }
+    doc.list(entry_items(
+        repo,
+        &["java", "java-home", "error-unsupported-class-version"],
+    ));
+    doc
+}
+
 /// A word that is not in the knowledge base.
 pub fn unknown_page(word: &str, availability: &Availability) -> Document {
     let mut doc = Document::new(word).subtitle("fora da base de conhecimento");

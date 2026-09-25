@@ -2,6 +2,7 @@
 
 pub mod context;
 pub mod engine;
+pub mod index;
 pub mod ranking;
 pub mod tokenizer;
 

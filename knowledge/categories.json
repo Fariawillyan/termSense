@@ -14,6 +14,10 @@
     { "id": "ssh", "name": "SSH", "description": "Acesso remoto, chaves, agentes e túneis" },
     { "id": "git", "name": "Git", "description": "Controle de versão: histórico, branches e desfazer alterações" },
     { "id": "docker", "name": "Docker", "description": "Containers, imagens, logs, redes e volumes" },
+    { "id": "openshift", "name": "OpenShift (oc)", "description": "Projetos, pods, deploys, rotas, logs e diagnóstico com oc (e kubectl)" },
+    { "id": "java", "name": "Java e Maven", "description": "JDK, compilação, JARs, Maven e diagnóstico da JVM" },
+    { "id": "cpp", "name": "C/C++ e testes", "description": "GCC e Clang, Make, CMake, GoogleTest e depuração" },
+    { "id": "node", "name": "Node.js e npm", "description": "Node, npm, npx, scripts, dependências e versões" },
     { "id": "wsl", "name": "WSL", "description": "Linux no Windows: arquivos, rede e integração com o Windows" },
     { "id": "errors", "name": "Mensagens de erro", "description": "Cole a mensagem de erro: causa provável e como resolver" }
   ]

@@ -377,7 +377,7 @@
       "name": "Liberar uma porta em uso",
       "kind": "recipe",
       "summary": "Encontrar e encerrar o processo que ocupa uma porta",
-      "aliases": ["liberar porta", "porta em uso", "address already in use", "matar processo na porta", "kill port"],
+      "aliases": ["liberar porta", "porta em uso", "address already in use", "matar processo na porta", "kill port", "eaddrinuse", "was already in use", "web server failed to start"],
       "tags": ["processos", "portas", "rede"],
       "examples": [
         { "command": "sudo ss -ltnp 'sport = :{{port:8080}}'", "description": "Mostra o processo dono da porta" },

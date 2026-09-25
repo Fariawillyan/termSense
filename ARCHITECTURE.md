@@ -8,7 +8,7 @@ Este documento descreve como o `ts` é organizado, como uma tecla vira resultado
 - **Somente consulta.** O único contato com o sistema é verificar se um executável existe no `PATH` (`stat`, em `system.rs`). Nada é executado.
 - **Baixo acoplamento.** A UI só apresenta. Busca, regex, redes e os analisadores não sabem que existe um terminal.
 - **Conhecimento é dado, não código.** Comandos, conceitos e receitas ficam em JSON. Um tema novo não exige mexer no núcleo.
-- **Poucas dependências.** `ratatui` + `crossterm` (TUI), `serde` + `serde_json` (dados), `regex` (matching) e `unicode-width` (largura de texto).
+- **Poucas dependências.** `ratatui` + `crossterm` (TUI), `serde` + `serde_json` (dados), `regex` (matching) e `unicode-width` (largura de texto). O `build.rs` usa as mesmas `serde` e `serde_json`.
 
 ## Camadas
 
@@ -28,10 +28,12 @@ Este documento descreve como o `ts` é organizado, como uma tecla vira resultado
 │ tokenizer  │ parser     │ analyzer    │ permissões│.rs       │
 │ context    │ analyzer   │ knowledge   │ cron      │ modelo   │
 │ engine     │ matcher    │             │ exit code │ neutro   │
+│ index      │            │             │ java      │          │
 │ ranking    │            │             │ sed, awk  │          │
 ├────────────┴────────────┴─────────────┴───────────┴──────────┤
 │ knowledge/   model, loader, repository, template, validate   │  dados
 │ knowledge/*.json (embutidos com include_str!)                │
+│ build.rs     índice da base montado na compilação            │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -54,7 +56,7 @@ KEY EVENT (crossterm, leitura bloqueante: zero CPU parado)
 RENDER
 ```
 
-Tudo roda de forma síncrona a cada tecla. Medido em release, com 409 entradas, `respond` + pré-visualização leva **~0,07 ms por tecla** (era ~0,2 ms com 253 entradas, antes do índice invertido). `ts --print` completo (carregar a base, montar o índice, responder e imprimir) leva ~12 ms e ~6,5 MB de RAM. Montar o índice custa ~3 ms e o parse do JSON ~1 ms; o resto é o processo em si. O custo dominante é desenhar o terminal. Para medir de novo:
+Tudo roda de forma síncrona a cada tecla. Medido em release, com 565 entradas, `respond` + pré-visualização leva **~0,08 ms por tecla** (era ~0,18 ms com 253 entradas, antes do índice invertido). `ts --print` completo (ler a base, carregar o índice, responder e imprimir) leva ~9 ms e ~7,8 MB de RAM: o parse do JSON custa ~2 ms, decodificar o índice pré-compilado bem menos, e o resto é o processo em si. O custo dominante é desenhar o terminal. Para medir de novo:
 
 ```bash
 cargo test --release -- --ignored keystroke_latency --nocapture
@@ -72,15 +74,25 @@ cargo test --release -- --ignored keystroke_latency --nocapture
 | `template.rs` | Placeholders `{{nome}}` e `{{nome:padrão}}` nos comandos. Só identificadores minúsculos contam, então `awk '{print $1}'` e `docker inspect -f '{{.State}}'` passam intactos. |
 | `validate.rs` | Regras de consistência (referências, categorias, resumos, flags, receitas) usadas pelos testes e pelo `ts --check`, que valida os arquivos do usuário. |
 
-Uma única forma de `Entry` serve para tudo. A diferença entre comando, conceito e receita é o campo `kind` mais os campos preenchidos: receitas usam `steps` e `examples`; comandos usam `options`, `arguments` e `usage`. Subcomandos são comandos com `parent`. `builtin` marca recursos do próprio shell (`cd`, `for`, `[[`), que não têm executável no `PATH`. O `kind` de argumentos e opções (`mode`, `umask`, `sed`, `awk`, `regex`…) diz ao explicador como detalhar o valor.
+Uma única forma de `Entry` serve para tudo. A diferença entre comando, conceito e receita é o campo `kind` mais os campos preenchidos: receitas usam `steps` e `examples`; comandos usam `options`, `arguments` e `usage`. Subcomandos são comandos com `parent`. Outros campos ajustam a análise:
+
+- `builtin` marca recursos do próprio shell (`cd`, `for`, `[[`), que não têm executável no `PATH`;
+- `names` dá outros nomes ao mesmo comando (`mvnw` para `mvn`, `kubectl` para `oc`, `gcc` para `g++`); um caminho resolve pelo último componente (`./mvnw`);
+- `phases` deixa os subcomandos virem em sequência (`mvn clean install`);
+- `flag_prefix` identifica um programa pelas flags quando o executável é do projeto (`./testes --gtest_filter=X` é GoogleTest);
+- em opções, `prefix` casa flags coladas ao valor (`-Xmx512m`, `-XX:+UseG1GC`, `-Wl,-rpath`);
+- o `kind` de argumentos e opções (`mode`, `umask`, `sed`, `awk`, `regex`, `resource`…) diz ao explicador como detalhar o valor.
+
+Tipos de recurso do OpenShift/Kubernetes são conceitos com a tag `recurso`; os nomes curtos (`po`, `svc`, `cm`) ficam em tags, e só valem onde um recurso é esperado. Assim `build` ou `secret` em outro comando não viram BuildConfig ou Secret.
 
 ### `search/`
 
 | Arquivo | Papel |
 |---|---|
 | `tokenizer.rs` | **Lexer de shell**: aspas, escapes, `$(...)`, `$((...))`, `((...))`, crases, `<(...)`, pipes, `&&`, `;`, redirecionamentos com descritor (`2>&1`), heredoc (`<<`, `<<-`) e here-string (`<<<`). Tolera entrada incompleta (aspa aberta). Classifica cada token pela forma: `COMMAND`, `OPTION`, `STRING`, `PATH`, `URL`, `HOST`, `NUMBER`, `VARIABLE`, `SUBSTITUTION`, `GLOB`, `ASSIGNMENT`, `PIPE`, `OPERATOR`, `REDIRECT`, `WORD`. Também normaliza texto de busca (minúsculas, sem acento) e remove stop words em português e inglês. |
-| `context.rs` | **Análise semântica** de uma linha usando a base. Dá a cada token um `Role`: comando, subcomando, opção conhecida, grupo de flags (`-rin` → `-r -i -n`), valor de opção (`-X POST`), argumento posicional com tipo (`PADRÃO` do grep é regex) e redirecionamentos. Entende wrappers (`sudo`, `nohup`, `xargs`, `env`): o comando embrulhado vira o contexto. Conhece a **gramática do shell**: palavras reservadas (`if`/`then`/`fi`, `for`/`in`/`do`/`done`, `while`, `case`/`esac`, `{ }`, `!`), a variável do `for`, padrões do `case`, nomes de funções e os operadores dentro de `[[ ]]` (onde `&&` não separa comandos). Cada palavra-chave aponta para a entrada do construto (`do` → `for`). Também calcula o `Cursor` (o que está sendo digitado) e os candidatos de completar (opções, subcomandos e exemplos compatíveis com as flags já digitadas). |
-| `engine.rs` | **Índice invertido**: vocabulário ordenado de tokens únicos (~5 mil) e, para cada token, os pares `(entrada, campo)` em que aparece. Cada termo da consulta visita só os tokens que casam com ele (exato, radical ou prefixo, sempre uma faixa contígua do vocabulário ordenado), então o custo de uma tecla depende de quantos tokens casam, não do tamanho da base. |
+| `context.rs` | **Análise semântica** de uma linha usando a base. Dá a cada token um `Role`: comando, subcomando, opção conhecida, grupo de flags (`-rin` → `-r -i -n`), valor de opção (`-X POST`), argumento posicional com tipo (`PADRÃO` do grep é regex) e redirecionamentos. Entende wrappers (`sudo`, `nohup`, `xargs`, `env`): o comando embrulhado vira o contexto. Conhece a **gramática do shell**: palavras reservadas (`if`/`then`/`fi`, `for`/`in`/`do`/`done`, `while`, `case`/`esac`, `{ }`, `!`), a variável do `for`, padrões do `case`, nomes de funções e os operadores dentro de `[[ ]]` (onde `&&` não separa comandos). Cada palavra-chave aponta para a entrada do construto (`do` → `for`). Resolve opções no estilo do GCC (`-std=c++17`, onde o `=` vem antes de tentar prefixos) e opções coladas ao valor. Também calcula o `Cursor` (o que está sendo digitado) e os candidatos de completar (opções, subcomandos e exemplos compatíveis com as flags já digitadas). |
+| `index.rs` | Constrói o **índice invertido**: vocabulário ordenado de tokens únicos (~6 mil) e, para cada token, os pares `(entrada, campo)` em que aparece. Também o grava e lê em formato binário. Depende só do modelo, do template e do tokenizer, para o `build.rs` poder compilá-lo. |
+| `engine.rs` | Busca sobre o índice. Cada termo da consulta visita só os tokens que casam com ele (exato, radical ou prefixo, sempre uma faixa contígua do vocabulário ordenado), então o custo de uma tecla depende de quantos tokens casam, não do tamanho da base. |
 | `ranking.rs` | Níveis de match e ordem total para desempate. |
 
 **Ranking.** Primeiro a consulta inteira é comparada ao nome, em níveis:
@@ -127,6 +139,7 @@ Analisadores de notações do shell e do sistema. Como `regex/` e `networking/`,
 | `exit_code.rs` | Convenções (0, 1, 2, 126, 127, 255), morte por sinal (128 + N, com os 31 sinais) e códigos definidos por programas (`curl` 7, `grep` 1, `timeout` 124…). Reconhece consultas como `exit 137` e `curl exit 7`. |
 | `sed.rs` | Decompõe scripts sed: endereços (linha, `$`, regex, intervalos, `!`), comandos e o `s///` com delimitador, troca (`&`, `\1`) e flags. As regex saem cruas para o analisador de regex interpretar. |
 | `awk.rs` | Separa regras (padrão + ação, `BEGIN`/`END`) e monta um glossário de campos (`$1`, `$NF`), variáveis (`NR`, `FS`), funções, arrays e operadores. |
+| `java.rs` | Versão de class file → versão do Java (desde o Java 5, Java N = class file N + 44). Acha as versões em mensagens como `UnsupportedClassVersionError` e `Unsupported major.minor version`. |
 ### `document.rs`
 
 Modelo de documento neutro: `Document { title, subtitle, blocks }`, com os blocos `Heading`, `Paragraph`, `Code` (com legenda e link), `Table`, `List`, `Steps`, `Tree`, `Flow` e `Note`, e tons semânticos (`Info`, `Warning`, `Danger`…). `Link` aponta para uma entrada, uma linha de comando a explicar ou uma categoria. `Document::links()` define a ordem de navegação com Tab. O renderer da UI percorre os blocos na mesma ordem e um teste garante que as duas contagens batem.
@@ -161,6 +174,12 @@ A disponibilidade dos comandos (`which`) é consultada sob demanda e guardada em
 - `App` é uma máquina de estados pura: visão de busca, ou pilha de `DetailView` com rolagem e link focado. Toda a interação é testável sem terminal. No modo widget (integração com o shell), Esc marca a linha como aceita e Ctrl+C cancela.
 - `input.rs` mapeia teclas para `Action` (independente da visão) e implementa um `LineEditor` com cursor em fronteira de caractere UTF-8.
 - `ui.rs` faz o layout responsivo: lado a lado a partir de 100 colunas, empilhado abaixo disso. Também realça a sintaxe da entrada com o próprio tokenizer (ou com o parser de regex), renderiza documentos com quebra de linha por largura Unicode e mantém o link focado visível. Os testes usam o `TestBackend` do Ratatui em vários tamanhos, inclusive 10×5.
+
+### Índice pré-compilado (`build.rs`)
+
+Montar o índice é a parte cara da inicialização: normalizar e tokenizar ~200 KB de texto. Por isso o `build.rs` compila os mesmos módulos do programa (`knowledge/loader.rs`, `model.rs`, `template.rs`, `search/index.rs` e `tokenizer.rs`), monta o índice da base embutida e o grava em `OUT_DIR/index.bin`, que entra no binário com `include_bytes!`. Ao abrir, o `SearchEngine` só decodifica esse índice, desde que a base carregada seja só a embutida (`Repository::builtin_only`) e as entradas confiram. Com arquivos do usuário, o índice é montado na hora.
+
+O JSON continua sendo a fonte da verdade: o `build.rs` roda de novo quando `knowledge/` ou esses módulos mudam, e o teste `precompiled_index_matches_a_fresh_build` garante que o índice embutido é idêntico a um montado em tempo de execução. Construir o índice em várias threads foi testado e descartado: num processo que vive ~10 ms, criar threads custa mais do que economiza.
 
 ### Integração com o shell
 

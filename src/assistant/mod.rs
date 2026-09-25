@@ -11,7 +11,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::net::IpAddr;
 
-use crate::analysis::{cron, exit_code, permissions};
+use crate::analysis::{cron, exit_code, java, permissions};
 use crate::config::Config;
 use crate::document::{Document, Link};
 use crate::knowledge::template::render;
@@ -116,7 +116,8 @@ impl Assistant {
             return self.network_mode(address);
         }
         let analysis = context::analyze(&self.repo, input);
-        if is_command_line(&analysis) {
+        // "java lento" starts with a command but is a known question.
+        if is_command_line(&analysis) && !self.engine.is_topic(input) {
             return self.command_mode(input, &analysis);
         }
         self.search_mode(input, &net)
@@ -232,7 +233,8 @@ impl Assistant {
         let confident = !only_parameters && !bare_port && hits.iter().any(|h| h.strong);
 
         let mut insights = self.network_insights(net);
-        let mut out = Vec::new();
+        // Computed from the text itself: the most specific answer there is.
+        let mut out = self.java_insights(input);
         if !confident {
             // Computed facts beat approximate matches ("8080" → the port).
             out.append(&mut insights);
@@ -592,10 +594,16 @@ impl Assistant {
         let words = plain_words(a);
         if words >= 2 {
             let hits = self.search_hits(input, 5);
-            // Prose without any known command is more likely a pasted error
-            // message ("! [rejected] main -> main") than a command line.
+            // Prose is more likely a pasted error message than a command
+            // line: no known command at all ("! [rejected] main -> main"),
+            // or a command followed by words that are not its subcommands
+            // ("npm ERR! code ERESOLVE").
             let no_known_command = a.segments.iter().all(|s| s.chain.is_empty());
-            let prose = no_known_command && words >= 3;
+            let not_a_subcommand = a
+                .segments
+                .first()
+                .is_some_and(|s| s.unknown_subcommand.is_some());
+            let prose = (no_known_command || not_a_subcommand) && words >= 3;
             if prose && !hits.is_empty() {
                 out.splice(0..0, hits);
             } else {
@@ -778,6 +786,22 @@ impl Assistant {
                 s
             })
             .collect()
+    }
+
+    /// `class file version 65.0` in the query (a pasted
+    /// `UnsupportedClassVersionError`) → which Java versions those are.
+    fn java_insights(&self, input: &str) -> Vec<Suggestion> {
+        let versions = java::class_versions(input);
+        if versions.is_empty() {
+            return Vec::new();
+        }
+        let doc = pages::class_version_page(&self.repo, &versions);
+        let subtitle = versions
+            .iter()
+            .map(|v| format!("{v} = Java {}", java::java_version(*v).unwrap_or_default()))
+            .collect::<Vec<_>>()
+            .join(" · ");
+        vec![Suggestion::analysis(doc.title.clone(), subtitle, doc)]
     }
 
     fn network_insights(&self, net: &NetQuery) -> Vec<Suggestion> {
@@ -1167,6 +1191,41 @@ mod tests {
             (
                 "! [rejected]  main -> main (fetch first)",
                 "entry:error-git-push-rejected",
+            ),
+            // Java, C++, Node and OpenShift
+            ("maven", "entry:mvn"),
+            ("kubectl", "entry:oc"),
+            ("openshift", "entry:oc"),
+            ("gcc", "entry:gpp"),
+            ("pular testes", "entry:maven-skip-tests"),
+            ("trocar versão do java", "entry:java-switch-version"),
+            ("java lento", "entry:jvm-diagnose"),
+            ("rodar só um teste gtest", "entry:gtest-run-one"),
+            ("trocar versão do node", "entry:node-switch-version"),
+            ("pod não sobe", "entry:ocp-pod-troubleshooting"),
+            ("reiniciar deployment", "entry:ocp-restart-app"),
+            ("CrashLoopBackOff", "entry:error-crashloopbackoff"),
+            ("OOMKilled", "entry:error-oomkilled"),
+            ("npm ERR! code ERESOLVE", "entry:error-npm-eresolve"),
+            (
+                "/usr/bin/ld: cannot find -lssl: No such file or directory",
+                "entry:error-cannot-find-lib",
+            ),
+            (
+                "main.cpp:1:10: fatal error: curl/curl.h: No such file or directory",
+                "entry:error-include-not-found",
+            ),
+            (
+                "Web server failed to start. Port 8080 was already in use.",
+                "entry:kill-process-on-port",
+            ),
+            (
+                "PKIX path building failed: unable to find valid certification path to requested target",
+                "entry:error-pkix",
+            ),
+            (
+                "(class file version 65.0), this version of the Java Runtime only recognizes class file versions up to 61.0",
+                "análise:Java 21 × Java 17",
             ),
             ("755", "análise:Permissões 755 · rwxr-xr-x"),
             ("*/5 * * * *", "análise:Cron: */5 * * * *"),

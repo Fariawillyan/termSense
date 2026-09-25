@@ -45,6 +45,13 @@ pub const EMBEDDED: &[(&str, &str)] = &[
     ),
     ("editors.json", include_str!("../../knowledge/editors.json")),
     ("wsl.json", include_str!("../../knowledge/wsl.json")),
+    ("java.json", include_str!("../../knowledge/java.json")),
+    ("cpp.json", include_str!("../../knowledge/cpp.json")),
+    ("node.json", include_str!("../../knowledge/node.json")),
+    (
+        "openshift.json",
+        include_str!("../../knowledge/openshift.json"),
+    ),
     ("errors.json", include_str!("../../knowledge/errors.json")),
 ];
 
@@ -70,6 +77,8 @@ pub struct Loaded {
     pub categories: Vec<Category>,
     /// Non-fatal problems (invalid user files, duplicated ids).
     pub warnings: Vec<String>,
+    /// Entries that came from the user's files (new or replacing).
+    pub user_entries: usize,
     /// Position of each id in `entries`, for overrides while merging.
     positions: HashMap<String, usize>,
 }
@@ -116,8 +125,16 @@ pub fn load(dirs: &[PathBuf]) -> Result<Loaded, LoadError> {
     load_files(&files).map(|(loaded, _)| loaded)
 }
 
-/// A user file and its number of entries, or why it could not be read.
-pub type FileReport = (String, Result<usize, String>);
+/// What happened to one user file.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FileReport {
+    pub source: String,
+    /// Number of entries, or why the file could not be read.
+    pub result: Result<usize, String>,
+    /// Ids that already existed (built in or from an earlier file) and
+    /// were replaced by this file.
+    pub overrides: Vec<String>,
+}
 
 /// Loads the built-in knowledge plus `files`, in order, reporting on each file.
 pub fn load_files(files: &[PathBuf]) -> Result<(Loaded, Vec<FileReport>), LoadError> {
@@ -130,12 +147,27 @@ pub fn load_files(files: &[PathBuf]) -> Result<(Loaded, Vec<FileReport>), LoadEr
             .and_then(|content| parse(&source, &content).map_err(|e| e.to_string()));
         match result {
             Ok(file) => {
-                reports.push((source.clone(), Ok(file.entries.len())));
+                let overrides = file
+                    .entries
+                    .iter()
+                    .filter(|e| loaded.positions.contains_key(&e.id))
+                    .map(|e| e.id.clone())
+                    .collect();
+                loaded.user_entries += file.entries.len();
+                reports.push(FileReport {
+                    source: source.clone(),
+                    result: Ok(file.entries.len()),
+                    overrides,
+                });
                 merge(&mut loaded, file, &source, false);
             }
             Err(e) => {
                 loaded.warnings.push(e.clone());
-                reports.push((source, Err(e)));
+                reports.push(FileReport {
+                    source,
+                    result: Err(e),
+                    overrides: Vec::new(),
+                });
             }
         }
     }

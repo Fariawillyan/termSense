@@ -44,6 +44,16 @@ pub fn validate(repo: &Repository) -> Vec<String> {
                 out.push(format!("{id}: opção {} tem kind mas não tem arg", o.key()));
             }
         }
+        if let Some(p) = &e.flag_prefix
+            && !p.starts_with('-')
+        {
+            out.push(format!("{id}: flag_prefix '{p}' sem hífen"));
+        }
+        for n in &e.names {
+            if n.is_empty() || n.contains(char::is_whitespace) {
+                out.push(format!("{id}: nome alternativo inválido '{n}'"));
+            }
+        }
         if e.kind == EntryKind::Recipe && e.examples.is_empty() && e.steps.is_empty() {
             out.push(format!("{id}: receita sem examples nem steps"));
         }
@@ -63,7 +73,7 @@ pub struct Report {
 
 impl Report {
     pub fn ok(&self) -> bool {
-        self.problems.is_empty() && self.files.iter().all(|(_, r)| r.is_ok())
+        self.problems.is_empty() && self.files.iter().all(|f| f.result.is_ok())
     }
 }
 
@@ -74,11 +84,7 @@ pub fn check(files: &[PathBuf]) -> Result<Report, LoadError> {
     let mut problems: Vec<String> = loaded
         .warnings
         .iter()
-        .filter(|w| {
-            !reports
-                .iter()
-                .any(|(source, _)| w.starts_with(source.as_str()))
-        })
+        .filter(|w| !reports.iter().any(|f| w.starts_with(f.source.as_str())))
         .cloned()
         .collect();
     problems.extend(validate(&Repository::new(loaded)));
@@ -122,13 +128,24 @@ mod tests {
 
         let report = check(&[good.clone(), broken.clone(), inconsistent]).unwrap();
         assert!(!report.ok());
-        assert_eq!(report.files[0].1, Ok(1));
-        assert!(report.files[1].1.is_err());
+        assert_eq!(report.files[0].result, Ok(1));
+        assert!(report.files[1].result.is_err());
         assert!(report.problems.iter().any(|p| p.contains("nao-existe")));
         assert!(report.problems.iter().any(|p| p.contains("ponto")));
 
         let report = check(&[good]).unwrap();
         assert!(report.ok(), "{:?}", report.problems);
+
+        // Replacing a built-in entry is allowed, and reported.
+        let custom = dir.join("meu-grep.json");
+        fs::write(
+            &custom,
+            r#"{"category":"text","entries":[{"name":"grep","kind":"command","summary":"Minha versão"}]}"#,
+        )
+        .unwrap();
+        let report = check(&[custom]).unwrap();
+        assert!(report.ok());
+        assert_eq!(report.files[0].overrides, ["grep"]);
         fs::remove_dir_all(&dir).unwrap();
     }
 }

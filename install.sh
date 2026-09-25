@@ -41,9 +41,21 @@ fi
 # 3. Diretório de destino
 mkdir -p "$INSTALL_DIR"
 
-# 4. Instalação
+# Versão anterior, se for uma atualização (só se o ts de lá for o TermSense).
+OLD_VERSION=""
+if [ -x "$INSTALL_DIR/ts" ]; then
+    OLD_VERSION="$("$INSTALL_DIR/ts" --version </dev/null 2>/dev/null | grep '^ts (TermSense)' || true)"
+fi
+
+# 4. Instalação (substitui o binário anterior; seus arquivos em
+#    ~/.config/termsense não são tocados)
 install -m 0755 "$BIN" "$INSTALL_DIR/ts"
-info "Instalado em $INSTALL_DIR/ts ($("$INSTALL_DIR/ts" --version))"
+NEW_VERSION="$("$INSTALL_DIR/ts" --version)"
+if [ -n "$OLD_VERSION" ] && [ "$OLD_VERSION" != "$NEW_VERSION" ]; then
+    info "Atualizado: $OLD_VERSION → $NEW_VERSION"
+else
+    info "Instalado em $INSTALL_DIR/ts ($NEW_VERSION)"
+fi
 
 # 5. PATH
 case ":$PATH:" in

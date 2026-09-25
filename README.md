@@ -1,13 +1,15 @@
 # TermSense (`ts`)
 
-Assistente de conhecimento para o terminal. Enquanto você digita, o `ts` mostra comandos, opções, exemplos e conceitos de **Linux, shell, regex, redes, SSH, Git, Docker, pacotes e WSL**, explica o que cada parte de um comando faz e diz o que fazer com uma mensagem de erro colada.
+**Versão 0.2.0 — 25/09/2026** ([o que mudou](CHANGELOG.md))
+
+Assistente de conhecimento para o terminal. Enquanto você digita, o `ts` mostra comandos, opções, exemplos e conceitos de **Linux, shell, regex, redes, SSH, Git, Docker, OpenShift, Java/Maven, C/C++, Node/npm, pacotes e WSL**, explica o que cada parte de um comando faz e diz o que fazer com uma mensagem de erro colada.
 
 - Funciona **offline**, é **local** e **determinístico**: a mesma consulta dá sempre o mesmo resultado.
 - Não usa servidor, banco de dados, IA nem rede.
 - Só consulta. **Nunca executa comandos**, não altera arquivos e não mexe no shell.
 
 ```text
-┌ TermSense ─────────────────────────────────────── comando · 409 entradas ┐
+┌ TermSense ─────────────────────────────────────── comando · 565 entradas ┐
 │ > ss -ltnp | grep ':8080'                                               │
 └─────────────────────────────────────────────────────────────────────────┘
 ┌ Sugestões (9) ───────────────┐┌ Pré-visualização ───────────────────────┐
@@ -31,12 +33,12 @@ Em man pages e buscas na web, você encontra o comando mas raramente entende *po
 Use esta opção em outra máquina, como o WSL do trabalho. O pacote traz um binário estático para Linux x86_64 com a base de conhecimento embutida.
 
 ```bash
-tar -xzf termsense-0.1.0-x86_64-linux.tar.gz
-cd termsense-0.1.0-x86_64-linux
+tar -xzf termsense-0.2.0-x86_64-linux.tar.gz
+cd termsense-0.2.0-x86_64-linux
 ./install.sh            # copia o ts para ~/.local/bin
 ```
 
-Para conferir a integridade do arquivo baixado: `sha256sum -c termsense-0.1.0-x86_64-linux.tar.gz.sha256`.
+Para conferir a integridade do arquivo baixado: `sha256sum -c termsense-0.2.0-x86_64-linux.tar.gz.sha256`.
 
 Para gerar o pacote numa máquina que tem o repositório e o Rust:
 
@@ -69,6 +71,38 @@ O `install.sh`:
 Ele **não modifica** o `.bashrc`. Se `~/.local/bin` não estiver no `PATH`, o script mostra a linha para você adicionar. Para instalar em outro lugar, use `INSTALL_DIR=/outro/dir ./install.sh`.
 
 > O pacote `moreutils` também tem um comando `ts` (timestamp). Se ele vier antes no `PATH`, o `install.sh` avisa.
+
+## Atualizando
+
+Atualizar é refazer a instalação: o `install.sh` substitui o binário e mostra de qual versão para qual você foi (`Atualizado: ts (TermSense) 0.1.0 → ts (TermSense) 0.2.0 (2026-09-25)`).
+
+**Com o código-fonte** (na máquina que tem o repositório e o Rust):
+
+```bash
+cd termSense
+git pull
+./install.sh
+```
+
+**Com o pacote pronto** (ex.: o WSL do trabalho, sem Rust):
+
+```bash
+# na máquina com o repositório: gera dist/termsense-<versão>-x86_64-linux.tar.gz
+./scripts/package.sh
+
+# na máquina de destino, com o novo pacote
+tar -xzf termsense-0.2.0-x86_64-linux.tar.gz
+cd termsense-0.2.0-x86_64-linux
+./install.sh
+```
+
+Três detalhes que diferem da primeira instalação:
+
+- **Seus arquivos continuam.** O conhecimento que você criou em `~/.config/termsense/knowledge/` não é tocado. Depois de atualizar, rode `ts --check`: além de validar os arquivos, ele lista as entradas suas que **substituem** entradas da base (`ℹ substitui 1 entrada(s) da base: rsync`). Se a base passou a ter aquele comando, compare as duas e apague a sua cópia se a nova for melhor: enquanto ela existir, é ela que aparece.
+- **A integração com o shell se atualiza sozinha.** A linha `eval "$(ts --init bash)"` roda a cada terminal novo e aponta para o mesmo caminho do binário. Terminais já abertos também usam o binário novo no próximo Alt+H. Só é preciso mexer se você mudou o `INSTALL_DIR`.
+- **Confira a versão:** `ts --version` mostra a versão e a data (`ts (TermSense) 0.2.0 (2026-09-25)`).
+
+Para voltar a uma versão anterior, instale o pacote dela do mesmo jeito.
 
 ## Como executar
 
@@ -132,25 +166,37 @@ Para usar outra tecla no bash, defina antes `TERMSENSE_KEY='\C-g'` (no zsh, `TER
 | `echo "${f%.*}" $#` | expansões `${...}` e variáveis especiais explicadas |
 | `sed 's/a/b/g' f`, `awk '{print $1}' f` | o script sed e o programa awk decompostos peça por peça |
 | `Permission denied (publickey)` | cole a mensagem de erro: causa provável e passos para resolver |
-| `kubectl` (fora da base) | diz que não conhece, mostra se está instalado e como ensinar ao `ts` |
+| `mvn clean install -DskipTests`, `./mvnw test -Dtest=X` | fases do Maven em sequência, propriedades `-D`, o `./mvnw` do projeto |
+| `java -Xmx2g -XX:+UseG1GC -jar app.jar` | opções da JVM explicadas, inclusive as coladas ao valor |
+| `g++ -std=c++17 -O2 -fsanitize=address -o app main.cpp` | flags do GCC e do Clang, como `-std=`, `-W…`, `-l`, `-I` |
+| `./build/testes --gtest_filter=Suite.*` | reconhece um binário de testes do GoogleTest pelas flags |
+| `npm i -D typescript`, `npm run build -- --watch` | subcomandos e apelidos do npm (`i`, `t`, `rm`) |
+| `oc logs -f deployment/api`, `kubectl get pods -n loja` | OpenShift e kubectl, com o tipo de cada recurso (`deployment/api`) |
+| `CrashLoopBackOff`, `ERESOLVE`, `PKIX path building failed` | erros de OpenShift, npm, Java/Maven e C/C++ com o passo a passo |
+| `…class file version 65.0 … up to 61.0` | `UnsupportedClassVersionError` traduzido: Java 21 × Java 17 |
+| `xyzzy` (fora da base) | diz que não conhece, mostra se está instalado e como ensinar ao `ts` |
 
 ## Conteúdo da base
 
-São 409 entradas (214 comandos, 109 conceitos e 86 receitas), divididas por tema:
+São 565 entradas (293 comandos, 134 conceitos e 138 receitas), divididas por tema:
 
 | Tema | Entradas |
 |---|---|
+| Mensagens de erro | 67 |
 | Linux (arquivos, permissões, discos, usuários) | 65 |
+| OpenShift (`oc` e `kubectl`) | 54 |
 | Shell (estruturas, variáveis, expansões) | 40 |
 | Redes: comandos e firewall | 38 |
-| Mensagens de erro | 33 |
 | Git | 33 |
 | HTTP e TLS | 32 |
 | Docker | 29 |
+| Java e Maven | 29 |
 | Processos, serviços e agendamento | 27 |
 | Conceitos de rede | 25 |
+| Node.js e npm | 24 |
 | Texto (grep, sed, awk, jq…) | 23 |
 | SSH | 17 |
+| C/C++ e testes (GCC, CMake, GoogleTest) | 15 |
 | Pacotes (apt, dpkg, dnf) | 13 |
 | WSL | 12 |
 | Regex | 12 |
@@ -211,7 +257,7 @@ cargo fmt
 
 ## Como testar
 
-`cargo test` roda 148 testes unitários. Eles cobrem tokenizer, motor de busca e ranking, loader e integridade da base, parser e analisador de regex, matcher, redes (CIDR, portas, IPs), permissões, cron, exit codes, sed e awk, gramática do shell, autocomplete contextual, explicador de comandos, integração com o shell, estado da aplicação (teclas, Tab, Enter, Esc) e renderização da interface num terminal simulado.
+`cargo test` roda 154 testes unitários. Eles cobrem tokenizer, motor de busca e ranking, o índice pré-compilado (idêntico ao construído na hora), loader e integridade da base, parser e analisador de regex, matcher, redes (CIDR, portas, IPs), permissões, cron, exit codes, versões de class file do Java, sed e awk, gramática do shell e das ferramentas de build (fases do Maven, flags do GCC, GoogleTest, recursos do OpenShift), autocomplete contextual, explicador de comandos, integração com o shell, estado da aplicação (teclas, Tab, Enter, Esc) e renderização da interface num terminal simulado.
 
 Alguns casos que os testes garantem:
 
@@ -231,7 +277,7 @@ O TermSense continua local e determinístico: não há planos de IA.
 | Versão | Escopo |
 |---|---|
 | v0.1 | TUI, busca, base local, Linux, shell, regex, redes, Git, Docker, SSH |
-| **v0.2** (em desenvolvimento) | confiança na busca (admite o que não sabe), gramática do shell, analisadores de permissões, cron, exit codes, sed e awk, catálogo de mensagens de erro, pacotes, WSL, editores, `ts --check` e integração com Bash, Zsh e Fish |
+| **v0.2** (atual, 25/09/2026) | confiança na busca (admite o que não sabe), gramática do shell, analisadores de permissões, cron, exit codes, class file do Java, sed e awk, catálogo de mensagens de erro, OpenShift, Java/Maven, C/C++/GoogleTest, Node/npm, pacotes, WSL, editores, `ts --check`, integração com Bash, Zsh e Fish e índice pré-compilado |
 | v0.3 | histórico, favoritos e personalização (`config.toml`) |
 | v0.4 | sinônimos e aliases em inglês mais completos |
 | v0.5 | modo treinamento (Linux, regex, redes) |
