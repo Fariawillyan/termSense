@@ -1,0 +1,400 @@
+{
+  "category": "git",
+  "entries": [
+    {
+      "name": "git",
+      "kind": "command",
+      "summary": "Sistema de controle de versão",
+      "description": "Três áreas: diretório de trabalho (arquivos editados), staging/índice (o que vai no próximo commit, via git add) e repositório (commits). Branches são ponteiros para commits; HEAD aponta para onde você está.",
+      "usage": "git [OPÇÕES] SUBCOMANDO [ARGUMENTOS]",
+      "aliases": ["controle de versão", "version control", "repositório", "versionamento"],
+      "tags": ["git", "versionamento"],
+      "options": [
+        { "short": "-C", "arg": "DIR", "description": "Executa como se estivesse em DIR" },
+        { "long": "--no-pager", "description": "Não usa paginação" }
+      ],
+      "examples": [
+        { "command": "git status", "description": "Estado do repositório" },
+        { "command": "git log --oneline --graph --all", "description": "Histórico em árvore" },
+        { "command": "git switch -c feature/nova", "description": "Cria e troca de branch" }
+      ],
+      "related": ["git-status", "git-log", "git-undo", "ssh"]
+    },
+    {
+      "id": "git-status", "name": "git status", "kind": "command", "parent": "git",
+      "summary": "Mostra arquivos modificados, preparados (staged) e não rastreados",
+      "usage": "git status [OPÇÕES]",
+      "aliases": ["o que mudou", "arquivos alterados git", "estado do repositório"],
+      "tags": ["git"],
+      "options": [
+        { "short": "-s", "long": "--short", "description": "Formato curto (XY arquivo)" },
+        { "short": "-b", "long": "--branch", "description": "Mostra a branch e se está à frente/atrás" }
+      ],
+      "examples": [
+        { "command": "git status", "description": "Visão completa" },
+        { "command": "git status -sb", "description": "Resumido com a branch" }
+      ],
+      "related": ["git-diff", "git-add", "git-restore"]
+    },
+    {
+      "id": "git-add", "name": "git add", "kind": "command", "parent": "git",
+      "summary": "Prepara alterações para o próximo commit (staging)",
+      "usage": "git add [OPÇÕES] CAMINHO...",
+      "aliases": ["preparar commit", "stage", "adicionar arquivos git"],
+      "tags": ["git"],
+      "options": [
+        { "short": "-p", "long": "--patch", "description": "Escolhe trechos interativamente" },
+        { "short": "-A", "long": "--all", "description": "Tudo, inclusive remoções" },
+        { "short": "-u", "long": "--update", "description": "Só arquivos já rastreados" }
+      ],
+      "arguments": [{ "name": "CAMINHO", "kind": "path", "description": "Arquivos ou diretórios", "repeat": true }],
+      "examples": [
+        { "command": "git add arquivo.txt", "description": "Prepara um arquivo" },
+        { "command": "git add -p", "description": "Revisa e escolhe cada trecho" },
+        { "command": "git add -A", "description": "Prepara tudo" }
+      ],
+      "related": ["git-commit", "git-status", "git-restore"]
+    },
+    {
+      "id": "git-commit", "name": "git commit", "kind": "command", "parent": "git",
+      "summary": "Grava as alterações preparadas no histórico",
+      "usage": "git commit [OPÇÕES]",
+      "aliases": ["commitar", "salvar alterações git", "criar commit"],
+      "tags": ["git"],
+      "options": [
+        { "short": "-m", "long": "--message", "arg": "MENSAGEM", "description": "Mensagem do commit" },
+        { "short": "-a", "long": "--all", "description": "Inclui arquivos rastreados modificados (sem git add)" },
+        { "long": "--amend", "description": "Refaz o último commit (mensagem ou conteúdo)" }
+      ],
+      "examples": [
+        { "command": "git commit -m \"Corrige validação de e-mail\"", "description": "Commit com mensagem" },
+        { "command": "git commit --amend --no-edit", "description": "Inclui algo esquecido no último commit (antes do push)" }
+      ],
+      "related": ["git-add", "git-push", "git-reset"]
+    },
+    {
+      "id": "git-log", "name": "git log", "kind": "command", "parent": "git",
+      "summary": "Mostra o histórico de commits",
+      "usage": "git log [OPÇÕES] [REVISÕES] [-- CAMINHO]",
+      "aliases": ["histórico git", "commits anteriores", "history"],
+      "tags": ["git", "histórico"],
+      "options": [
+        { "long": "--oneline", "description": "Um commit por linha" },
+        { "long": "--graph", "description": "Desenha as branches" },
+        { "long": "--all", "description": "Todas as branches" },
+        { "short": "-p", "long": "--patch", "description": "Mostra as alterações de cada commit" },
+        { "short": "-n", "arg": "N", "description": "Só os N últimos" },
+        { "long": "--author", "arg": "NOME", "description": "Filtra por autor" },
+        { "long": "--since", "arg": "DATA", "description": "Desde (\"2 weeks ago\")" },
+        { "short": "-S", "arg": "TEXTO", "description": "Commits que adicionaram ou removeram TEXTO" }
+      ],
+      "examples": [
+        { "command": "git log --oneline --graph --all", "description": "Árvore de todas as branches" },
+        { "command": "git log -p -- arquivo.txt", "description": "Histórico de um arquivo com diffs" },
+        { "command": "git log -S \"funcaoX\" --oneline", "description": "Quando funcaoX apareceu ou sumiu" }
+      ],
+      "related": ["git-diff", "git-branch"]
+    },
+    {
+      "id": "git-diff", "name": "git diff", "kind": "command", "parent": "git",
+      "summary": "Mostra diferenças entre trabalho, staging e commits",
+      "usage": "git diff [OPÇÕES] [COMMIT [COMMIT]] [-- CAMINHO]",
+      "aliases": ["diferenças git", "ver alterações", "comparar branches"],
+      "tags": ["git"],
+      "options": [
+        { "long": "--staged", "description": "O que já está preparado para o commit" },
+        { "long": "--stat", "description": "Resumo por arquivo" },
+        { "long": "--name-only", "description": "Só os nomes dos arquivos" }
+      ],
+      "examples": [
+        { "command": "git diff", "description": "Alterações ainda não preparadas" },
+        { "command": "git diff --staged", "description": "O que vai no próximo commit" },
+        { "command": "git diff main..feature --stat", "description": "Resumo entre duas branches" }
+      ],
+      "related": ["git-status", "git-log", "diff"]
+    },
+    {
+      "id": "git-branch", "name": "git branch", "kind": "command", "parent": "git",
+      "summary": "Lista, cria, renomeia e apaga branches",
+      "usage": "git branch [OPÇÕES] [NOME]",
+      "aliases": ["listar branches", "branches", "ramificação"],
+      "tags": ["git", "branches"],
+      "options": [
+        { "short": "-a", "long": "--all", "description": "Inclui branches remotas" },
+        { "short": "-d", "long": "--delete", "description": "Apaga (se já foi mesclada)" },
+        { "short": "-D", "description": "Apaga mesmo sem mesclar" },
+        { "short": "-m", "long": "--move", "description": "Renomeia" },
+        { "short": "-v", "long": "--verbose", "description": "Último commit e rastreamento" }
+      ],
+      "examples": [
+        { "command": "git branch -vv", "description": "Branches locais com upstream" },
+        { "command": "git branch -d feature/antiga", "description": "Apaga uma branch mesclada" },
+        { "command": "git branch -m novo-nome", "description": "Renomeia a branch atual" }
+      ],
+      "related": ["git-switch", "git-merge", "git-create-branch"]
+    },
+    {
+      "id": "git-switch", "name": "git switch", "kind": "command", "parent": "git",
+      "summary": "Troca de branch (forma moderna do checkout para branches)",
+      "usage": "git switch [OPÇÕES] BRANCH",
+      "aliases": ["trocar de branch", "mudar de branch", "change branch"],
+      "tags": ["git", "branches"],
+      "options": [
+        { "short": "-c", "long": "--create", "arg": "BRANCH", "description": "Cria a branch e troca para ela" },
+        { "long": "--detach", "description": "Vai para um commit sem branch" }
+      ],
+      "examples": [
+        { "command": "git switch main", "description": "Vai para main" },
+        { "command": "git switch -c feature/login", "description": "Cria e troca" },
+        { "command": "git switch -", "description": "Volta para a branch anterior" }
+      ],
+      "related": ["git-branch", "git-checkout", "git-stash"]
+    },
+    {
+      "id": "git-checkout", "name": "git checkout", "kind": "command", "parent": "git",
+      "summary": "Troca de branch ou restaura arquivos (comando antigo e multifuncional)",
+      "description": "Versões recentes dividiram suas funções em git switch (branches) e git restore (arquivos), mais claros.",
+      "usage": "git checkout [OPÇÕES] BRANCH | -- ARQUIVO",
+      "aliases": ["checkout", "trocar de branch"],
+      "tags": ["git", "branches"],
+      "options": [{ "short": "-b", "arg": "BRANCH", "description": "Cria a branch e troca para ela" }],
+      "examples": [
+        { "command": "git checkout -b feature/x", "description": "Cria e troca (equivale a git switch -c)" },
+        { "command": "git checkout -- arquivo.txt", "description": "Descarta alterações do arquivo (equivale a git restore)" }
+      ],
+      "related": ["git-switch", "git-restore"]
+    },
+    {
+      "id": "git-stash", "name": "git stash", "kind": "command", "parent": "git",
+      "summary": "Guarda alterações não commitadas temporariamente e limpa o diretório",
+      "usage": "git stash [push | pop | list | apply | drop]",
+      "aliases": ["guardar alterações", "salvar temporariamente", "stash"],
+      "tags": ["git"],
+      "options": [
+        { "short": "-u", "long": "--include-untracked", "description": "Inclui arquivos não rastreados" },
+        { "short": "-m", "long": "--message", "arg": "MENSAGEM", "description": "Descrição do stash" }
+      ],
+      "examples": [
+        { "command": "git stash -u", "description": "Guarda tudo, inclusive arquivos novos" },
+        { "command": "git stash list", "description": "Stashes guardados" },
+        { "command": "git stash pop", "description": "Reaplica o último e remove da lista" }
+      ],
+      "related": ["git-switch", "git-undo"]
+    },
+    {
+      "id": "git-rebase", "name": "git rebase", "kind": "command", "parent": "git",
+      "summary": "Reaplica commits sobre outra base, criando um histórico linear",
+      "description": "Reescreve commits (novos hashes). Não faça rebase de commits já compartilhados com outras pessoas.",
+      "usage": "git rebase [OPÇÕES] [BASE]",
+      "aliases": ["rebase", "atualizar branch", "linearizar histórico", "reescrever commits"],
+      "tags": ["git", "histórico"],
+      "options": [
+        { "short": "-i", "long": "--interactive", "description": "Edita, junta (squash) ou reordena commits" },
+        { "long": "--continue", "description": "Continua após resolver conflitos" },
+        { "long": "--abort", "description": "Desiste e volta ao estado anterior" }
+      ],
+      "examples": [
+        { "command": "git rebase main", "description": "Coloca seus commits depois do main atual" },
+        { "command": "git rebase -i HEAD~3", "description": "Edita os 3 últimos commits" },
+        { "command": "git rebase --abort", "description": "Cancela" }
+      ],
+      "warnings": ["reescreve o histórico: evite em branches compartilhadas."],
+      "related": ["git-merge", "git-pull", "git-cherry-pick"]
+    },
+    {
+      "id": "git-reset", "name": "git reset", "kind": "command", "parent": "git",
+      "summary": "Move a branch atual para outro commit, opcionalmente desfazendo staging e arquivos",
+      "description": "--soft: move só o ponteiro (alterações ficam preparadas). --mixed (padrão): tira do staging, mantém arquivos. --hard: descarta tudo, sem volta.",
+      "usage": "git reset [--soft | --mixed | --hard] [COMMIT]",
+      "aliases": ["desfazer commit", "voltar commit", "tirar do staging", "unstage"],
+      "tags": ["git", "desfazer"],
+      "options": [
+        { "long": "--soft", "description": "Mantém staging e arquivos" },
+        { "long": "--mixed", "description": "Mantém arquivos, limpa staging (padrão)" },
+        { "long": "--hard", "description": "Descarta alterações de staging e arquivos" }
+      ],
+      "examples": [
+        { "command": "git reset", "description": "Tira tudo do staging, mantém arquivos" },
+        { "command": "git reset --soft HEAD~1", "description": "Desfaz o último commit mantendo as alterações preparadas" },
+        { "command": "git reset --hard origin/main", "description": "Iguala ao remoto, descartando tudo local" }
+      ],
+      "warnings": ["--hard apaga alterações não commitadas sem volta."],
+      "related": ["git-restore", "git-revert", "git-undo"]
+    },
+    {
+      "id": "git-restore", "name": "git restore", "kind": "command", "parent": "git",
+      "summary": "Descarta alterações de arquivos ou tira arquivos do staging",
+      "usage": "git restore [--staged] [--source COMMIT] ARQUIVO...",
+      "aliases": ["descartar alterações", "desfazer mudanças no arquivo", "unstage arquivo"],
+      "tags": ["git", "desfazer"],
+      "options": [
+        { "short": "-S", "long": "--staged", "description": "Tira do staging (mantém o arquivo)" },
+        { "short": "-s", "long": "--source", "arg": "COMMIT", "description": "Restaura a versão de um commit" }
+      ],
+      "arguments": [{ "name": "ARQUIVO", "kind": "path", "description": "Arquivos", "repeat": true }],
+      "examples": [
+        { "command": "git restore arquivo.txt", "description": "Descarta alterações não preparadas" },
+        { "command": "git restore --staged arquivo.txt", "description": "Tira do staging" },
+        { "command": "git restore --source HEAD~2 arquivo.txt", "description": "Versão de dois commits atrás" }
+      ],
+      "related": ["git-reset", "git-status", "git-undo"]
+    },
+    {
+      "id": "git-revert", "name": "git revert", "kind": "command", "parent": "git",
+      "summary": "Cria um novo commit que desfaz um commit anterior",
+      "description": "Seguro para commits já enviados: não reescreve o histórico.",
+      "usage": "git revert COMMIT",
+      "aliases": ["reverter commit", "desfazer commit publicado"],
+      "tags": ["git", "desfazer"],
+      "options": [{ "long": "--no-edit", "description": "Usa a mensagem padrão" }],
+      "examples": [
+        { "command": "git revert a1b2c3d", "description": "Desfaz o commit a1b2c3d com um novo commit" },
+        { "command": "git revert HEAD", "description": "Desfaz o último commit" }
+      ],
+      "related": ["git-reset", "git-undo"]
+    },
+    {
+      "id": "git-fetch", "name": "git fetch", "kind": "command", "parent": "git",
+      "summary": "Baixa commits e branches do remoto sem alterar seu trabalho",
+      "usage": "git fetch [REMOTO]",
+      "aliases": ["buscar do remoto", "atualizar referências"],
+      "tags": ["git", "remoto"],
+      "options": [
+        { "short": "-p", "long": "--prune", "description": "Remove referências de branches apagadas no remoto" },
+        { "long": "--all", "description": "Todos os remotos" }
+      ],
+      "examples": [
+        { "command": "git fetch -p", "description": "Atualiza e limpa branches remotas apagadas" },
+        { "command": "git log --oneline HEAD..origin/main", "description": "O que chegou e você ainda não tem" }
+      ],
+      "related": ["git-pull", "git-merge"]
+    },
+    {
+      "id": "git-pull", "name": "git pull", "kind": "command", "parent": "git",
+      "summary": "Baixa do remoto e integra na branch atual (fetch + merge ou rebase)",
+      "usage": "git pull [OPÇÕES] [REMOTO [BRANCH]]",
+      "aliases": ["atualizar branch", "puxar alterações", "baixar alterações"],
+      "tags": ["git", "remoto"],
+      "options": [
+        { "long": "--rebase", "description": "Integra com rebase em vez de merge" },
+        { "long": "--ff-only", "description": "Só avança se não houver divergência" }
+      ],
+      "examples": [
+        { "command": "git pull", "description": "Atualiza a branch atual" },
+        { "command": "git pull --rebase", "description": "Mantém o histórico linear" }
+      ],
+      "related": ["git-fetch", "git-merge", "git-rebase", "git-push"]
+    },
+    {
+      "id": "git-push", "name": "git push", "kind": "command", "parent": "git",
+      "summary": "Envia seus commits para o repositório remoto",
+      "usage": "git push [OPÇÕES] [REMOTO [BRANCH]]",
+      "aliases": ["enviar commits", "subir alterações", "publicar branch"],
+      "tags": ["git", "remoto"],
+      "options": [
+        { "short": "-u", "long": "--set-upstream", "description": "Associa a branch local à remota" },
+        { "long": "--force-with-lease", "description": "Força com segurança (falha se o remoto mudou)" },
+        { "short": "-f", "long": "--force", "description": "Força, sobrescrevendo o remoto" },
+        { "long": "--tags", "description": "Envia as tags" }
+      ],
+      "examples": [
+        { "command": "git push -u origin feature/login", "description": "Primeiro push de uma branch nova" },
+        { "command": "git push --force-with-lease", "description": "Após rebase, sem apagar trabalho alheio" }
+      ],
+      "related": ["git-pull", "git-commit", "ssh"]
+    },
+    {
+      "id": "git-merge", "name": "git merge", "kind": "command", "parent": "git",
+      "summary": "Integra outra branch na atual",
+      "usage": "git merge [OPÇÕES] BRANCH",
+      "aliases": ["mesclar branch", "juntar branches", "merge"],
+      "tags": ["git", "branches"],
+      "options": [
+        { "long": "--no-ff", "description": "Sempre cria um commit de merge" },
+        { "long": "--squash", "description": "Junta tudo como alterações preparadas, sem commit de merge" },
+        { "long": "--abort", "description": "Desiste de um merge com conflitos" }
+      ],
+      "examples": [
+        { "command": "git merge feature/login", "description": "Traz a feature para a branch atual" },
+        { "command": "git merge --abort", "description": "Cancela um merge em conflito" }
+      ],
+      "related": ["git-rebase", "git-branch", "git-pull"]
+    },
+    {
+      "id": "git-cherry-pick", "name": "git cherry-pick", "kind": "command", "parent": "git",
+      "summary": "Aplica um commit específico de outra branch na atual",
+      "usage": "git cherry-pick COMMIT...",
+      "aliases": ["copiar commit", "aplicar commit de outra branch"],
+      "tags": ["git"],
+      "options": [
+        { "short": "-x", "description": "Anota na mensagem de onde o commit veio" },
+        { "long": "--continue", "description": "Continua após resolver conflitos" },
+        { "long": "--abort", "description": "Cancela" }
+      ],
+      "examples": [{ "command": "git cherry-pick -x a1b2c3d", "description": "Traz um hotfix para esta branch" }],
+      "related": ["git-rebase", "git-log"]
+    },
+    {
+      "id": "git-clone", "name": "git clone", "kind": "command", "parent": "git",
+      "summary": "Copia um repositório remoto para uma pasta local",
+      "usage": "git clone [OPÇÕES] URL [DIRETÓRIO]",
+      "aliases": ["clonar repositório", "baixar repositório", "clone"],
+      "tags": ["git", "remoto"],
+      "options": [
+        { "long": "--depth", "arg": "N", "description": "Só os N commits mais recentes (clone raso)" },
+        { "short": "-b", "long": "--branch", "arg": "BRANCH", "description": "Branch a usar" }
+      ],
+      "arguments": [
+        { "name": "URL", "kind": "url", "description": "https://... ou git@host:dono/repo.git (SSH)" },
+        { "name": "DIRETÓRIO", "kind": "path", "description": "Pasta de destino" }
+      ],
+      "examples": [
+        { "command": "git clone git@github.com:dono/repo.git", "description": "Via SSH (usa sua chave)" },
+        { "command": "git clone --depth 1 https://github.com/dono/repo.git", "description": "Só o último commit" }
+      ],
+      "related": ["git-fetch", "ssh-key-setup"]
+    },
+    {
+      "id": "git-undo",
+      "name": "Desfazer alterações no Git",
+      "kind": "recipe",
+      "summary": "Escolher entre restore, reset e revert conforme o que precisa ser desfeito",
+      "description": "A pergunta-chave: a alteração já foi commitada? E já foi enviada (push)? Commits publicados devem ser desfeitos com revert, que não reescreve o histórico.",
+      "aliases": ["desfazer alterações", "desfazer commit", "voltar alteração", "git undo", "descartar mudanças", "desfazer mudanças git"],
+      "tags": ["git", "desfazer"],
+      "sections": [
+        {
+          "title": "Qual usar",
+          "rows": [
+            ["git restore ARQUIVO", "descarta edições ainda não preparadas de um arquivo"],
+            ["git restore --staged ARQUIVO", "tira do staging, mantém a edição"],
+            ["git reset --soft HEAD~1", "desfaz o último commit local, mantém as alterações"],
+            ["git reset --hard", "apaga todas as alterações não commitadas (sem volta)"],
+            ["git revert COMMIT", "novo commit que desfaz outro: seguro após o push"]
+          ]
+        }
+      ],
+      "examples": [
+        { "command": "git restore arquivo.txt", "description": "Descarta alterações de um arquivo" },
+        { "command": "git reset", "description": "Tira tudo do staging" },
+        { "command": "git reset --soft HEAD~1", "description": "Desfaz o último commit (não enviado)" },
+        { "command": "git revert HEAD", "description": "Desfaz o último commit já enviado" },
+        { "command": "git reflog", "description": "Rede de segurança: onde HEAD esteve (recupera commits 'perdidos')" }
+      ],
+      "related": ["git-restore", "git-reset", "git-revert", "git-stash"]
+    },
+    {
+      "id": "git-create-branch",
+      "name": "Criar e publicar uma branch",
+      "kind": "recipe",
+      "summary": "Nova branch local, primeiro commit e envio ao remoto",
+      "aliases": ["criar branch", "nova branch", "create branch", "publicar branch"],
+      "tags": ["git", "branches"],
+      "examples": [
+        { "command": "git switch -c feature/nome", "description": "Cria e troca" },
+        { "command": "git push -u origin feature/nome", "description": "Publica e associa ao remoto" }
+      ],
+      "related": ["git-switch", "git-push", "git-branch"]
+    }
+  ]
+}

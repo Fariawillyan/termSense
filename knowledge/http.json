@@ -1,0 +1,202 @@
+{
+  "category": "http",
+  "entries": [
+    {
+      "id": "http",
+      "name": "HTTP",
+      "kind": "concept",
+      "summary": "Protocolo de requisição e resposta da web, sobre TCP",
+      "description": "O cliente envia método, caminho, cabeçalhos e (opcionalmente) corpo; o servidor responde com status, cabeçalhos e corpo. É sem estado: cookies e tokens carregam a sessão. Porta padrão 80 (HTTPS: 443).",
+      "aliases": ["hypertext transfer protocol", "requisição http", "http request", "api rest"],
+      "tags": ["http", "web", "camada 7"],
+      "sections": [
+        { "title": "Métodos", "rows": [["GET", "ler"], ["POST", "criar/enviar"], ["PUT", "substituir"], ["PATCH", "alterar parte"], ["DELETE", "remover"], ["HEAD", "só cabeçalhos"], ["OPTIONS", "o que é permitido (CORS)"]] },
+        { "title": "Classes de status", "rows": [["1xx", "informativo"], ["2xx", "sucesso"], ["3xx", "redirecionamento"], ["4xx", "erro do cliente"], ["5xx", "erro do servidor"]] }
+      ],
+      "examples": [
+        { "command": "curl -v http://localhost:{{port:8080}}/", "description": "Vê a requisição e a resposta completas" },
+        { "command": "curl -X POST http://localhost:8080/api/users", "description": "POST simples" },
+        { "command": "curl -X POST -H \"Content-Type: application/json\" -d '{\"name\":\"William\"}' http://localhost:8080/api/users", "description": "POST com corpo JSON" }
+      ],
+      "related": ["https", "tcp", "curl", "http-status", "http-headers", "porta"]
+    },
+    {
+      "id": "https",
+      "name": "HTTPS",
+      "kind": "concept",
+      "summary": "HTTP dentro de uma conexão TLS: criptografado e autenticado",
+      "description": "O cliente verifica o certificado do servidor (nome e cadeia até uma CA confiável) antes de enviar qualquer dado HTTP. Porta padrão 443.",
+      "aliases": ["http seguro", "ssl", "cadeado", "porta 443", "443"],
+      "tags": ["http", "tls", "segurança"],
+      "examples": [
+        { "command": "curl -v https://{{host:example.com}}", "description": "Mostra o handshake TLS e o certificado" },
+        { "command": "openssl s_client -connect {{host:example.com}}:443 -servername {{host:example.com}}", "description": "Diagnóstico TLS detalhado" }
+      ],
+      "related": ["http", "tls", "certificado", "ca", "sni"]
+    },
+    {
+      "id": "tls",
+      "name": "TLS",
+      "kind": "concept",
+      "summary": "Protocolo que cifra e autentica conexões (sucessor do SSL)",
+      "description": "Garante confidencialidade, integridade e autenticação do servidor (e opcionalmente do cliente). Versões atuais: TLS 1.2 e 1.3; SSL e TLS 1.0/1.1 são obsoletos. Usado por HTTPS, SMTP, IMAP, bancos de dados e muito mais.",
+      "aliases": ["transport layer security", "ssl", "criptografia", "tls 1.3"],
+      "tags": ["tls", "segurança", "criptografia"],
+      "examples": [
+        { "command": "openssl s_client -connect {{host:example.com}}:443 -servername {{host:example.com}}", "description": "Versão, cifra e certificados negociados" },
+        { "command": "curl -v --tlsv1.3 https://{{host:example.com}}", "description": "Exige TLS 1.3" }
+      ],
+      "related": ["https", "handshake", "certificado", "ca", "sni", "openssl-s-client"]
+    },
+    {
+      "id": "certificado",
+      "name": "Certificado",
+      "kind": "concept",
+      "summary": "Documento digital que liga uma chave pública a um nome, assinado por uma CA",
+      "description": "Contém titular (subject), nomes alternativos (SAN) que ele cobre, emissor (issuer), validade e chave pública. O cliente rejeita se o nome não bate, se expirou, se o relógio está errado ou se a cadeia não chega a uma CA confiável.",
+      "aliases": ["certificate", "certificado ssl", "certificado tls", "x509", "cert", "self-signed"],
+      "tags": ["tls", "segurança"],
+      "examples": [
+        { "command": "openssl x509 -in cert.pem -noout -subject -issuer -dates", "description": "Titular, emissor e validade" },
+        { "command": "openssl s_client -connect {{host:example.com}}:443 -servername {{host:example.com}} -showcerts </dev/null", "description": "Cadeia enviada pelo servidor" }
+      ],
+      "related": ["ca", "tls", "openssl-x509", "certificate-error"]
+    },
+    {
+      "id": "ca",
+      "name": "CA",
+      "kind": "concept",
+      "summary": "Autoridade certificadora: entidade confiável que assina certificados",
+      "description": "Sistemas trazem uma lista de CAs raiz confiáveis (/etc/ssl/certs). Um certificado é aceito se a cadeia (folha → intermediárias → raiz) é válida. Certificados de CAs internas exigem instalar a raiz: coloque-a em /usr/local/share/ca-certificates e rode sudo update-ca-certificates.",
+      "aliases": ["certificate authority", "autoridade certificadora", "ca raiz", "cadeia de certificados", "certificate chain"],
+      "tags": ["tls", "segurança"],
+      "examples": [
+        { "command": "ls /etc/ssl/certs | head", "description": "CAs confiáveis do sistema" },
+        { "command": "sudo update-ca-certificates", "description": "Recarrega as CAs após adicionar uma nova" }
+      ],
+      "related": ["certificado", "tls", "https"]
+    },
+    {
+      "id": "handshake",
+      "name": "Handshake TLS",
+      "kind": "concept",
+      "summary": "Negociação inicial em que cliente e servidor combinam versão, cifra e chaves",
+      "description": "ClientHello (versões, cifras, SNI) → ServerHello + certificado → troca de chaves → conexão cifrada. No TLS 1.3 leva uma ida e volta. Falhas aqui aparecem como handshake failure, certificate verify failed ou wrong version number.",
+      "aliases": ["handshake", "tls handshake", "client hello", "server hello"],
+      "tags": ["tls"],
+      "examples": [
+        { "command": "curl -v https://{{host:example.com}} 2>&1 | grep -E '^\\* (TLS|SSL|Server certificate)'", "description": "Etapas do handshake no curl" },
+        { "command": "openssl s_client -connect {{host:example.com}}:443 -servername {{host:example.com}}", "description": "Handshake completo" }
+      ],
+      "related": ["tls", "sni", "certificado", "tcp"]
+    },
+    {
+      "id": "sni",
+      "name": "SNI",
+      "kind": "concept",
+      "summary": "Server Name Indication: o cliente informa o nome do site no início do TLS",
+      "description": "Permite que um mesmo IP sirva vários sites HTTPS, cada um com seu certificado. Sem SNI (openssl s_client sem -servername), o servidor pode entregar o certificado padrão, com nome errado.",
+      "aliases": ["server name indication", "servername"],
+      "tags": ["tls"],
+      "examples": [
+        { "command": "openssl s_client -connect {{host:example.com}}:443 -servername {{host:example.com}}", "description": "Envia SNI" }
+      ],
+      "related": ["tls", "handshake", "certificado"]
+    },
+    { "id": "http-get", "name": "GET", "kind": "concept", "summary": "Método HTTP para ler um recurso, sem corpo e sem efeitos colaterais", "aliases": ["http get", "método get"], "tags": ["http", "métodos"], "examples": [{ "command": "curl http://localhost:8080/api/users", "description": "curl usa GET por padrão" }], "related": ["http", "http-head"] },
+    { "id": "http-post", "name": "POST", "kind": "concept", "summary": "Método HTTP para criar um recurso ou enviar dados para processamento", "description": "Não é idempotente: repetir pode criar duplicatas. Resposta típica: 201 Created com cabeçalho Location.", "aliases": ["http post", "método post"], "tags": ["http", "métodos"], "examples": [{ "command": "curl -X POST -H \"Content-Type: application/json\" -d '{\"name\":\"William\"}' http://localhost:8080/api/users", "description": "Cria um usuário" }], "related": ["http", "http-put", "content-type", "http-201"] },
+    { "id": "http-put", "name": "PUT", "kind": "concept", "summary": "Método HTTP para substituir um recurso inteiro (idempotente)", "aliases": ["http put", "método put"], "tags": ["http", "métodos"], "examples": [{ "command": "curl -X PUT -H \"Content-Type: application/json\" -d '{\"name\":\"Ana\"}' http://localhost:8080/api/users/1", "description": "Substitui o usuário 1" }], "related": ["http", "http-patch", "http-post"] },
+    { "id": "http-patch", "name": "PATCH", "kind": "concept", "summary": "Método HTTP para alterar parcialmente um recurso", "aliases": ["http patch", "método patch"], "tags": ["http", "métodos"], "examples": [{ "command": "curl -X PATCH -H \"Content-Type: application/json\" -d '{\"email\":\"ana@x.com\"}' http://localhost:8080/api/users/1", "description": "Altera só o e-mail" }], "related": ["http", "http-put"] },
+    { "id": "http-delete", "name": "DELETE", "kind": "concept", "summary": "Método HTTP para remover um recurso", "aliases": ["http delete", "método delete"], "tags": ["http", "métodos"], "examples": [{ "command": "curl -X DELETE http://localhost:8080/api/users/1", "description": "Remove o usuário 1 (resposta típica: 204)" }], "related": ["http", "http-204"] },
+    { "id": "http-head", "name": "HEAD", "kind": "concept", "summary": "Método HTTP igual ao GET, mas a resposta vem sem corpo", "aliases": ["http head", "método head", "só cabeçalhos"], "tags": ["http", "métodos"], "examples": [{ "command": "curl -I https://example.com", "description": "curl -I faz uma requisição HEAD" }], "related": ["http", "http-get", "http-headers"] },
+    { "id": "http-options", "name": "OPTIONS", "kind": "concept", "summary": "Método HTTP que pergunta quais métodos e cabeçalhos o servidor aceita", "description": "Navegadores enviam OPTIONS automaticamente (preflight) antes de requisições cross-origin: é a base do CORS.", "aliases": ["http options", "preflight", "cors"], "tags": ["http", "métodos"], "examples": [{ "command": "curl -i -X OPTIONS -H 'Origin: http://localhost:3000' -H 'Access-Control-Request-Method: POST' http://localhost:8080/api/users", "description": "Simula o preflight de CORS" }], "related": ["http", "http-headers"] },
+    {
+      "id": "http-status",
+      "name": "Códigos de status HTTP",
+      "kind": "concept",
+      "summary": "Número de três dígitos que resume o resultado de uma requisição",
+      "aliases": ["status code", "status http", "http status", "código de resposta"],
+      "tags": ["http", "status"],
+      "sections": [
+        { "title": "Mais comuns", "rows": [["200", "OK"], ["201", "Created"], ["204", "No Content"], ["301", "Moved Permanently"], ["302", "Found"], ["400", "Bad Request"], ["401", "Unauthorized"], ["403", "Forbidden"], ["404", "Not Found"], ["409", "Conflict"], ["500", "Internal Server Error"], ["502", "Bad Gateway"], ["503", "Service Unavailable"], ["504", "Gateway Timeout"]] }
+      ],
+      "examples": [{ "command": "curl -s -o /dev/null -w '%{http_code}\\n' https://example.com", "description": "Só o status" }],
+      "related": ["http", "http-200", "http-404", "http-500", "http-502"]
+    },
+    { "id": "http-200", "name": "200 OK", "kind": "concept", "summary": "Requisição bem-sucedida; a resposta traz o resultado", "aliases": ["200", "ok"], "tags": ["http", "status", "2xx"], "related": ["http-status"] },
+    { "id": "http-201", "name": "201 Created", "kind": "concept", "summary": "Recurso criado com sucesso, normalmente após um POST", "description": "O cabeçalho Location costuma apontar para o novo recurso.", "aliases": ["201", "created"], "tags": ["http", "status", "2xx"], "related": ["http-status", "http-post"] },
+    { "id": "http-204", "name": "204 No Content", "kind": "concept", "summary": "Sucesso sem corpo na resposta (comum em DELETE e PUT)", "aliases": ["204", "no content"], "tags": ["http", "status", "2xx"], "related": ["http-status", "http-delete"] },
+    { "id": "http-301", "name": "301 Moved Permanently", "kind": "concept", "summary": "O recurso mudou de endereço para sempre; veja o cabeçalho Location", "description": "Navegadores e buscadores memorizam. Use curl -L para seguir.", "aliases": ["301", "redirect permanente", "moved permanently"], "tags": ["http", "status", "3xx"], "examples": [{ "command": "curl -sI http://example.com | grep -i location", "description": "Para onde redireciona" }], "related": ["http-status", "http-302"] },
+    { "id": "http-302", "name": "302 Found", "kind": "concept", "summary": "Redirecionamento temporário para o endereço em Location", "aliases": ["302", "redirect temporário", "found"], "tags": ["http", "status", "3xx"], "examples": [{ "command": "curl -L http://example.com", "description": "Segue redirecionamentos" }], "related": ["http-status", "http-301"] },
+    { "id": "http-400", "name": "400 Bad Request", "kind": "concept", "summary": "O servidor não entendeu a requisição: sintaxe, JSON ou parâmetros inválidos", "description": "Confira o corpo enviado e o cabeçalho Content-Type.", "aliases": ["400", "bad request"], "tags": ["http", "status", "4xx"], "related": ["http-status", "content-type"] },
+    { "id": "http-401", "name": "401 Unauthorized", "kind": "concept", "summary": "Falta autenticação ou as credenciais são inválidas", "description": "Apesar do nome, significa 'não autenticado'. Verifique o cabeçalho Authorization (token expirado?).", "aliases": ["401", "unauthorized", "não autenticado"], "tags": ["http", "status", "4xx"], "examples": [{ "command": "curl -H \"Authorization: Bearer $TOKEN\" https://api.example.com/me", "description": "Envia um token" }], "related": ["http-status", "http-403", "http-headers"] },
+    { "id": "http-403", "name": "403 Forbidden", "kind": "concept", "summary": "Autenticado, mas sem permissão para este recurso", "aliases": ["403", "forbidden", "acesso negado"], "tags": ["http", "status", "4xx"], "related": ["http-status", "http-401"] },
+    { "id": "http-404", "name": "404 Not Found", "kind": "concept", "summary": "O recurso não existe nesse caminho", "description": "Confira a URL, o prefixo da API e se a rota foi registrada no servidor.", "aliases": ["404", "not found", "não encontrado"], "tags": ["http", "status", "4xx"], "related": ["http-status"] },
+    { "id": "http-409", "name": "409 Conflict", "kind": "concept", "summary": "Conflito com o estado atual do recurso (duplicado, versão desatualizada)", "aliases": ["409", "conflict", "conflito"], "tags": ["http", "status", "4xx"], "related": ["http-status", "http-post"] },
+    { "id": "http-500", "name": "500 Internal Server Error", "kind": "concept", "summary": "Erro inesperado na aplicação do servidor", "description": "A causa está nos logs da aplicação, não na rede.", "aliases": ["500", "internal server error", "erro interno"], "tags": ["http", "status", "5xx"], "examples": [{ "command": "journalctl -u minha-api -n 50", "description": "Últimas linhas de log do serviço" }], "related": ["http-status", "http-502"] },
+    { "id": "http-502", "name": "502 Bad Gateway", "kind": "concept", "summary": "O proxy recebeu resposta inválida (ou nenhuma) do servidor de trás", "description": "Típico de nginx/load balancer quando a aplicação caiu ou escuta em outra porta.", "aliases": ["502", "bad gateway"], "tags": ["http", "status", "5xx", "proxy"], "examples": [{ "command": "ss -ltnp | grep ':{{port:8080}}'", "description": "A aplicação atrás do proxy está escutando?" }], "related": ["http-status", "http-503", "http-504"] },
+    { "id": "http-503", "name": "503 Service Unavailable", "kind": "concept", "summary": "Serviço temporariamente indisponível: sobrecarga ou manutenção", "aliases": ["503", "service unavailable", "indisponível"], "tags": ["http", "status", "5xx"], "related": ["http-status", "http-502"] },
+    { "id": "http-504", "name": "504 Gateway Timeout", "kind": "concept", "summary": "O proxy esperou demais pela resposta do servidor de trás", "description": "A aplicação está lenta ou travada, ou há bloqueio de rede entre o proxy e ela.", "aliases": ["504", "gateway timeout"], "tags": ["http", "status", "5xx", "proxy"], "related": ["http-status", "http-502"] },
+    {
+      "id": "http-headers",
+      "name": "Cabeçalhos HTTP",
+      "kind": "concept",
+      "summary": "Metadados de requisições e respostas no formato Nome: valor",
+      "aliases": ["headers", "http headers", "cabeçalho", "header"],
+      "tags": ["http"],
+      "sections": [
+        { "title": "Comuns", "rows": [["Content-Type", "formato do corpo (application/json)"], ["Accept", "formatos que o cliente aceita"], ["Authorization", "credenciais (Bearer token, Basic)"], ["Location", "destino de redirecionamento ou recurso criado"], ["Cache-Control", "regras de cache"], ["Host", "nome do site (obrigatório no HTTP/1.1)"], ["User-Agent", "identifica o cliente"], ["Set-Cookie / Cookie", "sessão"]] }
+      ],
+      "examples": [
+        { "command": "curl -I https://example.com", "description": "Cabeçalhos da resposta" },
+        { "command": "curl -H 'Accept: application/json' http://localhost:8080/api", "description": "Envia um cabeçalho" }
+      ],
+      "related": ["http", "content-type", "curl"]
+    },
+    {
+      "id": "content-type",
+      "name": "Content-Type",
+      "kind": "concept",
+      "summary": "Cabeçalho que declara o formato do corpo enviado (ex.: application/json)",
+      "description": "Sem ele, muitas APIs não interpretam o corpo e respondem 400 ou 415. Tipos comuns: application/json, application/x-www-form-urlencoded (padrão do curl -d), multipart/form-data (upload), text/html.",
+      "aliases": ["content type", "mime type", "application/json"],
+      "tags": ["http", "cabeçalhos"],
+      "examples": [
+        { "command": "curl -X POST -H \"Content-Type: application/json\" -d '{\"name\":\"William\"}' http://localhost:8080/api/users", "description": "Declara JSON" },
+        { "command": "curl --json '{\"name\":\"William\"}' http://localhost:8080/api/users", "description": "Atalho do curl 7.82+" }
+      ],
+      "related": ["http-headers", "http-post", "curl"]
+    },
+    {
+      "id": "http-post-json",
+      "name": "Enviar JSON para uma API",
+      "kind": "recipe",
+      "category": "http",
+      "summary": "Fazer uma requisição POST com corpo JSON usando curl",
+      "aliases": ["post json", "enviar json", "chamar api com json", "curl post", "testar endpoint"],
+      "tags": ["http", "api", "curl", "json"],
+      "examples": [
+        { "command": "curl -X POST -H \"Content-Type: application/json\" -d '{\"name\":\"William\"}' http://localhost:8080/api/users", "description": "POST com JSON" },
+        { "command": "curl -X POST -H \"Content-Type: application/json\" -d @usuario.json http://localhost:8080/api/users", "description": "Corpo lido de arquivo" },
+        { "command": "curl -sS -i -X POST -H \"Content-Type: application/json\" -d '{\"name\":\"William\"}' http://localhost:8080/api/users", "description": "Mostra também status e cabeçalhos da resposta" }
+      ],
+      "related": ["curl", "http-post", "content-type", "http-201"]
+    },
+    {
+      "id": "certificate-error",
+      "name": "Erro de certificado TLS",
+      "kind": "recipe",
+      "category": "troubleshooting",
+      "summary": "Certificate verify failed, certificado expirado ou autoassinado",
+      "aliases": ["erro de certificado", "certificate verify failed", "certificado expirado", "self signed certificate", "ssl error", "unable to get local issuer certificate"],
+      "tags": ["troubleshooting", "tls", "https"],
+      "steps": [
+        { "title": "O que o servidor envia", "command": "openssl s_client -connect {{host:example.com}}:443 -servername {{host:example.com}} </dev/null", "why": "Verify return code diferente de 0 explica o motivo (expirado, CA desconhecida, nome errado)." },
+        { "title": "Validade e nomes", "command": "openssl s_client -connect {{host:example.com}}:443 -servername {{host:example.com}} </dev/null 2>/dev/null | openssl x509 -noout -dates -subject -ext subjectAltName", "why": "O nome acessado precisa estar no SAN e a data atual dentro da validade." },
+        { "title": "Relógio do sistema", "command": "date", "why": "Relógio errado faz certificados válidos parecerem expirados (comum em VMs e WSL após suspender)." },
+        { "title": "CAs do sistema", "command": "sudo update-ca-certificates", "why": "Certificados de CA interna precisam estar instalados em /usr/local/share/ca-certificates." }
+      ],
+      "related": ["certificado", "ca", "openssl-s-client", "tls"]
+    }
+  ]
+}

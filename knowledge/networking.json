@@ -1,0 +1,799 @@
+{
+  "category": "networking",
+  "entries": [
+    {
+      "name": "ip",
+      "kind": "command",
+      "summary": "Mostra e configura interfaces, endereços, rotas e vizinhos de rede",
+      "description": "Ferramenta moderna do pacote iproute2, substitui ifconfig, route e arp. Objetos podem ser abreviados: ip a, ip r, ip l, ip n.",
+      "usage": "ip [OPÇÕES] OBJETO SUBCOMANDO",
+      "aliases": ["ifconfig", "interfaces de rede", "configuração de rede", "network config"],
+      "tags": ["rede", "interfaces", "rotas", "iproute2"],
+      "options": [
+        { "short": "-4", "description": "Só IPv4" },
+        { "short": "-6", "description": "Só IPv6" },
+        { "short": "-br", "long": "-brief", "description": "Saída resumida, uma linha por item" },
+        { "short": "-c", "long": "-color", "description": "Saída colorida" },
+        { "short": "-s", "long": "-statistics", "description": "Inclui estatísticas" }
+      ],
+      "examples": [
+        { "command": "ip -br addr", "description": "IPs de cada interface, resumido" },
+        { "command": "ip route", "description": "Tabela de rotas e gateway padrão" },
+        { "command": "ip -br link", "description": "Interfaces e se estão UP" },
+        { "command": "ip neigh", "description": "Tabela ARP (vizinhos)" }
+      ],
+      "related": ["ip-addr", "ip-route", "interface", "gateway", "ss"]
+    },
+    {
+      "id": "ip-addr",
+      "name": "ip addr",
+      "kind": "command",
+      "parent": "ip",
+      "summary": "Mostra e altera os endereços IP das interfaces",
+      "usage": "ip addr [show [DEV]] | add ENDEREÇO/PREFIXO dev DEV | del ...",
+      "aliases": ["ip a", "ip address", "ver meu ip", "endereço ip da máquina", "ipconfig"],
+      "tags": ["rede", "interfaces", "ip"],
+      "examples": [
+        { "command": "ip addr", "description": "Todos os endereços" },
+        { "command": "ip -br -4 addr", "description": "Só IPv4, resumido" },
+        { "command": "ip addr show eth0", "description": "Uma interface" },
+        { "command": "sudo ip addr add 192.168.1.50/24 dev eth0", "description": "Adiciona um IP (temporário, some no reboot)" }
+      ],
+      "related": ["interface", "cidr", "ipv4", "ipv6", "my-ip"]
+    },
+    {
+      "id": "ip-route",
+      "name": "ip route",
+      "kind": "command",
+      "parent": "ip",
+      "summary": "Mostra e altera a tabela de rotas",
+      "description": "A linha default via X é o gateway padrão: para onde vai tudo que não é da rede local.",
+      "usage": "ip route [show] | get ENDEREÇO | add REDE via GATEWAY",
+      "aliases": ["ip r", "tabela de rotas", "rota padrão", "default gateway", "route table"],
+      "tags": ["rede", "rotas", "gateway"],
+      "examples": [
+        { "command": "ip route", "description": "Rotas e gateway padrão" },
+        { "command": "ip route get 8.8.8.8", "description": "Por qual interface e gateway um destino sai" },
+        { "command": "sudo ip route add 10.10.0.0/16 via 192.168.1.1", "description": "Rota estática (temporária)" }
+      ],
+      "related": ["gateway", "route", "traceroute", "subnet"]
+    },
+    {
+      "id": "ip-link",
+      "name": "ip link",
+      "kind": "command",
+      "parent": "ip",
+      "summary": "Mostra e configura interfaces (estado, MTU, MAC)",
+      "usage": "ip link [show] | set DEV up|down | set DEV mtu N",
+      "aliases": ["ip l", "ligar interface", "interface up", "mac address", "mtu"],
+      "tags": ["rede", "interfaces"],
+      "examples": [
+        { "command": "ip -br link", "description": "Estado de cada interface" },
+        { "command": "sudo ip link set eth0 up", "description": "Ativa a interface" },
+        { "command": "ip -s link show eth0", "description": "Pacotes, erros e descartes" }
+      ],
+      "related": ["interface", "ip-addr"]
+    },
+    {
+      "id": "ip-neigh",
+      "name": "ip neigh",
+      "kind": "command",
+      "parent": "ip",
+      "summary": "Mostra a tabela de vizinhos (ARP/NDP): IP para endereço MAC",
+      "usage": "ip neigh [show] | flush dev DEV",
+      "aliases": ["ip n", "ip neighbour", "tabela arp", "mac dos vizinhos"],
+      "tags": ["rede", "arp"],
+      "examples": [
+        { "command": "ip neigh", "description": "Vizinhos conhecidos e estado (REACHABLE, STALE, FAILED)" }
+      ],
+      "related": ["arp-protocol", "arp", "gateway"]
+    },
+    {
+      "name": "ss",
+      "kind": "command",
+      "summary": "Investiga sockets: portas em escuta, conexões e processos associados",
+      "description": "Substituto moderno do netstat. Colunas: State, Recv-Q/Send-Q (filas), Local Address:Port, Peer Address:Port e, com -p, o processo. Ver processos de outros usuários exige sudo.",
+      "usage": "ss [OPÇÕES] [FILTRO]",
+      "aliases": ["netstat", "portas abertas", "sockets", "conexões abertas", "listening ports", "socket statistics"],
+      "tags": ["rede", "portas", "sockets", "iproute2"],
+      "options": [
+        { "short": "-t", "long": "--tcp", "description": "Sockets TCP" },
+        { "short": "-u", "long": "--udp", "description": "Sockets UDP" },
+        { "short": "-l", "long": "--listening", "description": "Apenas sockets em escuta (listening)" },
+        { "short": "-n", "long": "--numeric", "description": "Não resolve nomes: mostra números de IP e porta" },
+        { "short": "-p", "long": "--processes", "description": "Mostra o processo associado ao socket" },
+        { "short": "-a", "long": "--all", "description": "Em escuta e conexões estabelecidas" },
+        { "short": "-s", "long": "--summary", "description": "Resumo por tipo e estado" },
+        { "short": "-4", "long": "--ipv4", "description": "Só IPv4" },
+        { "short": "-6", "long": "--ipv6", "description": "Só IPv6" },
+        { "short": "-x", "long": "--unix", "description": "Sockets Unix (locais)" },
+        { "short": "-e", "long": "--extended", "description": "Informações extras (uid, inode)" },
+        { "short": "-o", "long": "--options", "description": "Timers (keepalive, retransmissão)" },
+        { "short": "-i", "long": "--info", "description": "Detalhes internos do TCP (rtt, cwnd)" }
+      ],
+      "arguments": [{ "name": "FILTRO", "kind": "text", "description": "Filtro de estado/porta, ex.: state established, 'sport = :80'", "repeat": true }],
+      "examples": [
+        { "command": "ss -tuln", "description": "Portas TCP e UDP em escuta, numéricas" },
+        { "command": "ss -ltnp", "description": "Portas TCP em escuta com o processo" },
+        { "command": "sudo ss -tulnp", "description": "Inclui processos de todos os usuários" },
+        { "command": "ss -ltnp | grep ':{{port:8080}}'", "description": "Quem escuta na porta" },
+        { "command": "ss -tn state established", "description": "Conexões TCP ativas" },
+        { "command": "ss -s", "description": "Resumo de sockets" }
+      ],
+      "related": ["socket", "porta", "tcp", "udp", "lsof", "netstat", "nc"]
+    },
+    {
+      "name": "netstat",
+      "kind": "command",
+      "summary": "Lista conexões e portas em escuta (ferramenta legada)",
+      "description": "Faz parte do net-tools, considerado obsoleto. As opções mais usadas são as mesmas do ss.",
+      "usage": "netstat [OPÇÕES]",
+      "install": "Pacote net-tools (legado; prefira ss). Debian/Ubuntu: sudo apt install net-tools.",
+      "aliases": ["portas abertas", "conexões de rede"],
+      "tags": ["rede", "portas", "legado"],
+      "options": [
+        { "short": "-t", "long": "--tcp", "description": "TCP" },
+        { "short": "-u", "long": "--udp", "description": "UDP" },
+        { "short": "-l", "long": "--listening", "description": "Só em escuta" },
+        { "short": "-n", "long": "--numeric", "description": "Sem resolver nomes" },
+        { "short": "-p", "long": "--program", "description": "PID e nome do programa" },
+        { "short": "-r", "long": "--route", "description": "Tabela de rotas" }
+      ],
+      "examples": [
+        { "command": "netstat -tuln", "description": "Portas em escuta (equivale a ss -tuln)" },
+        { "command": "sudo netstat -tulnp", "description": "Com processos" }
+      ],
+      "related": ["ss", "lsof", "route"]
+    },
+    {
+      "name": "lsof",
+      "kind": "command",
+      "summary": "Lista arquivos abertos, inclusive sockets de rede, e quem os abriu",
+      "description": "No Unix, sockets também são arquivos. lsof -i mostra sockets de rede; sem sudo só aparecem os seus processos.",
+      "usage": "lsof [OPÇÕES]",
+      "install": "Pode não estar instalado. Debian/Ubuntu: sudo apt install lsof.",
+      "aliases": ["arquivos abertos", "quem usa o arquivo", "open files", "arquivo em uso", "device busy"],
+      "tags": ["rede", "portas", "arquivos", "processos"],
+      "options": [
+        { "short": "-i", "arg": "ENDEREÇO", "description": "Sockets de rede (-i :8080, -i tcp, -i @host)" },
+        { "short": "-P", "description": "Não converte números de porta em nomes" },
+        { "short": "-n", "description": "Não resolve nomes de host" },
+        { "short": "-p", "arg": "PID", "description": "Arquivos de um processo" },
+        { "short": "-u", "arg": "USUÁRIO", "description": "Arquivos de um usuário" },
+        { "short": "-t", "description": "Só PIDs (para usar com kill)" }
+      ],
+      "examples": [
+        { "command": "sudo lsof -i :{{port:8080}}", "description": "Quem usa a porta" },
+        { "command": "sudo lsof -i -P -n | grep LISTEN", "description": "Todas as portas em escuta" },
+        { "command": "lsof -p 1234", "description": "Tudo o que o PID 1234 abriu" },
+        { "command": "sudo lsof +D /mnt/usb", "description": "+D DIR: arquivos abertos dentro do diretório (por que o disco está ocupado)" }
+      ],
+      "related": ["ss", "socket", "porta", "kill"]
+    },
+    {
+      "name": "ping",
+      "kind": "command",
+      "summary": "Testa se um host responde e mede latência e perda de pacotes (ICMP)",
+      "description": "Envia ICMP echo request e espera echo reply. Sem resposta não prova que o host está fora: muitos firewalls bloqueiam ICMP. Ctrl+C encerra e mostra o resumo.",
+      "usage": "ping [OPÇÕES] HOST",
+      "aliases": ["testar conexão", "host responde", "latência", "está no ar", "icmp echo"],
+      "tags": ["rede", "icmp", "diagnóstico"],
+      "options": [
+        { "short": "-c", "arg": "N", "description": "Envia N pacotes e termina" },
+        { "short": "-i", "arg": "SEG", "description": "Intervalo entre pacotes" },
+        { "short": "-W", "arg": "SEG", "description": "Tempo máximo de espera por resposta" },
+        { "short": "-s", "arg": "BYTES", "description": "Tamanho do payload" },
+        { "short": "-4", "description": "Força IPv4" },
+        { "short": "-6", "description": "Força IPv6" },
+        { "short": "-M", "arg": "do", "description": "Proíbe fragmentação (teste de MTU com -s)" }
+      ],
+      "arguments": [{ "name": "HOST", "kind": "host", "description": "Nome ou IP de destino" }],
+      "examples": [
+        { "command": "ping -c 4 {{host:example.com}}", "description": "4 pacotes e resumo" },
+        { "command": "ping -c 3 192.168.1.1", "description": "O gateway local responde?" },
+        { "command": "ping -c 2 -M do -s 1472 {{host:example.com}}", "description": "Testa MTU de 1500 sem fragmentar" }
+      ],
+      "related": ["icmp", "traceroute", "nc", "test-connection"]
+    },
+    {
+      "name": "traceroute",
+      "kind": "command",
+      "summary": "Mostra cada roteador no caminho até um destino",
+      "description": "Envia pacotes com TTL crescente; cada salto que descarta o pacote responde com ICMP Time Exceeded. * * * indica salto que não responde (comum, nem sempre é problema).",
+      "usage": "traceroute [OPÇÕES] HOST",
+      "install": "Pode não estar instalado. Debian/Ubuntu: sudo apt install traceroute. Alternativa já instalada: tracepath.",
+      "aliases": ["rota até o servidor", "caminho dos pacotes", "saltos", "hops", "tracert"],
+      "tags": ["rede", "rotas", "diagnóstico"],
+      "options": [
+        { "short": "-n", "description": "Não resolve nomes dos saltos" },
+        { "short": "-T", "description": "Usa TCP SYN (passa melhor por firewalls; requer root)" },
+        { "short": "-p", "arg": "PORTA", "description": "Porta de destino" },
+        { "short": "-m", "arg": "N", "description": "Máximo de saltos (padrão 30)" }
+      ],
+      "arguments": [{ "name": "HOST", "kind": "host", "description": "Destino" }],
+      "examples": [
+        { "command": "traceroute {{host:example.com}}", "description": "Caminho até o destino" },
+        { "command": "traceroute -n 8.8.8.8", "description": "Sem DNS reverso (mais rápido)" },
+        { "command": "sudo traceroute -T -p 443 {{host:example.com}}", "description": "Rastreia usando TCP na porta 443" }
+      ],
+      "related": ["tracepath", "ping", "ip-route", "gateway", "icmp"]
+    },
+    {
+      "name": "tracepath",
+      "kind": "command",
+      "summary": "Rastreia o caminho até um host e descobre a MTU, sem precisar de root",
+      "usage": "tracepath [OPÇÕES] HOST",
+      "aliases": ["rota até o servidor", "descobrir mtu", "path mtu"],
+      "tags": ["rede", "rotas", "diagnóstico"],
+      "options": [
+        { "short": "-n", "description": "Não resolve nomes" },
+        { "short": "-p", "arg": "PORTA", "description": "Porta UDP inicial" }
+      ],
+      "arguments": [{ "name": "HOST", "kind": "host", "description": "Destino" }],
+      "examples": [
+        { "command": "tracepath {{host:example.com}}", "description": "Saltos e pmtu" },
+        { "command": "tracepath -n 1.1.1.1", "description": "Sem DNS reverso" }
+      ],
+      "related": ["traceroute", "ping"]
+    },
+    {
+      "name": "curl",
+      "kind": "command",
+      "summary": "Cliente HTTP de linha de comando (e muitos outros protocolos)",
+      "description": "Faz requisições e mostra a resposta. -v revela todo o processo: resolução DNS, conexão TCP, handshake TLS, cabeçalhos enviados (>) e recebidos (<).",
+      "usage": "curl [OPÇÕES] URL",
+      "aliases": ["requisição http", "chamar api", "http request", "testar api", "http client", "baixar arquivo"],
+      "tags": ["rede", "http", "https", "api"],
+      "options": [
+        { "short": "-X", "long": "--request", "arg": "MÉTODO", "description": "Método HTTP (GET, POST, PUT, PATCH, DELETE)" },
+        { "short": "-H", "long": "--header", "arg": "CABEÇALHO", "description": "Adiciona um cabeçalho, ex.: \"Content-Type: application/json\"" },
+        { "short": "-d", "long": "--data", "arg": "DADOS", "description": "Corpo da requisição (implica POST); @arquivo lê de arquivo" },
+        { "long": "--json", "arg": "DADOS", "description": "Envia JSON e define Content-Type/Accept (curl 7.82+)" },
+        { "short": "-F", "long": "--form", "arg": "CAMPO=VALOR", "description": "Envia formulário multipart (upload: arquivo=@foto.png)" },
+        { "short": "-i", "long": "--include", "description": "Mostra cabeçalhos da resposta junto do corpo" },
+        { "short": "-I", "long": "--head", "description": "Só os cabeçalhos (requisição HEAD)" },
+        { "short": "-v", "long": "--verbose", "description": "Mostra DNS, conexão, TLS e cabeçalhos" },
+        { "short": "-s", "long": "--silent", "description": "Sem barra de progresso nem mensagens" },
+        { "short": "-S", "long": "--show-error", "description": "Mostra erros mesmo com -s" },
+        { "short": "-f", "long": "--fail", "description": "Falha (exit code 22) em status HTTP 4xx/5xx" },
+        { "short": "-L", "long": "--location", "description": "Segue redirecionamentos (301/302)" },
+        { "short": "-o", "long": "--output", "arg": "ARQUIVO", "description": "Salva o corpo em arquivo" },
+        { "short": "-O", "long": "--remote-name", "description": "Salva com o nome do arquivo remoto" },
+        { "short": "-u", "long": "--user", "arg": "USUÁRIO:SENHA", "description": "Autenticação básica" },
+        { "short": "-k", "long": "--insecure", "description": "Não valida o certificado TLS (só para testes)" },
+        { "short": "-w", "long": "--write-out", "arg": "FORMATO", "description": "Imprime métricas, ex.: '%{http_code}'" },
+        { "short": "-m", "long": "--max-time", "arg": "SEG", "description": "Tempo máximo total" },
+        { "long": "--connect-timeout", "arg": "SEG", "description": "Tempo máximo para conectar" },
+        { "long": "--resolve", "arg": "HOST:PORTA:IP", "description": "Força o IP de um nome (testa sem mexer no DNS)" },
+        { "short": "-x", "long": "--proxy", "arg": "PROXY", "description": "Usa um proxy" },
+        { "short": "-A", "long": "--user-agent", "arg": "AGENTE", "description": "Define o User-Agent" },
+        { "short": "-b", "long": "--cookie", "arg": "COOKIES", "description": "Envia cookies" }
+      ],
+      "arguments": [{ "name": "URL", "kind": "url", "description": "Endereço do recurso", "repeat": true }],
+      "examples": [
+        { "command": "curl https://example.com", "description": "GET e mostra o corpo" },
+        { "command": "curl -I https://example.com", "description": "Só os cabeçalhos da resposta" },
+        { "command": "curl -v https://example.com", "description": "Todo o diálogo: DNS, TCP, TLS e HTTP" },
+        { "command": "curl -X POST http://localhost:8080/api/users", "description": "POST sem corpo" },
+        { "command": "curl -X POST -H \"Content-Type: application/json\" -d '{\"name\":\"William\"}' http://localhost:8080/api/users", "description": "POST com JSON" },
+        { "command": "curl -s -o /dev/null -w '%{http_code}\\n' https://example.com", "description": "Só o status HTTP" },
+        { "command": "curl -L -O https://example.com/arquivo.tar.gz", "description": "Baixa seguindo redirecionamentos" },
+        { "command": "curl --resolve example.com:443:203.0.113.10 https://example.com", "description": "Testa um servidor específico sem alterar o DNS" }
+      ],
+      "related": ["http", "https", "tcp", "tls", "dns", "porta", "wget"]
+    },
+    {
+      "name": "wget",
+      "kind": "command",
+      "summary": "Baixa arquivos da web (HTTP, HTTPS, FTP)",
+      "usage": "wget [OPÇÕES] URL...",
+      "aliases": ["baixar arquivo", "download", "fazer download"],
+      "tags": ["rede", "http", "download"],
+      "options": [
+        { "short": "-O", "long": "--output-document", "arg": "ARQUIVO", "description": "Nome do arquivo de saída (- para stdout)" },
+        { "short": "-c", "long": "--continue", "description": "Retoma download interrompido" },
+        { "short": "-q", "long": "--quiet", "description": "Silencioso" },
+        { "short": "-S", "long": "--server-response", "description": "Mostra os cabeçalhos da resposta" },
+        { "long": "--spider", "description": "Só verifica se a URL existe, sem baixar" },
+        { "short": "-r", "long": "--recursive", "description": "Baixa recursivamente" }
+      ],
+      "arguments": [{ "name": "URL", "kind": "url", "description": "O que baixar", "repeat": true }],
+      "examples": [
+        { "command": "wget https://example.com/arquivo.iso", "description": "Baixa para o diretório atual" },
+        { "command": "wget -c https://example.com/arquivo.iso", "description": "Continua de onde parou" },
+        { "command": "wget -qO- https://example.com", "description": "Imprime o conteúdo no terminal" }
+      ],
+      "related": ["curl", "http", "download-file"]
+    },
+    {
+      "name": "nc",
+      "kind": "command",
+      "summary": "Netcat: abre conexões TCP/UDP para testar portas e trocar dados",
+      "description": "Com -z só verifica se a porta aceita conexão. 'succeeded'/'open' = há um serviço escutando; 'refused' = host alcançável mas porta fechada; sem resposta até o timeout = firewall descartando.",
+      "usage": "nc [OPÇÕES] HOST PORTA",
+      "install": "Há variantes (OpenBSD, GNU, ncat). Debian/Ubuntu: sudo apt install netcat-openbsd. Fedora: sudo dnf install nmap-ncat.",
+      "aliases": ["netcat", "testar porta", "porta aberta", "testar conexão tcp", "telnet", "port check"],
+      "tags": ["rede", "portas", "tcp", "udp", "diagnóstico"],
+      "options": [
+        { "short": "-v", "description": "Detalhado: informa sucesso ou falha" },
+        { "short": "-z", "description": "Só testa a conexão, sem enviar dados" },
+        { "short": "-l", "description": "Modo servidor: escuta na porta" },
+        { "short": "-u", "description": "Usa UDP" },
+        { "short": "-w", "arg": "SEG", "description": "Timeout" },
+        { "short": "-n", "description": "Não resolve nomes" },
+        { "short": "-k", "description": "Com -l, continua aceitando conexões" }
+      ],
+      "arguments": [
+        { "name": "HOST", "kind": "host", "description": "Destino" },
+        { "name": "PORTA", "kind": "port", "description": "Porta (ou faixa, ex.: 20-25)" }
+      ],
+      "examples": [
+        { "command": "nc -vz {{host:host}} {{port:8080}}", "description": "A porta aceita conexões?" },
+        { "command": "nc -vz -w 3 db.internal 5432", "description": "Com timeout de 3 segundos" },
+        { "command": "nc -l 9000", "description": "Escuta na porta 9000 (servidor de teste)" },
+        { "command": "echo -e 'GET / HTTP/1.0\\r\\n\\r\\n' | nc example.com 80", "description": "HTTP 'na mão'" },
+        { "command": "nc -vzu 8.8.8.8 53", "description": "Teste UDP (resultado menos confiável)" }
+      ],
+      "related": ["porta", "tcp", "udp", "ss", "test-connection"]
+    },
+    {
+      "name": "dig",
+      "kind": "command",
+      "summary": "Consulta servidores DNS e mostra a resposta completa",
+      "description": "Sintaxe: dig [@SERVIDOR] NOME [TIPO]. Opções com +: +short (só a resposta), +trace (segue a delegação desde a raiz), +noall +answer (só a seção de resposta). status: NOERROR ok, NXDOMAIN nome não existe, SERVFAIL falha no servidor.",
+      "usage": "dig [@SERVIDOR] NOME [TIPO] [+OPÇÕES]",
+      "install": "Pode não estar instalado. Debian/Ubuntu: sudo apt install dnsutils. Fedora/RHEL: sudo dnf install bind-utils.",
+      "aliases": ["consultar dns", "resolver nome", "dns lookup", "registro dns", "nslookup"],
+      "tags": ["rede", "dns", "diagnóstico"],
+      "options": [
+        { "short": "-x", "arg": "ENDEREÇO", "description": "Consulta reversa (IP → nome)" },
+        { "short": "-t", "arg": "TIPO", "description": "Tipo de registro" },
+        { "short": "-p", "arg": "PORTA", "description": "Porta do servidor DNS" },
+        { "short": "-4", "description": "Só IPv4" },
+        { "short": "-6", "description": "Só IPv6" }
+      ],
+      "arguments": [
+        { "name": "NOME", "kind": "host", "description": "Nome a consultar (ou @servidor antes dele)" },
+        { "name": "TIPO", "kind": "text", "description": "Tipo de registro: A, AAAA, MX, TXT, CNAME, NS", "repeat": true }
+      ],
+      "sections": [
+        {
+          "title": "Tipos de registro",
+          "rows": [["A", "IPv4"], ["AAAA", "IPv6"], ["MX", "servidores de e-mail"], ["TXT", "texto (SPF, verificações)"], ["CNAME", "apelido para outro nome"], ["NS", "servidores autoritativos"], ["PTR", "reverso: IP → nome"]]
+        }
+      ],
+      "examples": [
+        { "command": "dig {{host:example.com}}", "description": "Registro A com todos os detalhes" },
+        { "command": "dig {{host:example.com}} A", "description": "IPv4" },
+        { "command": "dig {{host:example.com}} AAAA", "description": "IPv6" },
+        { "command": "dig {{host:example.com}} MX", "description": "Servidores de e-mail" },
+        { "command": "dig {{host:example.com}} TXT", "description": "Registros de texto" },
+        { "command": "dig +short {{host:example.com}}", "description": "Só os IPs" },
+        { "command": "dig @1.1.1.1 {{host:example.com}}", "description": "Pergunta a outro servidor DNS" },
+        { "command": "dig -x 8.8.8.8", "description": "DNS reverso" }
+      ],
+      "related": ["dns", "dns-records", "nslookup", "host", "getent"]
+    },
+    {
+      "name": "nslookup",
+      "kind": "command",
+      "summary": "Consulta DNS de forma simples (também existe no Windows)",
+      "usage": "nslookup [-type=TIPO] NOME [SERVIDOR]",
+      "install": "Mesmo pacote do dig: dnsutils (Debian/Ubuntu) ou bind-utils (Fedora/RHEL).",
+      "aliases": ["consultar dns", "resolver nome"],
+      "tags": ["rede", "dns"],
+      "options": [{ "long": "-type", "arg": "TIPO", "description": "Tipo de registro (use -type=MX)" }],
+      "arguments": [
+        { "name": "NOME", "kind": "host", "description": "Nome a consultar" },
+        { "name": "SERVIDOR", "kind": "host", "description": "Servidor DNS a usar" }
+      ],
+      "examples": [
+        { "command": "nslookup {{host:example.com}}", "description": "Resolve o nome" },
+        { "command": "nslookup -type=MX {{host:example.com}}", "description": "Registros MX" },
+        { "command": "nslookup {{host:example.com}} 1.1.1.1", "description": "Usando outro servidor" }
+      ],
+      "related": ["dig", "host", "dns"]
+    },
+    {
+      "name": "host",
+      "kind": "command",
+      "summary": "Consulta DNS com saída curta e legível",
+      "usage": "host [-t TIPO] NOME [SERVIDOR]",
+      "install": "Mesmo pacote do dig: dnsutils (Debian/Ubuntu) ou bind-utils (Fedora/RHEL).",
+      "aliases": ["consultar dns", "resolver nome"],
+      "tags": ["rede", "dns"],
+      "options": [
+        { "short": "-t", "arg": "TIPO", "description": "Tipo de registro" },
+        { "short": "-a", "description": "Todos os registros, detalhado" }
+      ],
+      "arguments": [
+        { "name": "NOME", "kind": "host", "description": "Nome ou IP" },
+        { "name": "SERVIDOR", "kind": "host", "description": "Servidor DNS a usar" }
+      ],
+      "examples": [
+        { "command": "host {{host:example.com}}", "description": "Endereços e servidores de e-mail" },
+        { "command": "host -t MX {{host:example.com}}", "description": "Só MX" },
+        { "command": "host 8.8.8.8", "description": "Reverso" }
+      ],
+      "related": ["dig", "nslookup", "dns"]
+    },
+    {
+      "name": "hostname",
+      "kind": "command",
+      "summary": "Mostra ou define o nome da máquina",
+      "usage": "hostname [OPÇÕES]",
+      "aliases": ["nome da máquina", "nome do host", "computer name"],
+      "tags": ["rede", "sistema"],
+      "options": [
+        { "short": "-I", "long": "--all-ip-addresses", "description": "Todos os IPs da máquina" },
+        { "short": "-f", "long": "--fqdn", "description": "Nome completo (com domínio)" },
+        { "short": "-s", "long": "--short", "description": "Nome curto" }
+      ],
+      "examples": [
+        { "command": "hostname", "description": "Nome da máquina" },
+        { "command": "hostname -I", "description": "IPs locais" },
+        { "command": "sudo hostnamectl set-hostname servidor01", "description": "Altera o nome de forma persistente" }
+      ],
+      "related": ["ip-addr", "dns", "getent"]
+    },
+    {
+      "name": "getent",
+      "kind": "command",
+      "summary": "Consulta bases do sistema (hosts, usuários, grupos) como os programas as veem",
+      "description": "getent hosts resolve nomes usando a mesma ordem dos programas (/etc/nsswitch.conf): /etc/hosts, DNS, mDNS. Por isso pode diferir do dig, que consulta só o DNS.",
+      "usage": "getent BASE [CHAVE...]",
+      "aliases": ["resolver nome como o sistema", "etc hosts", "consultar usuário"],
+      "tags": ["rede", "dns", "usuários"],
+      "arguments": [
+        { "name": "BASE", "kind": "text", "description": "hosts, ahosts, passwd, group, services" },
+        { "name": "CHAVE", "kind": "text", "description": "O que consultar", "repeat": true }
+      ],
+      "examples": [
+        { "command": "getent hosts {{host:example.com}}", "description": "Resolve como qualquer programa resolveria" },
+        { "command": "getent ahosts {{host:example.com}}", "description": "Todos os endereços (IPv4 e IPv6)" },
+        { "command": "getent passwd $USER", "description": "Sua linha em /etc/passwd" },
+        { "command": "getent services 443", "description": "Nome do serviço de uma porta" }
+      ],
+      "related": ["dig", "dns", "localhost"]
+    },
+    {
+      "name": "arp",
+      "kind": "command",
+      "summary": "Mostra a tabela ARP: IPs vizinhos e seus endereços MAC (legado)",
+      "usage": "arp [-n]",
+      "install": "Pacote net-tools (legado). Equivalente moderno: ip neigh.",
+      "aliases": ["tabela arp", "mac address", "endereço mac"],
+      "tags": ["rede", "arp", "legado"],
+      "options": [
+        { "short": "-n", "description": "Não resolve nomes" },
+        { "short": "-a", "description": "Estilo BSD" }
+      ],
+      "examples": [
+        { "command": "arp -n", "description": "Tabela ARP" },
+        { "command": "ip neigh", "description": "Alternativa moderna" }
+      ],
+      "related": ["arp-protocol", "ip-neigh"]
+    },
+    {
+      "name": "route",
+      "kind": "command",
+      "summary": "Mostra ou altera a tabela de rotas (legado)",
+      "usage": "route [-n]",
+      "install": "Pacote net-tools (legado). Equivalente moderno: ip route.",
+      "aliases": ["tabela de rotas", "gateway padrão"],
+      "tags": ["rede", "rotas", "legado"],
+      "options": [{ "short": "-n", "description": "Endereços numéricos" }],
+      "examples": [
+        { "command": "route -n", "description": "Rotas (0.0.0.0 = rota padrão)" },
+        { "command": "ip route", "description": "Alternativa moderna" }
+      ],
+      "related": ["ip-route", "gateway"]
+    },
+    {
+      "name": "tcpdump",
+      "kind": "command",
+      "summary": "Captura e mostra pacotes de rede em tempo real",
+      "description": "Precisa de root. O filtro usa sintaxe BPF: host 10.0.0.5, port 443, tcp, src/dst, and/or/not. Grave com -w e abra no Wireshark.",
+      "usage": "tcpdump [OPÇÕES] [FILTRO]",
+      "install": "Pode não estar instalado. Debian/Ubuntu: sudo apt install tcpdump.",
+      "aliases": ["capturar pacotes", "sniffer", "ver tráfego", "wireshark", "packet capture"],
+      "tags": ["rede", "diagnóstico", "pacotes"],
+      "options": [
+        { "short": "-i", "arg": "INTERFACE", "description": "Interface (any = todas)" },
+        { "short": "-n", "description": "Não resolve nomes" },
+        { "long": "-nn", "description": "Não resolve nomes nem portas" },
+        { "short": "-c", "arg": "N", "description": "Para depois de N pacotes" },
+        { "short": "-w", "arg": "ARQUIVO", "description": "Grava em arquivo .pcap" },
+        { "short": "-r", "arg": "ARQUIVO", "description": "Lê de arquivo .pcap" },
+        { "short": "-A", "description": "Mostra o conteúdo em ASCII" },
+        { "short": "-X", "description": "Mostra o conteúdo em hex e ASCII" },
+        { "short": "-v", "description": "Mais detalhes (-vv, -vvv)" }
+      ],
+      "arguments": [{ "name": "FILTRO", "kind": "text", "description": "Expressão BPF (host, port, tcp, udp, and, or, not)", "repeat": true }],
+      "examples": [
+        { "command": "sudo tcpdump -i any -nn port {{port:8080}}", "description": "Tráfego da porta" },
+        { "command": "sudo tcpdump -i eth0 -nn host 10.0.0.5 and port 443", "description": "Conversa com um host na porta 443" },
+        { "command": "sudo tcpdump -i any -c 100 -w captura.pcap", "description": "Grava 100 pacotes para o Wireshark" },
+        { "command": "sudo tcpdump -i any -nn icmp", "description": "Só pings" }
+      ],
+      "warnings": ["capture apenas tráfego de redes que você administra ou tem autorização para analisar."],
+      "related": ["tcp", "udp", "icmp", "ss"]
+    },
+    {
+      "name": "openssl",
+      "kind": "command",
+      "summary": "Kit de ferramentas TLS: testa conexões, inspeciona e gera certificados e chaves",
+      "usage": "openssl SUBCOMANDO [OPÇÕES]",
+      "aliases": ["certificado ssl", "testar tls", "ssl"],
+      "tags": ["tls", "https", "certificados", "segurança"],
+      "examples": [
+        { "command": "openssl s_client -connect {{host:example.com}}:443 -servername {{host:example.com}}", "description": "Handshake TLS e certificados" },
+        { "command": "openssl x509 -in cert.pem -noout -text", "description": "Lê um certificado" },
+        { "command": "openssl rand -hex 32", "description": "32 bytes aleatórios em hex (segredos)" }
+      ],
+      "related": ["openssl-s-client", "openssl-x509", "tls", "certificado", "https"]
+    },
+    {
+      "id": "openssl-s-client",
+      "name": "openssl s_client",
+      "kind": "command",
+      "parent": "openssl",
+      "summary": "Conecta a um servidor TLS e mostra handshake, certificados e verificação",
+      "description": "Verify return code: 0 (ok) indica cadeia válida. Sem -servername o SNI não é enviado e servidores com vários sites podem devolver o certificado errado. Encerre com Ctrl+C ou redirecione a entrada de /dev/null.",
+      "usage": "openssl s_client -connect HOST:PORTA [OPÇÕES]",
+      "aliases": ["testar https", "testar tls", "verificar certificado", "handshake tls"],
+      "tags": ["tls", "https", "certificados", "diagnóstico"],
+      "options": [
+        { "long": "-connect", "arg": "HOST:PORTA", "description": "Servidor e porta" },
+        { "long": "-servername", "arg": "NOME", "description": "Envia SNI (nome do site)" },
+        { "long": "-showcerts", "description": "Mostra toda a cadeia de certificados" },
+        { "long": "-starttls", "arg": "PROTOCOLO", "description": "Negocia TLS em smtp, imap, ftp, postgres..." },
+        { "long": "-tls1_2", "description": "Força TLS 1.2" },
+        { "long": "-tls1_3", "description": "Força TLS 1.3" }
+      ],
+      "examples": [
+        { "command": "openssl s_client -connect {{host:example.com}}:443 -servername {{host:example.com}}", "description": "Handshake e cadeia" },
+        { "command": "openssl s_client -connect {{host:example.com}}:443 -servername {{host:example.com}} </dev/null 2>/dev/null | openssl x509 -noout -dates -subject -issuer", "description": "Validade, titular e emissor" },
+        { "command": "openssl s_client -connect smtp.gmail.com:587 -starttls smtp", "description": "TLS em SMTP" }
+      ],
+      "related": ["tls", "handshake", "sni", "certificado", "ca", "openssl-x509"]
+    },
+    {
+      "id": "openssl-x509",
+      "name": "openssl x509",
+      "kind": "command",
+      "parent": "openssl",
+      "summary": "Lê e converte certificados X.509",
+      "usage": "openssl x509 [-in ARQUIVO] [OPÇÕES]",
+      "aliases": ["ler certificado", "validade do certificado", "data de expiração"],
+      "tags": ["tls", "certificados"],
+      "options": [
+        { "long": "-in", "arg": "ARQUIVO", "description": "Certificado de entrada (padrão: stdin)" },
+        { "long": "-noout", "description": "Não imprime o certificado codificado" },
+        { "long": "-text", "description": "Todos os campos legíveis" },
+        { "long": "-dates", "description": "Validade (notBefore/notAfter)" },
+        { "long": "-subject", "description": "Titular" },
+        { "long": "-issuer", "description": "Emissor" },
+        { "long": "-ext", "arg": "EXTENSÃO", "description": "Mostra uma extensão, ex.: subjectAltName" }
+      ],
+      "examples": [
+        { "command": "openssl x509 -in cert.pem -noout -dates", "description": "Quando expira" },
+        { "command": "openssl x509 -in cert.pem -noout -ext subjectAltName", "description": "Nomes cobertos pelo certificado" }
+      ],
+      "related": ["certificado", "ca", "openssl-s-client"]
+    },
+    {
+      "name": "nmap",
+      "kind": "command",
+      "summary": "Escaneia hosts e portas para descobrir serviços",
+      "usage": "nmap [OPÇÕES] ALVO",
+      "install": "Normalmente não vem instalado. Debian/Ubuntu: sudo apt install nmap.",
+      "aliases": ["scanner de portas", "port scan", "descobrir portas abertas remotas"],
+      "tags": ["rede", "portas", "segurança"],
+      "options": [
+        { "short": "-p", "arg": "PORTAS", "description": "Portas (22,80,443 ou 1-1024)" },
+        { "short": "-sT", "description": "Scan TCP connect (sem root)" },
+        { "short": "-sV", "description": "Detecta versão dos serviços" },
+        { "short": "-Pn", "description": "Não faz ping antes (host pode bloquear ICMP)" },
+        { "short": "-F", "description": "Portas mais comuns (rápido)" }
+      ],
+      "arguments": [{ "name": "ALVO", "kind": "host", "description": "Host, IP ou rede CIDR", "repeat": true }],
+      "examples": [
+        { "command": "nmap -p 22,80,443 {{host:host}}", "description": "Portas específicas" },
+        { "command": "nmap -F 192.168.1.0/24", "description": "Hosts e portas comuns da rede local" }
+      ],
+      "warnings": ["escaneie apenas hosts e redes que você administra ou tem autorização explícita para testar."],
+      "related": ["nc", "porta", "ss"]
+    },
+    {
+      "id": "open-ports",
+      "name": "Ver portas abertas",
+      "kind": "recipe",
+      "summary": "Quais portas estão em escuta nesta máquina e quais processos as abriram",
+      "aliases": ["portas abertas", "quais portas estão abertas", "portas em escuta", "listening ports", "open ports", "ver portas"],
+      "tags": ["porta", "portas", "sockets", "rede"],
+      "examples": [
+        { "command": "ss -tuln", "description": "Portas TCP e UDP em escuta" },
+        { "command": "sudo ss -tulnp", "description": "Inclui o processo de cada porta" },
+        { "command": "sudo lsof -i -P -n | grep LISTEN", "description": "Mesma informação via lsof" },
+        { "command": "netstat -tuln", "description": "Forma legada (net-tools)" }
+      ],
+      "related": ["ss", "lsof", "netstat", "porta", "socket"]
+    },
+    {
+      "id": "port-owner",
+      "name": "Quem está usando uma porta",
+      "kind": "recipe",
+      "summary": "Descobrir qual processo escuta ou usa uma porta específica",
+      "description": "ss e lsof leem as tabelas de sockets do kernel. Sem sudo, processos de outros usuários aparecem sem nome.",
+      "aliases": ["quem usa a porta", "quem está usando a porta", "qual processo usa a porta", "processo na porta", "porta ocupada", "who is using port"],
+      "tags": ["porta", "processo", "socket", "rede"],
+      "examples": [
+        { "command": "ss -ltnp | grep ':{{port:8080}}'", "description": "Processo escutando na porta (TCP)" },
+        { "command": "sudo lsof -i :{{port:8080}}", "description": "Todos os sockets na porta, com PID e usuário" },
+        { "command": "sudo fuser -v {{port:8080}}/tcp", "description": "PID que usa a porta" }
+      ],
+      "related": ["ss", "lsof", "nc", "porta", "socket", "kill-process-on-port"]
+    },
+    {
+      "id": "test-connection",
+      "name": "Testar conexão com um servidor",
+      "kind": "recipe",
+      "summary": "Verificar, camada por camada, se um host e uma porta respondem",
+      "aliases": ["testar conexão", "testar conexão com servidor", "testar conectividade", "servidor está no ar", "testar porta remota", "check connectivity"],
+      "tags": ["rede", "conexão", "porta", "diagnóstico"],
+      "steps": [
+        { "title": "ping", "command": "ping -c 4 {{host:host}}", "why": "Conectividade básica (ICMP): o host responde? Firewalls costumam bloquear ICMP, então falha aqui não é conclusiva." },
+        { "title": "nc", "command": "nc -vz {{host:host}} {{port:8080}}", "why": "A porta TCP aceita conexão? succeeded = serviço escutando; refused = nada escutando; timeout = firewall." },
+        { "title": "curl", "command": "curl -v http://{{host:host}}:{{port:8080}}", "why": "O serviço HTTP responde? -v mostra DNS, conexão, cabeçalhos e status." },
+        { "title": "ss", "command": "ss -tuln", "why": "No servidor: o serviço escuta na porta e no endereço certo (0.0.0.0 aceita de fora, 127.0.0.1 só local)?" },
+        { "title": "dig", "command": "dig {{host:host}}", "why": "O nome resolve para o IP esperado?" }
+      ],
+      "related": ["ping", "nc", "curl", "ss", "dig", "network-troubleshooting"]
+    },
+    {
+      "id": "dns-lookup",
+      "name": "Consultar DNS de um domínio",
+      "kind": "recipe",
+      "summary": "Descobrir IPs, servidores de e-mail e registros de um nome",
+      "aliases": ["consultar dns", "descobrir ip de um domínio", "qual o ip do site", "registros dns", "dns lookup"],
+      "tags": ["dns", "rede"],
+      "examples": [
+        { "command": "dig +short {{host:example.com}}", "description": "Só os IPs" },
+        { "command": "dig {{host:example.com}} MX", "description": "Servidores de e-mail" },
+        { "command": "dig {{host:example.com}} TXT", "description": "SPF, verificações de domínio" },
+        { "command": "getent hosts {{host:example.com}}", "description": "Como o sistema resolve (inclui /etc/hosts)" },
+        { "command": "dig +trace {{host:example.com}}", "description": "Segue a delegação desde a raiz" }
+      ],
+      "related": ["dig", "dns", "dns-records", "getent"]
+    },
+    {
+      "id": "my-ip",
+      "name": "Descobrir meu IP",
+      "kind": "recipe",
+      "summary": "Endereços locais, gateway e IP público desta máquina",
+      "aliases": ["meu ip", "qual meu ip", "ip da máquina", "ip público", "ip local", "my ip"],
+      "tags": ["ip", "rede", "interfaces"],
+      "examples": [
+        { "command": "ip -br addr", "description": "IPs de cada interface" },
+        { "command": "hostname -I", "description": "Só os IPs locais" },
+        { "command": "ip route get 1.1.1.1", "description": "IP de origem e gateway usados para sair" },
+        { "command": "curl -s https://ifconfig.me", "description": "IP público visto pela internet (faz uma requisição externa)" }
+      ],
+      "related": ["ip-addr", "nat", "gateway", "ipv4"]
+    },
+    {
+      "id": "routes-gateway",
+      "name": "Ver rotas e gateway padrão",
+      "kind": "recipe",
+      "summary": "Para onde o tráfego sai e qual roteador é usado",
+      "aliases": ["ver gateway", "gateway padrão", "rota padrão", "tabela de rotas", "default gateway"],
+      "tags": ["rotas", "gateway", "rede"],
+      "examples": [
+        { "command": "ip route", "description": "Tabela de rotas (default via = gateway)" },
+        { "command": "ip route get 8.8.8.8", "description": "Rota escolhida para um destino" },
+        { "command": "ping -c 3 $(ip route | awk '/default/ {print $3}')", "description": "O gateway responde?" }
+      ],
+      "related": ["ip-route", "gateway", "traceroute"]
+    },
+    {
+      "id": "download-file",
+      "name": "Baixar um arquivo",
+      "kind": "recipe",
+      "summary": "Fazer download pela linha de comando",
+      "aliases": ["baixar arquivo", "download", "fazer download", "download file"],
+      "tags": ["http", "download"],
+      "examples": [
+        { "command": "curl -L -O https://example.com/arquivo.tar.gz", "description": "Mantém o nome remoto e segue redirecionamentos" },
+        { "command": "curl -L -o nome.tar.gz https://example.com/download", "description": "Escolhe o nome" },
+        { "command": "wget -c https://example.com/arquivo.iso", "description": "Retoma se cair" }
+      ],
+      "related": ["curl", "wget"]
+    },
+    {
+      "id": "capture-traffic",
+      "name": "Capturar tráfego de rede",
+      "kind": "recipe",
+      "summary": "Ver os pacotes que entram e saem de uma interface",
+      "aliases": ["capturar tráfego", "capturar pacotes", "ver tráfego de rede", "sniffer", "wireshark"],
+      "tags": ["pacotes", "diagnóstico"],
+      "examples": [
+        { "command": "sudo tcpdump -i any -nn port {{port:8080}}", "description": "Pacotes de uma porta" },
+        { "command": "sudo tcpdump -i any -nn -A port 80", "description": "Conteúdo HTTP em texto" },
+        { "command": "sudo tcpdump -i any -w captura.pcap", "description": "Grava para abrir no Wireshark" }
+      ],
+      "related": ["tcpdump", "tcp", "udp"]
+    },
+    {
+      "id": "network-troubleshooting",
+      "name": "Não consigo acessar um servidor",
+      "kind": "recipe",
+      "category": "troubleshooting",
+      "summary": "Diagnóstico de rede em sequência: DNS, conectividade, rota, porta, socket, HTTP e TLS",
+      "description": "Siga as camadas de baixo para cima. O primeiro passo que falhar indica onde está o problema.",
+      "aliases": ["não consigo acessar servidor", "não consigo acessar o servidor", "servidor inacessível", "site não abre", "não conecta", "troubleshooting de rede", "network troubleshooting", "can't connect to server"],
+      "tags": ["troubleshooting", "rede", "diagnóstico", "conexão"],
+      "steps": [
+        { "title": "DNS", "command": "dig {{host:host}}", "why": "Se o nome não resolve (NXDOMAIN, SERVFAIL) ou resolve para o IP errado, nada mais funciona. Compare com dig @1.1.1.1." },
+        { "title": "Conectividade", "command": "ping -c 4 {{host:host}}", "why": "Confirma que há caminho até o IP e mede latência e perda. ICMP pode estar bloqueado: sem resposta não prova que o host caiu." },
+        { "title": "Rota", "command": "ip route", "why": "Mostra por qual gateway e interface o tráfego sai. Sem rota padrão (default via ...), só a rede local é alcançável." },
+        { "title": "Porta", "command": "nc -vz {{host:host}} {{port:8080}}", "why": "Testa o handshake TCP. refused: host alcançável mas nada escuta na porta. timeout: firewall ou host descartando pacotes." },
+        { "title": "Socket local", "command": "ss -tuln", "why": "No servidor: o serviço escuta na porta? Em 127.0.0.1 só aceita conexões locais; em 0.0.0.0 ou :: aceita de fora." },
+        { "title": "HTTP", "command": "curl -v http://{{host:host}}:{{port:8080}}", "why": "Com a porta aberta, verifique a aplicação: status, redirecionamentos e cabeçalhos. 502/503/504 apontam para o que está atrás do proxy." },
+        { "title": "TLS", "command": "openssl s_client -connect {{host:host}}:443 -servername {{host:host}}", "why": "Para HTTPS: cadeia de certificados, validade, nome e handshake. Explica erros de certificado no navegador e no curl." }
+      ],
+      "related": ["dig", "ping", "ip-route", "nc", "ss", "curl", "openssl-s-client", "test-connection"]
+    },
+    {
+      "id": "connection-refused",
+      "name": "Erro: connection refused",
+      "kind": "recipe",
+      "category": "troubleshooting",
+      "summary": "O host respondeu, mas nenhum processo aceita conexões naquela porta",
+      "description": "Refused significa que o pacote chegou e o sistema respondeu com RST: a rede funciona, o problema é o serviço (parado, porta errada ou escutando só em 127.0.0.1).",
+      "aliases": ["connection refused", "conexão recusada", "econnrefused", "recusou a conexão"],
+      "tags": ["troubleshooting", "porta", "tcp"],
+      "steps": [
+        { "title": "O serviço está escutando?", "command": "sudo ss -ltnp | grep ':{{port:8080}}'", "why": "Nenhuma linha = nada escuta nessa porta neste host." },
+        { "title": "Em qual endereço?", "command": "ss -ltn", "why": "127.0.0.1:PORTA aceita só conexões locais; para acesso externo o bind deve ser 0.0.0.0 (ou o IP da interface)." },
+        { "title": "O serviço está rodando?", "command": "systemctl status nome-do-servico", "why": "Mostra se caiu e as últimas linhas de log." },
+        { "title": "Container publicou a porta?", "command": "docker ps --format '{{.Names}} {{.Ports}}'", "why": "Sem -p host:container a porta existe só dentro do container." },
+        { "title": "Teste de novo", "command": "nc -vz {{host:localhost}} {{port:8080}}", "why": "Confirma a correção." }
+      ],
+      "related": ["ss", "nc", "systemctl", "docker-ps", "network-troubleshooting"]
+    },
+    {
+      "id": "connection-timeout",
+      "name": "Erro: connection timed out",
+      "kind": "recipe",
+      "category": "troubleshooting",
+      "summary": "Os pacotes somem no caminho: firewall, rota ou host desligado",
+      "description": "Timeout significa que nenhuma resposta voltou. Diferente de refused, geralmente é firewall descartando pacotes, rota errada ou host fora do ar.",
+      "aliases": ["connection timed out", "timeout de conexão", "conexão expirou", "demora e não conecta", "etimedout"],
+      "tags": ["troubleshooting", "firewall", "rotas"],
+      "steps": [
+        { "title": "Rota até o destino", "command": "traceroute -n {{host:host}}", "why": "Onde o caminho para de responder indica em qual rede o pacote se perde." },
+        { "title": "Porta com timeout curto", "command": "nc -vz -w 5 {{host:host}} {{port:8080}}", "why": "Se outras portas do mesmo host respondem, a porta está filtrada." },
+        { "title": "Firewall local", "command": "sudo nft list ruleset", "why": "Regras do nftables (ou use sudo iptables -L -n, sudo ufw status). Em nuvem, confira também security groups." },
+        { "title": "Tráfego saindo", "command": "sudo tcpdump -i any -nn host {{host:host}}", "why": "Mostra se o SYN sai e se algo volta." }
+      ],
+      "related": ["traceroute", "nc", "tcpdump", "firewall", "network-troubleshooting"]
+    },
+    {
+      "id": "dns-not-resolving",
+      "name": "Erro: nome não resolve",
+      "kind": "recipe",
+      "category": "troubleshooting",
+      "summary": "Could not resolve host ou temporary failure in name resolution",
+      "aliases": ["dns não resolve", "could not resolve host", "nome não resolve", "temporary failure in name resolution", "name or service not known"],
+      "tags": ["troubleshooting", "dns"],
+      "steps": [
+        { "title": "Qual servidor DNS está configurado?", "command": "cat /etc/resolv.conf", "why": "nameserver indica quem responde. No WSL este arquivo é gerado automaticamente (veja /etc/wsl.conf)." },
+        { "title": "Consulte o DNS configurado", "command": "dig {{host:example.com}}", "why": "status NXDOMAIN: nome não existe. SERVFAIL ou timeout: problema no servidor DNS." },
+        { "title": "Compare com um DNS público", "command": "dig @1.1.1.1 {{host:example.com}}", "why": "Se funciona aqui, o problema é o seu servidor DNS, não o nome." },
+        { "title": "Como o sistema resolve", "command": "getent hosts {{host:example.com}}", "why": "Inclui /etc/hosts: uma entrada antiga lá sobrepõe o DNS." }
+      ],
+      "related": ["dig", "getent", "dns", "network-troubleshooting"]
+    }
+  ]
+}

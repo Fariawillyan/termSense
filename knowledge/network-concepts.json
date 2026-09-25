@@ -1,0 +1,312 @@
+{
+  "category": "network-concepts",
+  "entries": [
+    {
+      "id": "tcp",
+      "name": "TCP",
+      "kind": "concept",
+      "summary": "Protocolo de transporte orientado a conexão, confiável e ordenado",
+      "description": "Antes de trocar dados, cliente e servidor fazem o three-way handshake (SYN, SYN-ACK, ACK). Cada byte é numerado, confirmado e retransmitido se se perder. Usado por HTTP, SSH, bancos de dados e quase tudo que exige integridade.",
+      "aliases": ["transmission control protocol", "conexão tcp", "three-way handshake", "syn ack"],
+      "tags": ["rede", "transporte", "camada 4"],
+      "sections": [
+        { "title": "Características", "items": ["conexão: estabelecida antes dos dados (handshake)", "entrega confiável: confirmações (ACK) e retransmissão", "ordenação: os dados chegam na ordem enviada", "controle de fluxo: o receptor limita o envio (janela)", "controle de congestionamento: se adapta à rede"] },
+        { "title": "Estados comuns em ss", "rows": [["LISTEN", "servidor aguardando conexões"], ["ESTAB", "conexão ativa"], ["TIME-WAIT", "conexão encerrada aguardando pacotes atrasados"], ["CLOSE-WAIT", "o outro lado fechou; a aplicação ainda não"], ["SYN-SENT", "tentando conectar (sem resposta = firewall?)"]] }
+      ],
+      "examples": [
+        { "command": "ss -tn state established", "description": "Conexões TCP ativas" },
+        { "command": "nc -vz {{host:host}} {{port:8080}}", "description": "Testa o handshake com uma porta" },
+        { "command": "sudo tcpdump -i any -nn 'tcp[tcpflags] & tcp-syn != 0'", "description": "Vê os SYN (início de conexões)" }
+      ],
+      "related": ["udp", "ip-protocol", "porta", "socket", "handshake"]
+    },
+    {
+      "id": "udp",
+      "name": "UDP",
+      "kind": "concept",
+      "summary": "Protocolo de transporte sem conexão, leve e sem garantia de entrega",
+      "description": "Envia datagramas independentes: sem handshake, sem confirmação, sem ordenação. A aplicação decide o que fazer com perdas. Usado por DNS, DHCP, NTP, streaming, jogos, VoIP e QUIC (HTTP/3).",
+      "aliases": ["user datagram protocol", "datagrama"],
+      "tags": ["rede", "transporte", "camada 4"],
+      "sections": [
+        { "title": "Características", "items": ["sem conexão: cada pacote é independente", "menor overhead: cabeçalho de 8 bytes", "sem garantia de entrega nem de ordem", "sem controle de congestionamento embutido"] }
+      ],
+      "examples": [
+        { "command": "ss -uln", "description": "Portas UDP em escuta" },
+        { "command": "dig {{host:example.com}}", "description": "DNS normalmente usa UDP na porta 53" }
+      ],
+      "related": ["tcp", "dns", "dhcp", "porta"]
+    },
+    {
+      "id": "ip-protocol",
+      "name": "IP",
+      "kind": "concept",
+      "summary": "Protocolo de Internet: endereça e roteia pacotes entre redes",
+      "description": "Camada 3. Cada pacote leva IP de origem e destino; roteadores decidem o próximo salto. IP não garante entrega: isso é papel do TCP. Existem duas versões em uso: IPv4 e IPv6.",
+      "aliases": ["internet protocol", "endereço ip", "protocolo ip", "camada de rede"],
+      "tags": ["rede", "camada 3"],
+      "examples": [
+        { "command": "ip -br addr", "description": "Endereços IP das interfaces" },
+        { "command": "ip route get 8.8.8.8", "description": "Como um pacote seria roteado" }
+      ],
+      "related": ["ipv4", "ipv6", "tcp", "udp", "icmp", "subnet", "gateway"]
+    },
+    {
+      "id": "ipv4",
+      "name": "IPv4",
+      "kind": "concept",
+      "summary": "Endereços de 32 bits escritos como quatro números de 0 a 255",
+      "description": "Cerca de 4,3 bilhões de endereços, esgotados há anos, por isso existem redes privadas (RFC 1918) e NAT. Digite um IP (ex.: 192.168.1.10) para classificá-lo ou um bloco CIDR (ex.: 10.0.0.0/8) para calcular a sub-rede.",
+      "aliases": ["ip v4", "endereço ipv4", "192.168", "rede privada", "rfc 1918"],
+      "tags": ["rede", "endereçamento"],
+      "sections": [
+        { "title": "Faixas especiais", "rows": [["10.0.0.0/8", "privada"], ["172.16.0.0/12", "privada"], ["192.168.0.0/16", "privada"], ["127.0.0.0/8", "loopback"], ["169.254.0.0/16", "link-local (sem DHCP)"], ["100.64.0.0/10", "CGNAT de operadoras"], ["0.0.0.0", "todas as interfaces (em servidores)"]] }
+      ],
+      "examples": [{ "command": "ip -br -4 addr", "description": "Seus endereços IPv4" }],
+      "related": ["ipv6", "cidr", "subnet", "nat", "ip-protocol"]
+    },
+    {
+      "id": "ipv6",
+      "name": "IPv6",
+      "kind": "concept",
+      "summary": "Endereços de 128 bits em hexadecimal, sucessor do IPv4",
+      "description": "Escrito em 8 grupos de 16 bits (2001:db8::1); :: abrevia grupos de zeros. Não tem broadcast nem precisa de NAT. Sub-redes padrão são /64. Em URLs, use colchetes: http://[::1]:8080.",
+      "aliases": ["ip v6", "endereço ipv6", "::1", "fe80"],
+      "tags": ["rede", "endereçamento"],
+      "sections": [
+        { "title": "Tipos", "rows": [["::1", "loopback"], ["fe80::/10", "link-local"], ["fc00::/7", "ULA (privado)"], ["2000::/3", "global unicast"], ["ff00::/8", "multicast"]] }
+      ],
+      "examples": [
+        { "command": "ip -br -6 addr", "description": "Seus endereços IPv6" },
+        { "command": "ping -6 -c 3 {{host:example.com}}", "description": "Ping via IPv6" },
+        { "command": "curl -6 -I https://example.com", "description": "HTTP forçando IPv6" }
+      ],
+      "related": ["ipv4", "cidr", "ip-protocol", "dns-aaaa"]
+    },
+    {
+      "id": "icmp",
+      "name": "ICMP",
+      "kind": "concept",
+      "summary": "Mensagens de controle e erro do IP, usadas pelo ping e pelo traceroute",
+      "description": "Echo request/reply (ping), destination unreachable, time exceeded (traceroute) e fragmentation needed (descoberta de MTU). Bloquear todo ICMP quebra diagnósticos e a descoberta de MTU.",
+      "aliases": ["internet control message protocol", "echo request", "echo reply"],
+      "tags": ["rede", "diagnóstico"],
+      "examples": [
+        { "command": "ping -c 3 {{host:example.com}}", "description": "ICMP echo" },
+        { "command": "sudo tcpdump -i any -nn icmp", "description": "Vê mensagens ICMP" }
+      ],
+      "related": ["ping", "traceroute", "ip-protocol"]
+    },
+    {
+      "id": "arp-protocol",
+      "name": "ARP",
+      "kind": "concept",
+      "summary": "Descobre o endereço MAC correspondente a um IP na rede local",
+      "description": "Para enviar um pacote na mesma rede, o host pergunta em broadcast 'quem tem o IP X?' e guarda a resposta na tabela ARP. Para destinos fora da rede, o MAC buscado é o do gateway. No IPv6 o equivalente é o NDP.",
+      "aliases": ["address resolution protocol", "mac address", "tabela arp", "endereço mac"],
+      "tags": ["rede", "camada 2"],
+      "examples": [{ "command": "ip neigh", "description": "Tabela ARP atual" }],
+      "related": ["ip-neigh", "arp", "gateway", "interface"]
+    },
+    {
+      "id": "nat",
+      "name": "NAT",
+      "kind": "concept",
+      "summary": "Tradução de endereços: vários IPs privados saem por um IP público",
+      "description": "O roteador troca o IP/porta de origem ao sair e desfaz a troca na resposta. Por isso servidores na sua rede não são acessíveis de fora sem redirecionamento de porta (port forwarding). Docker e WSL também usam NAT.",
+      "aliases": ["network address translation", "masquerade", "ip público", "port forwarding do roteador"],
+      "tags": ["rede", "endereçamento", "roteamento"],
+      "examples": [
+        { "command": "ip -br addr", "description": "IP privado da máquina" },
+        { "command": "curl -s https://ifconfig.me", "description": "IP público após o NAT (requisição externa)" }
+      ],
+      "related": ["ipv4", "gateway", "subnet", "my-ip"]
+    },
+    {
+      "id": "dns",
+      "name": "DNS",
+      "kind": "concept",
+      "summary": "Sistema que traduz nomes (example.com) em endereços IP",
+      "description": "O resolvedor local pergunta a um servidor recursivo, que consulta a raiz, o TLD (.com) e o servidor autoritativo do domínio. Respostas ficam em cache pelo TTL. Usa UDP/53 e TCP/53 para respostas grandes.",
+      "aliases": ["domain name system", "resolução de nomes", "servidor dns", "nameserver", "resolv.conf"],
+      "tags": ["rede", "dns", "camada 7"],
+      "examples": [
+        { "command": "dig {{host:example.com}}", "description": "Consulta completa" },
+        { "command": "cat /etc/resolv.conf", "description": "Servidores DNS configurados" },
+        { "command": "getent hosts {{host:example.com}}", "description": "Resolução como os programas veem" }
+      ],
+      "related": ["dig", "dns-records", "udp", "dns-not-resolving", "getent"]
+    },
+    {
+      "id": "dns-records",
+      "name": "Registros DNS",
+      "kind": "concept",
+      "summary": "Tipos de informação que um domínio publica no DNS",
+      "aliases": ["tipos de registro dns", "dns records", "resource records"],
+      "tags": ["dns"],
+      "sections": [
+        { "title": "Tipos", "rows": [["A", "IPv4"], ["AAAA", "IPv6"], ["MX", "Email: servidores que recebem e-mail"], ["TXT", "Texto: SPF, DKIM, verificações"], ["CNAME", "apelido para outro nome"], ["NS", "servidores autoritativos da zona"], ["PTR", "reverso: IP → nome"], ["SOA", "dados da zona"]] }
+      ],
+      "examples": [
+        { "command": "dig {{host:example.com}} A", "description": "IPv4" },
+        { "command": "dig {{host:example.com}} AAAA", "description": "IPv6" },
+        { "command": "dig {{host:example.com}} MX", "description": "E-mail" },
+        { "command": "dig {{host:example.com}} TXT", "description": "Texto" }
+      ],
+      "related": ["dns", "dig", "dns-a", "dns-aaaa", "dns-mx", "dns-txt", "dns-cname"]
+    },
+    { "id": "dns-a", "name": "Registro A", "kind": "concept", "summary": "Registro DNS que aponta um nome para um endereço IPv4", "aliases": ["A", "a record"], "tags": ["dns"], "examples": [{ "command": "dig +short {{host:example.com}} A", "description": "Endereços IPv4" }], "related": ["dns-records", "ipv4"] },
+    { "id": "dns-aaaa", "name": "Registro AAAA", "kind": "concept", "summary": "Registro DNS que aponta um nome para um endereço IPv6", "aliases": ["AAAA", "aaaa record", "quad a"], "tags": ["dns"], "examples": [{ "command": "dig +short {{host:example.com}} AAAA", "description": "Endereços IPv6" }], "related": ["dns-records", "ipv6"] },
+    { "id": "dns-mx", "name": "Registro MX", "kind": "concept", "summary": "Registro DNS que indica os servidores de e-mail do domínio, com prioridade", "aliases": ["MX", "mx record", "mail exchanger"], "tags": ["dns", "email"], "examples": [{ "command": "dig +short {{host:example.com}} MX", "description": "Servidores de e-mail" }], "related": ["dns-records"] },
+    { "id": "dns-txt", "name": "Registro TXT", "kind": "concept", "summary": "Registro DNS de texto livre, usado para SPF, DKIM e verificação de domínio", "aliases": ["TXT", "txt record", "spf", "dkim"], "tags": ["dns", "email"], "examples": [{ "command": "dig +short {{host:example.com}} TXT", "description": "Textos publicados" }], "related": ["dns-records"] },
+    { "id": "dns-cname", "name": "Registro CNAME", "kind": "concept", "summary": "Registro DNS que torna um nome apelido de outro", "aliases": ["CNAME", "cname record", "alias dns"], "tags": ["dns"], "examples": [{ "command": "dig {{host:www.example.com}} CNAME", "description": "Para qual nome o apelido aponta" }], "related": ["dns-records"] },
+    {
+      "id": "dhcp",
+      "name": "DHCP",
+      "kind": "concept",
+      "summary": "Entrega automaticamente IP, máscara, gateway e DNS aos dispositivos",
+      "description": "Processo DORA: Discover, Offer, Request, Ack (UDP 67/68). A concessão (lease) expira e é renovada. Sem DHCP, a interface pode ficar com um endereço link-local 169.254.x.x.",
+      "aliases": ["dynamic host configuration protocol", "ip automático", "lease", "169.254"],
+      "tags": ["rede", "endereçamento"],
+      "examples": [{ "command": "ip -br addr", "description": "Confira se a interface recebeu IP" }],
+      "related": ["ipv4", "gateway", "dns", "udp"]
+    },
+    {
+      "id": "socket",
+      "name": "Socket",
+      "kind": "concept",
+      "summary": "Endpoint de comunicação: IP + porta + protocolo, ligado a um processo",
+      "description": "Um socket representa um endpoint de comunicação. Uma conexão TCP é identificada por (protocolo, IP de origem, porta de origem, IP de destino, porta de destino). Servidores têm um socket em LISTEN e criam um novo para cada conexão aceita. Sockets Unix fazem o mesmo dentro de uma máquina, usando um caminho de arquivo.",
+      "aliases": ["sockets", "endpoint", "unix socket", "socket de rede"],
+      "tags": ["rede", "sockets", "processos"],
+      "sections": [
+        { "title": "Relacionamentos", "items": ["IP: endereço da máquina", "porta: identifica o serviço", "TCP ou UDP: protocolo de transporte", "processo: quem abriu o socket"] }
+      ],
+      "examples": [
+        { "command": "ss -tuln", "description": "Sockets em escuta" },
+        { "command": "sudo lsof -i -P -n", "description": "Sockets e os processos donos" },
+        { "command": "ss -x", "description": "Sockets Unix" }
+      ],
+      "related": ["ipv4", "porta", "tcp", "udp", "process", "ss", "lsof", "netstat", "nc"]
+    },
+    {
+      "id": "porta",
+      "name": "Porta",
+      "kind": "concept",
+      "summary": "Número de 0 a 65535 que identifica um serviço em um endereço IP",
+      "description": "O IP leva o pacote até a máquina; a porta entrega ao processo certo. Portas abaixo de 1024 exigem root para escutar. Ferramentas para investigar portas: ss, netstat, lsof e nc. Digite, por exemplo, porta 8080 para ver quem a usa.",
+      "aliases": ["port", "portas", "ports", "número de porta"],
+      "tags": ["rede", "portas", "sockets"],
+      "sections": [
+        { "title": "Flags de ss -tuln", "rows": [["-t", "TCP"], ["-u", "UDP"], ["-l", "Listening (em escuta)"], ["-n", "Não resolver nomes"]] },
+        { "title": "Portas conhecidas", "rows": [["22", "SSH"], ["53", "DNS"], ["80", "HTTP"], ["443", "HTTPS"], ["3306", "MySQL"], ["5432", "PostgreSQL"], ["6379", "Redis"], ["8080", "HTTP alternativo"]] }
+      ],
+      "examples": [
+        { "command": "ss -tuln", "description": "Portas em escuta" },
+        { "command": "ss -ltnp | grep ':{{port:8080}}'", "description": "Quem escuta em uma porta" },
+        { "command": "sudo lsof -i :{{port:8080}}", "description": "Processos usando a porta" },
+        { "command": "nc -vz {{host:host}} {{port:8080}}", "description": "A porta remota aceita conexão?" }
+      ],
+      "related": ["ss", "netstat", "lsof", "nc", "socket", "tcp", "udp", "port-owner"]
+    },
+    {
+      "id": "gateway",
+      "name": "Gateway",
+      "kind": "concept",
+      "summary": "Roteador para onde vai o tráfego destinado a outras redes",
+      "description": "O gateway padrão (default via) precisa estar na mesma sub-rede da interface. Se ele não responde, só a rede local funciona.",
+      "aliases": ["gateway padrão", "default gateway", "roteador", "default route"],
+      "tags": ["rede", "rotas"],
+      "examples": [
+        { "command": "ip route | grep default", "description": "Qual é o gateway" },
+        { "command": "ping -c 3 $(ip route | awk '/default/ {print $3}')", "description": "O gateway responde?" }
+      ],
+      "related": ["ip-route", "subnet", "nat", "routes-gateway"]
+    },
+    {
+      "id": "subnet",
+      "name": "Sub-rede",
+      "kind": "concept",
+      "summary": "Faixa de endereços que se comunicam diretamente, sem passar por roteador",
+      "description": "Definida por endereço de rede + máscara (ou prefixo CIDR). Dois hosts estão na mesma sub-rede quando os bits de rede de ambos são iguais. Digite /24 ou 192.168.1.0/24 para calcular.",
+      "aliases": ["subnet", "subrede", "máscara de rede", "netmask", "255.255.255.0"],
+      "tags": ["rede", "endereçamento"],
+      "examples": [
+        { "command": "ip -br -4 addr", "description": "IP/prefixo de cada interface" },
+        { "command": "ip route", "description": "Redes diretamente conectadas (proto kernel scope link)" }
+      ],
+      "related": ["cidr", "gateway", "ipv4"]
+    },
+    {
+      "id": "cidr",
+      "name": "CIDR",
+      "kind": "concept",
+      "summary": "Notação IP/prefixo que indica quantos bits formam a parte de rede",
+      "description": "Em 192.168.1.0/24, os primeiros 24 bits são rede e 8 são hosts: 256 endereços totais, 254 utilizáveis (o primeiro é a rede e o último o broadcast). Cada bit a menos no prefixo dobra o tamanho do bloco.",
+      "aliases": ["classless inter-domain routing", "prefixo", "/24", "/16", "/8", "/32", "máscara cidr"],
+      "tags": ["rede", "endereçamento"],
+      "sections": [
+        { "title": "Prefixos comuns", "rows": [["/8", "255.0.0.0 · 16.777.216 endereços"], ["/12", "255.240.0.0 · 1.048.576 endereços"], ["/16", "255.255.0.0 · 65.536 endereços"], ["/24", "255.255.255.0 · 256 endereços (254 hosts)"], ["/30", "255.255.255.252 · 4 endereços (2 hosts)"], ["/32", "255.255.255.255 · um único host"]] }
+      ],
+      "examples": [
+        { "command": "ip -br addr", "description": "Prefixo de cada interface" },
+        { "command": "ip route", "description": "Redes da tabela de rotas" }
+      ],
+      "related": ["subnet", "ipv4", "ipv6", "gateway"]
+    },
+    {
+      "id": "localhost",
+      "name": "localhost",
+      "kind": "concept",
+      "summary": "Nome que sempre aponta para a própria máquina (127.0.0.1 e ::1)",
+      "description": "Definido em /etc/hosts. Um serviço que escuta só em localhost não é acessível de outras máquinas. No WSL 2, o Windows alcança serviços do Linux via localhost por encaminhamento automático.",
+      "aliases": ["127.0.0.1", "::1", "máquina local", "local host"],
+      "tags": ["rede", "loopback"],
+      "examples": [
+        { "command": "getent hosts localhost", "description": "Como localhost resolve" },
+        { "command": "curl -v http://localhost:{{port:8080}}", "description": "Serviço local" }
+      ],
+      "related": ["loopback", "ipv4", "getent"]
+    },
+    {
+      "id": "loopback",
+      "name": "Loopback",
+      "kind": "concept",
+      "summary": "Interface virtual (lo) em que o tráfego nunca sai da máquina",
+      "description": "Faixa 127.0.0.0/8 no IPv4 e ::1 no IPv6. Útil para serviços que só devem aceitar conexões locais, como bancos de dados em desenvolvimento.",
+      "aliases": ["lo", "interface lo", "127.0.0.0/8"],
+      "tags": ["rede", "interfaces"],
+      "examples": [{ "command": "ip addr show lo", "description": "A interface loopback" }],
+      "related": ["localhost", "interface"]
+    },
+    {
+      "id": "interface",
+      "name": "Interface de rede",
+      "kind": "concept",
+      "summary": "Ponto de conexão com uma rede: placa física, Wi-Fi ou virtual",
+      "description": "Nomes comuns: eth0/enp3s0 (cabo), wlan0/wlp2s0 (Wi-Fi), lo (loopback), docker0 e veth* (Docker), tun0/wg0 (VPN). Cada uma tem estado (UP/DOWN), MAC, MTU e endereços IP.",
+      "aliases": ["network interface", "placa de rede", "nic", "eth0", "wlan0", "docker0"],
+      "tags": ["rede", "interfaces"],
+      "examples": [
+        { "command": "ip -br link", "description": "Interfaces e estado" },
+        { "command": "ip -br addr", "description": "Interfaces e IPs" }
+      ],
+      "related": ["ip-link", "ip-addr", "loopback", "arp-protocol"]
+    },
+    {
+      "id": "firewall",
+      "name": "Firewall",
+      "kind": "concept",
+      "summary": "Filtro que permite ou bloqueia pacotes segundo regras",
+      "description": "No Linux as regras ficam no kernel (netfilter), gerenciadas por nftables, iptables, ufw ou firewalld. Pacotes bloqueados com DROP causam timeout; com REJECT, erro imediato. Na nuvem há também security groups fora da máquina.",
+      "aliases": ["iptables", "nftables", "ufw", "firewalld", "bloqueio de porta"],
+      "tags": ["rede", "segurança"],
+      "examples": [
+        { "command": "sudo nft list ruleset", "description": "Regras do nftables" },
+        { "command": "sudo iptables -L -n -v", "description": "Regras do iptables" },
+        { "command": "sudo ufw status verbose", "description": "Estado do ufw (Ubuntu)" }
+      ],
+      "related": ["porta", "connection-timeout", "nat"]
+    }
+  ]
+}

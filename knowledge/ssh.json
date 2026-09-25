@@ -1,0 +1,305 @@
+{
+  "category": "ssh",
+  "entries": [
+    {
+      "name": "ssh",
+      "kind": "command",
+      "summary": "Acessa outra máquina com um shell remoto seguro",
+      "description": "Conecta via TCP (porta 22), verifica a identidade do servidor (known_hosts) e autentica você por chave pública ou senha. Tudo trafega cifrado. Configurações por host ficam em ~/.ssh/config.",
+      "usage": "ssh [OPÇÕES] [USUÁRIO@]HOST [COMANDO]",
+      "aliases": ["acesso remoto", "conectar no servidor", "shell remoto", "remote login", "secure shell"],
+      "tags": ["ssh", "rede", "remoto", "segurança"],
+      "options": [
+        { "short": "-p", "arg": "PORTA", "description": "Porta do servidor (padrão 22)" },
+        { "short": "-i", "arg": "CHAVE", "description": "Chave privada a usar" },
+        { "short": "-L", "arg": "LOCAL:HOST:PORTA", "description": "Encaminhamento local: porta daqui → destino via servidor" },
+        { "short": "-R", "arg": "REMOTA:HOST:PORTA", "description": "Encaminhamento remoto: porta do servidor → destino daqui" },
+        { "short": "-D", "arg": "PORTA", "description": "Proxy SOCKS dinâmico" },
+        { "short": "-J", "arg": "HOST", "description": "Salta por um host intermediário (ProxyJump)" },
+        { "short": "-N", "description": "Não executa comando remoto (só túneis)" },
+        { "short": "-f", "description": "Vai para segundo plano após autenticar" },
+        { "short": "-A", "description": "Encaminha o ssh-agent (só para servidores confiáveis)" },
+        { "short": "-v", "description": "Detalhado (-vv, -vvv) para diagnosticar a conexão" },
+        { "short": "-o", "arg": "OPÇÃO", "description": "Opção de configuração, ex.: -o StrictHostKeyChecking=accept-new" },
+        { "short": "-t", "description": "Força um terminal (comandos interativos remotos)" }
+      ],
+      "arguments": [
+        { "name": "DESTINO", "kind": "host", "description": "[usuário@]host ou apelido do ~/.ssh/config" },
+        { "name": "COMANDO", "kind": "command", "description": "Executa só este comando remoto", "repeat": true }
+      ],
+      "examples": [
+        { "command": "ssh user@host", "description": "Conecta como user" },
+        { "command": "ssh -p 2222 user@host", "description": "Porta diferente da 22" },
+        { "command": "ssh -i ~/.ssh/id_ed25519 user@host", "description": "Escolhe a chave" },
+        { "command": "ssh user@host 'df -h'", "description": "Executa um comando e volta" },
+        { "command": "ssh -L 5432:localhost:5432 user@bastion", "description": "Acessa o Postgres remoto em localhost:5432" },
+        { "command": "ssh -J user@bastion user@servidor-interno", "description": "Passa por um jump host" },
+        { "command": "ssh -vvv user@host", "description": "Diagnostica falhas de autenticação" }
+      ],
+      "related": ["tcp", "dns", "public-key", "private-key", "known-hosts", "ssh-config", "local-forwarding", "scp"]
+    },
+    {
+      "name": "scp",
+      "kind": "command",
+      "summary": "Copia arquivos entre máquinas via SSH",
+      "description": "Caminhos remotos têm a forma usuário@host:caminho. Versões recentes usam o protocolo SFTP por baixo; para sincronizar muitos arquivos, prefira rsync.",
+      "usage": "scp [OPÇÕES] ORIGEM... DESTINO",
+      "aliases": ["copiar para servidor", "copiar arquivo remoto", "enviar arquivo ssh", "secure copy"],
+      "tags": ["ssh", "arquivos", "remoto"],
+      "options": [
+        { "short": "-r", "description": "Copia diretórios recursivamente" },
+        { "short": "-P", "arg": "PORTA", "description": "Porta (P maiúsculo, diferente do ssh)" },
+        { "short": "-i", "arg": "CHAVE", "description": "Chave privada" },
+        { "short": "-C", "description": "Comprime durante a transferência" }
+      ],
+      "arguments": [
+        { "name": "ORIGEM", "kind": "path", "description": "Arquivo local ou user@host:caminho" },
+        { "name": "DESTINO", "kind": "path", "description": "Destino local ou remoto", "repeat": true }
+      ],
+      "examples": [
+        { "command": "scp app.tar.gz user@host:/tmp/", "description": "Envia um arquivo" },
+        { "command": "scp user@host:/var/log/app.log .", "description": "Baixa um arquivo" },
+        { "command": "scp -r -P 2222 site/ user@host:/var/www/", "description": "Diretório, porta 2222" }
+      ],
+      "related": ["ssh", "sftp", "cp"]
+    },
+    {
+      "name": "sftp",
+      "kind": "command",
+      "summary": "Sessão interativa de transferência de arquivos via SSH",
+      "description": "Comandos na sessão: ls, cd, get, put, mkdir, lls/lcd (lado local), exit.",
+      "usage": "sftp [OPÇÕES] [USUÁRIO@]HOST",
+      "aliases": ["ftp seguro", "transferir arquivos ssh"],
+      "tags": ["ssh", "arquivos", "remoto"],
+      "options": [
+        { "short": "-P", "arg": "PORTA", "description": "Porta" },
+        { "short": "-i", "arg": "CHAVE", "description": "Chave privada" },
+        { "short": "-b", "arg": "ARQUIVO", "description": "Executa comandos de um arquivo (lote)" }
+      ],
+      "arguments": [{ "name": "DESTINO", "kind": "host", "description": "[usuário@]host" }],
+      "examples": [
+        { "command": "sftp user@host", "description": "Abre a sessão" },
+        { "command": "sftp -P 2222 user@host", "description": "Em outra porta" }
+      ],
+      "related": ["scp", "ssh"]
+    },
+    {
+      "name": "ssh-keygen",
+      "kind": "command",
+      "summary": "Gera e gerencia pares de chaves SSH",
+      "description": "Cria a chave privada (~/.ssh/id_ed25519, nunca compartilhe) e a pública (.pub, pode ser distribuída). Use uma passphrase e ed25519 como algoritmo.",
+      "usage": "ssh-keygen [OPÇÕES]",
+      "aliases": ["gerar chave ssh", "criar chave ssh", "generate ssh key", "par de chaves"],
+      "tags": ["ssh", "chaves", "segurança"],
+      "options": [
+        { "short": "-t", "arg": "TIPO", "description": "Algoritmo: ed25519 (recomendado) ou rsa" },
+        { "short": "-C", "arg": "COMENTÁRIO", "description": "Comentário, normalmente seu e-mail" },
+        { "short": "-f", "arg": "ARQUIVO", "description": "Caminho da chave" },
+        { "short": "-b", "arg": "BITS", "description": "Tamanho (RSA: 4096)" },
+        { "short": "-p", "description": "Troca a passphrase" },
+        { "short": "-l", "description": "Mostra a impressão digital (fingerprint)" },
+        { "short": "-R", "arg": "HOST", "description": "Remove um host do known_hosts" }
+      ],
+      "examples": [
+        { "command": "ssh-keygen -t ed25519 -C \"voce@example.com\"", "description": "Gera um par de chaves moderno" },
+        { "command": "ssh-keygen -lf ~/.ssh/id_ed25519.pub", "description": "Fingerprint da chave" },
+        { "command": "ssh-keygen -R servidor.example.com", "description": "Esquece a identidade antiga de um servidor" }
+      ],
+      "related": ["public-key", "private-key", "ssh-copy-id", "ssh-add", "ssh-key-setup"]
+    },
+    {
+      "name": "ssh-agent",
+      "kind": "command",
+      "summary": "Guarda chaves privadas desbloqueadas na memória durante a sessão",
+      "description": "Você digita a passphrase uma vez (ssh-add) e o agente responde às autenticações. A variável SSH_AUTH_SOCK aponta para o socket do agente.",
+      "usage": "eval \"$(ssh-agent -s)\"",
+      "aliases": ["agente ssh", "ssh agent", "não pedir senha da chave", "passphrase"],
+      "tags": ["ssh", "chaves"],
+      "options": [
+        { "short": "-s", "description": "Gera comandos para sh/bash" },
+        { "short": "-k", "description": "Encerra o agente atual" }
+      ],
+      "examples": [
+        { "command": "eval \"$(ssh-agent -s)\"", "description": "Inicia o agente na sessão" },
+        { "command": "echo $SSH_AUTH_SOCK", "description": "Há um agente disponível?" }
+      ],
+      "related": ["ssh-add", "private-key", "ssh"]
+    },
+    {
+      "name": "ssh-add",
+      "kind": "command",
+      "summary": "Adiciona chaves privadas ao ssh-agent",
+      "usage": "ssh-add [OPÇÕES] [CHAVE...]",
+      "aliases": ["adicionar chave ao agente", "carregar chave ssh"],
+      "tags": ["ssh", "chaves"],
+      "options": [
+        { "short": "-l", "description": "Lista as chaves carregadas" },
+        { "short": "-D", "description": "Remove todas as chaves" },
+        { "short": "-t", "arg": "SEG", "description": "Remove a chave após um tempo" }
+      ],
+      "arguments": [{ "name": "CHAVE", "kind": "path", "description": "Chave privada (padrão: ~/.ssh/id_*)", "repeat": true }],
+      "examples": [
+        { "command": "ssh-add ~/.ssh/id_ed25519", "description": "Carrega a chave (pede a passphrase uma vez)" },
+        { "command": "ssh-add -l", "description": "Chaves carregadas" }
+      ],
+      "related": ["ssh-agent", "ssh-keygen"]
+    },
+    {
+      "name": "ssh-copy-id",
+      "kind": "command",
+      "summary": "Instala sua chave pública no authorized_keys de um servidor",
+      "usage": "ssh-copy-id [-i CHAVE.pub] [-p PORTA] USUÁRIO@HOST",
+      "aliases": ["copiar chave para servidor", "login sem senha", "autorizar chave"],
+      "tags": ["ssh", "chaves"],
+      "options": [
+        { "short": "-i", "arg": "CHAVE", "description": "Chave pública a enviar" },
+        { "short": "-p", "arg": "PORTA", "description": "Porta do servidor" }
+      ],
+      "arguments": [{ "name": "DESTINO", "kind": "host", "description": "usuário@host" }],
+      "examples": [
+        { "command": "ssh-copy-id user@host", "description": "Pede a senha uma última vez e instala a chave" },
+        { "command": "ssh-copy-id -i ~/.ssh/id_ed25519.pub -p 2222 user@host", "description": "Chave e porta específicas" }
+      ],
+      "related": ["authorized-keys", "public-key", "ssh-keygen"]
+    },
+    {
+      "id": "public-key",
+      "name": "Chave pública",
+      "kind": "concept",
+      "summary": "Metade compartilhável do par de chaves: vai para os servidores",
+      "description": "Arquivo .pub (ex.: ~/.ssh/id_ed25519.pub). Quem tem a chave pública pode verificar que você possui a privada, mas não pode se passar por você.",
+      "aliases": ["public key", "id_ed25519.pub", "id_rsa.pub", "chave .pub"],
+      "tags": ["ssh", "chaves", "criptografia"],
+      "examples": [{ "command": "cat ~/.ssh/id_ed25519.pub", "description": "Conteúdo a colar no GitHub ou no servidor" }],
+      "related": ["private-key", "authorized-keys", "ssh-keygen"]
+    },
+    {
+      "id": "private-key",
+      "name": "Chave privada",
+      "kind": "concept",
+      "summary": "Metade secreta do par de chaves: nunca sai da sua máquina",
+      "description": "Proteja com passphrase e permissão 600. O SSH recusa chaves privadas legíveis por outros usuários ('UNPROTECTED PRIVATE KEY FILE').",
+      "aliases": ["private key", "id_ed25519", "id_rsa", "chave secreta"],
+      "tags": ["ssh", "chaves", "segurança"],
+      "examples": [
+        { "command": "chmod 600 ~/.ssh/id_ed25519", "description": "Permissão correta" },
+        { "command": "chmod 700 ~/.ssh", "description": "Diretório .ssh só seu" }
+      ],
+      "related": ["public-key", "ssh-agent", "permissions"]
+    },
+    {
+      "id": "known-hosts",
+      "name": "known_hosts",
+      "kind": "concept",
+      "summary": "Lista de identidades de servidores já confiados (~/.ssh/known_hosts)",
+      "description": "Na primeira conexão o SSH mostra a fingerprint do servidor e grava ao aceitar. Se ela mudar depois, aparece 'REMOTE HOST IDENTIFICATION HAS CHANGED': pode ser reinstalação do servidor ou um ataque man-in-the-middle. Confirme antes de remover a entrada.",
+      "aliases": ["known hosts", "host key", "fingerprint do servidor", "remote host identification has changed"],
+      "tags": ["ssh", "segurança"],
+      "examples": [
+        { "command": "ssh-keygen -R servidor.example.com", "description": "Remove a entrada antiga (após confirmar a mudança)" },
+        { "command": "ssh-keyscan servidor.example.com", "description": "Mostra as chaves que o servidor apresenta" }
+      ],
+      "related": ["ssh", "ssh-keygen"]
+    },
+    {
+      "id": "authorized-keys",
+      "name": "authorized_keys",
+      "kind": "concept",
+      "summary": "Chaves públicas autorizadas a entrar em uma conta (~/.ssh/authorized_keys)",
+      "description": "Fica no servidor, uma chave por linha. Permissões exigidas: ~/.ssh 700 e authorized_keys 600, do próprio usuário; caso contrário o sshd ignora o arquivo.",
+      "aliases": ["authorized keys", "chaves autorizadas", "login por chave"],
+      "tags": ["ssh", "segurança"],
+      "examples": [
+        { "command": "ssh-copy-id user@host", "description": "Adiciona sua chave corretamente" },
+        { "command": "chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys", "description": "Corrige permissões no servidor" }
+      ],
+      "related": ["public-key", "ssh-copy-id", "permissions"]
+    },
+    {
+      "id": "port-forwarding",
+      "name": "Port forwarding (túnel SSH)",
+      "kind": "concept",
+      "summary": "Encaminha portas através de uma conexão SSH cifrada",
+      "description": "Três tipos: local (-L) traz um serviço remoto para uma porta daqui; remoto (-R) expõe um serviço daqui em uma porta do servidor; dinâmico (-D) cria um proxy SOCKS. Adicione -N para não abrir shell.",
+      "aliases": ["túnel ssh", "ssh tunnel", "port forwarding", "encaminhamento de porta"],
+      "tags": ["ssh", "rede", "túnel"],
+      "examples": [
+        { "command": "ssh -N -L 8080:localhost:80 user@host", "description": "localhost:8080 aqui → porta 80 do servidor" },
+        { "command": "ssh -N -R 9000:localhost:3000 user@host", "description": "Porta 9000 do servidor → seu localhost:3000" },
+        { "command": "ssh -N -D 1080 user@host", "description": "Proxy SOCKS em localhost:1080" }
+      ],
+      "related": ["local-forwarding", "remote-forwarding", "ssh", "porta"]
+    },
+    {
+      "id": "local-forwarding",
+      "name": "Local forwarding",
+      "kind": "concept",
+      "summary": "ssh -L: uma porta local passa a levar a um destino alcançável pelo servidor",
+      "description": "Formato -L PORTA_LOCAL:DESTINO:PORTA_DESTINO. DESTINO é resolvido do ponto de vista do servidor SSH: localhost ali significa o próprio servidor. Clássico para acessar bancos de dados que não estão expostos.",
+      "aliases": ["ssh -L", "túnel local", "acessar banco remoto"],
+      "tags": ["ssh", "túnel"],
+      "examples": [
+        { "command": "ssh -N -L 5432:localhost:5432 user@db-server", "description": "psql -h localhost passa a falar com o banco remoto" },
+        { "command": "ssh -N -L 8443:intranet.local:443 user@bastion", "description": "Acessa um site interno via bastion" }
+      ],
+      "related": ["port-forwarding", "remote-forwarding", "jump-host"]
+    },
+    {
+      "id": "remote-forwarding",
+      "name": "Remote forwarding",
+      "kind": "concept",
+      "summary": "ssh -R: uma porta do servidor passa a levar a um serviço da sua máquina",
+      "description": "Formato -R PORTA_REMOTA:DESTINO:PORTA_DESTINO. Útil para mostrar um serviço local a alguém ou receber webhooks. Por padrão escuta só no localhost do servidor (GatewayPorts muda isso).",
+      "aliases": ["ssh -R", "túnel reverso", "reverse tunnel", "expor porta local"],
+      "tags": ["ssh", "túnel"],
+      "examples": [{ "command": "ssh -N -R 8080:localhost:3000 user@servidor", "description": "servidor:8080 → seu localhost:3000" }],
+      "related": ["port-forwarding", "local-forwarding"]
+    },
+    {
+      "id": "jump-host",
+      "name": "Jump host (ProxyJump)",
+      "kind": "concept",
+      "summary": "Acessa servidores internos passando por um host intermediário (bastion)",
+      "description": "ssh -J bastion destino abre a conexão até o destino através do bastion, sem copiar chaves para ele. No ~/.ssh/config use a diretiva ProxyJump.",
+      "aliases": ["proxyjump", "bastion", "ssh -J", "jump server", "salto ssh"],
+      "tags": ["ssh", "rede"],
+      "examples": [
+        { "command": "ssh -J user@bastion user@10.0.1.20", "description": "Salta pelo bastion" },
+        { "command": "scp -J user@bastion arquivo.txt user@10.0.1.20:/tmp/", "description": "Também funciona com scp" }
+      ],
+      "related": ["ssh", "ssh-config", "local-forwarding"]
+    },
+    {
+      "id": "ssh-config",
+      "name": "~/.ssh/config",
+      "kind": "concept",
+      "summary": "Arquivo de apelidos e opções por host para ssh, scp e git",
+      "description": "Cada bloco Host define HostName, User, Port, IdentityFile, ProxyJump, LocalForward... Depois basta ssh apelido.",
+      "aliases": ["ssh config", "configuração ssh", "apelido de servidor"],
+      "tags": ["ssh", "configuração"],
+      "sections": [
+        { "title": "Exemplo", "items": ["Host prod", "    HostName 203.0.113.10", "    User deploy", "    Port 2222", "    IdentityFile ~/.ssh/id_ed25519", "    ProxyJump bastion"] }
+      ],
+      "examples": [
+        { "command": "ssh prod", "description": "Usa todas as opções do bloco Host prod" },
+        { "command": "ssh -G prod", "description": "Mostra a configuração efetiva" }
+      ],
+      "related": ["ssh", "jump-host"]
+    },
+    {
+      "id": "ssh-key-setup",
+      "name": "Configurar login SSH por chave",
+      "kind": "recipe",
+      "summary": "Gerar uma chave, instalá-la no servidor e entrar sem digitar senha",
+      "aliases": ["login sem senha", "configurar chave ssh", "ssh sem senha", "passwordless ssh", "chave ssh no github"],
+      "tags": ["ssh", "chaves"],
+      "steps": [
+        { "title": "Gerar o par", "command": "ssh-keygen -t ed25519 -C \"voce@example.com\"", "why": "Cria ~/.ssh/id_ed25519 (privada) e id_ed25519.pub (pública). Use uma passphrase." },
+        { "title": "Instalar no servidor", "command": "ssh-copy-id user@host", "why": "Acrescenta a chave pública ao authorized_keys com as permissões corretas." },
+        { "title": "Carregar no agente", "command": "ssh-add ~/.ssh/id_ed25519", "why": "Digita a passphrase uma vez por sessão." },
+        { "title": "Testar", "command": "ssh -v user@host", "why": "Procure 'Authenticated using publickey'." }
+      ],
+      "related": ["ssh-keygen", "ssh-copy-id", "ssh-add", "authorized-keys"]
+    }
+  ]
+}

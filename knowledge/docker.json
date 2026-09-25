@@ -1,0 +1,292 @@
+{
+  "category": "docker",
+  "entries": [
+    {
+      "name": "docker",
+      "kind": "command",
+      "summary": "Cria e gerencia containers, imagens, redes e volumes",
+      "description": "Imagem é o modelo imutável; container é uma instância em execução dela, isolada por namespaces e cgroups do kernel. No WSL, o Docker Desktop integra o daemon ao Linux; sem ele, instale o docker engine na distribuição.",
+      "usage": "docker [OPÇÕES] SUBCOMANDO",
+      "install": "Instale o Docker Engine (https://docs.docker.com/engine/install/) ou habilite a integração WSL do Docker Desktop. Para usar sem sudo: sudo usermod -aG docker $USER e relogue.",
+      "aliases": ["containers", "container", "docker engine"],
+      "tags": ["docker", "containers"],
+      "examples": [
+        { "command": "docker ps", "description": "Containers em execução" },
+        { "command": "docker run --rm -it ubuntu bash", "description": "Shell descartável em um container Ubuntu" },
+        { "command": "docker compose up -d", "description": "Sobe os serviços do compose.yaml" }
+      ],
+      "related": ["docker-ps", "docker-run", "docker-compose", "container", "image"]
+    },
+    {
+      "id": "docker-ps", "name": "docker ps", "kind": "command", "parent": "docker",
+      "summary": "Lista containers",
+      "usage": "docker ps [OPÇÕES]",
+      "aliases": ["listar containers", "containers rodando", "docker container ls"],
+      "tags": ["docker", "containers"],
+      "options": [
+        { "short": "-a", "long": "--all", "description": "Inclui containers parados" },
+        { "short": "-q", "long": "--quiet", "description": "Só os IDs" },
+        { "short": "-f", "long": "--filter", "arg": "FILTRO", "description": "Filtra (status=exited, name=api)" },
+        { "long": "--format", "arg": "MODELO", "description": "Formato Go template, ex.: '{{.Names}} {{.Ports}}'" }
+      ],
+      "examples": [
+        { "command": "docker ps", "description": "Em execução, com portas publicadas" },
+        { "command": "docker ps -a", "description": "Inclui parados (veja o STATUS/exit code)" },
+        { "command": "docker ps --format 'table {{.Names}}\\t{{.Status}}\\t{{.Ports}}'", "description": "Tabela enxuta" }
+      ],
+      "related": ["docker-logs", "docker-inspect", "container"]
+    },
+    {
+      "id": "docker-images", "name": "docker images", "kind": "command", "parent": "docker",
+      "summary": "Lista as imagens locais",
+      "usage": "docker images [OPÇÕES] [REPOSITÓRIO[:TAG]]",
+      "aliases": ["listar imagens", "docker image ls"],
+      "tags": ["docker", "imagens"],
+      "options": [
+        { "short": "-a", "long": "--all", "description": "Inclui camadas intermediárias" },
+        { "short": "-q", "long": "--quiet", "description": "Só os IDs" },
+        { "short": "-f", "long": "--filter", "arg": "FILTRO", "description": "Ex.: dangling=true (sem tag)" }
+      ],
+      "examples": [
+        { "command": "docker images", "description": "Imagens e tamanhos" },
+        { "command": "docker image prune", "description": "Remove imagens sem tag" }
+      ],
+      "related": ["image", "docker-build", "docker-cleanup"]
+    },
+    {
+      "id": "docker-logs", "name": "docker logs", "kind": "command", "parent": "docker",
+      "summary": "Mostra a saída (stdout/stderr) de um container",
+      "usage": "docker logs [OPÇÕES] CONTAINER",
+      "aliases": ["logs do container", "ver logs docker", "container logs"],
+      "tags": ["docker", "logs"],
+      "options": [
+        { "short": "-f", "long": "--follow", "description": "Acompanha em tempo real" },
+        { "short": "-n", "long": "--tail", "arg": "N", "description": "Só as últimas N linhas" },
+        { "short": "-t", "long": "--timestamps", "description": "Inclui data e hora" },
+        { "long": "--since", "arg": "TEMPO", "description": "Desde (10m, 2h, 2024-01-01)" }
+      ],
+      "arguments": [{ "name": "CONTAINER", "kind": "text", "description": "Nome ou ID do container" }],
+      "examples": [
+        { "command": "docker logs container", "description": "Toda a saída" },
+        { "command": "docker logs -f container", "description": "Acompanha em tempo real" },
+        { "command": "docker logs -n 100 -t container", "description": "Últimas 100 linhas com horário" }
+      ],
+      "related": ["docker-container-logs", "stdout", "stderr", "follow-log"]
+    },
+    {
+      "id": "docker-exec", "name": "docker exec", "kind": "command", "parent": "docker",
+      "summary": "Executa um comando dentro de um container em execução",
+      "usage": "docker exec [OPÇÕES] CONTAINER COMANDO [ARGUMENTOS]",
+      "aliases": ["entrar no container", "shell no container", "executar no container"],
+      "tags": ["docker", "containers"],
+      "options": [
+        { "short": "-i", "long": "--interactive", "description": "Mantém o stdin aberto" },
+        { "short": "-t", "long": "--tty", "description": "Aloca um terminal" },
+        { "short": "-u", "long": "--user", "arg": "USUÁRIO", "description": "Executa como outro usuário" },
+        { "short": "-e", "long": "--env", "arg": "VAR=VALOR", "description": "Define variável de ambiente" },
+        { "short": "-w", "long": "--workdir", "arg": "DIR", "description": "Diretório de trabalho" }
+      ],
+      "arguments": [
+        { "name": "CONTAINER", "kind": "text", "description": "Nome ou ID" },
+        { "name": "COMANDO", "kind": "command", "description": "O que executar lá dentro", "repeat": true }
+      ],
+      "examples": [
+        { "command": "docker exec -it container sh", "description": "Shell interativo (sh existe em quase toda imagem)" },
+        { "command": "docker exec -it container bash", "description": "Bash, se a imagem tiver" },
+        { "command": "docker exec container env", "description": "Variáveis de ambiente do container" },
+        { "command": "docker exec -u root -it container sh", "description": "Shell como root" }
+      ],
+      "related": ["docker-enter-container", "container", "docker-ps"]
+    },
+    {
+      "id": "docker-inspect", "name": "docker inspect", "kind": "command", "parent": "docker",
+      "summary": "Mostra a configuração completa de containers, imagens, redes ou volumes em JSON",
+      "usage": "docker inspect [OPÇÕES] OBJETO...",
+      "aliases": ["detalhes do container", "ip do container", "configuração do container"],
+      "tags": ["docker"],
+      "options": [{ "short": "-f", "long": "--format", "arg": "MODELO", "description": "Extrai um campo com Go template" }],
+      "examples": [
+        { "command": "docker inspect container", "description": "Tudo em JSON" },
+        { "command": "docker inspect -f '{{.State.Status}} {{.State.ExitCode}}' container", "description": "Estado e exit code" },
+        { "command": "docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' container", "description": "IP do container" }
+      ],
+      "related": ["docker-ps", "docker-network", "docker-container-ip"]
+    },
+    {
+      "id": "docker-network", "name": "docker network", "kind": "command", "parent": "docker",
+      "summary": "Gerencia redes de containers",
+      "description": "Na rede bridge padrão os containers se falam só por IP; em redes criadas pelo usuário (e no compose) há DNS interno: o nome do serviço resolve para o container.",
+      "usage": "docker network ls | inspect | create | connect | rm",
+      "aliases": ["rede docker", "redes de containers", "docker network ls"],
+      "tags": ["docker", "rede"],
+      "examples": [
+        { "command": "docker network ls", "description": "Redes existentes" },
+        { "command": "docker network create minha-rede", "description": "Rede com DNS interno" },
+        { "command": "docker network inspect bridge", "description": "Containers e IPs de uma rede" }
+      ],
+      "related": ["docker-compose", "dns", "subnet", "nat"]
+    },
+    {
+      "id": "docker-volume", "name": "docker volume", "kind": "command", "parent": "docker",
+      "summary": "Gerencia volumes: dados que sobrevivem à remoção do container",
+      "usage": "docker volume ls | inspect | create | rm | prune",
+      "aliases": ["volumes docker", "persistir dados", "docker volume ls"],
+      "tags": ["docker", "armazenamento"],
+      "examples": [
+        { "command": "docker volume ls", "description": "Volumes existentes" },
+        { "command": "docker run -v dados:/var/lib/postgresql/data postgres", "description": "Monta o volume dados" },
+        { "command": "docker volume prune", "description": "Remove volumes sem uso (cuidado: apaga dados)" }
+      ],
+      "related": ["container", "docker-compose"]
+    },
+    {
+      "id": "docker-compose", "name": "docker compose", "kind": "command", "parent": "docker",
+      "summary": "Sobe e gerencia aplicações de vários containers descritas em compose.yaml",
+      "usage": "docker compose [OPÇÕES] up | down | ps | logs | exec | build",
+      "aliases": ["docker-compose", "compose", "subir containers", "compose.yaml"],
+      "tags": ["docker", "orquestração"],
+      "options": [
+        { "short": "-f", "long": "--file", "arg": "ARQUIVO", "description": "Arquivo compose" },
+        { "short": "-d", "long": "--detach", "description": "Com up: roda em segundo plano" },
+        { "long": "--build", "description": "Com up: reconstrói as imagens" },
+        { "short": "-v", "long": "--volumes", "description": "Com down: remove também os volumes" }
+      ],
+      "examples": [
+        { "command": "docker compose up -d", "description": "Sobe tudo em segundo plano" },
+        { "command": "docker compose ps", "description": "Estado dos serviços" },
+        { "command": "docker compose logs -f api", "description": "Logs do serviço api" },
+        { "command": "docker compose exec api sh", "description": "Shell no serviço api" },
+        { "command": "docker compose down", "description": "Para e remove containers e redes" }
+      ],
+      "related": ["docker-network", "docker-volume", "docker-logs"]
+    },
+    {
+      "id": "docker-run", "name": "docker run", "kind": "command", "parent": "docker",
+      "summary": "Cria e inicia um container a partir de uma imagem",
+      "usage": "docker run [OPÇÕES] IMAGEM [COMANDO]",
+      "aliases": ["rodar container", "iniciar container", "criar container"],
+      "tags": ["docker", "containers"],
+      "options": [
+        { "short": "-d", "long": "--detach", "description": "Em segundo plano" },
+        { "short": "-it", "description": "Interativo com terminal (-i -t)" },
+        { "long": "--rm", "description": "Remove o container ao sair" },
+        { "short": "-p", "long": "--publish", "arg": "HOST:CONTAINER", "description": "Publica uma porta (8080:80)" },
+        { "short": "-v", "long": "--volume", "arg": "ORIGEM:DESTINO", "description": "Monta volume ou diretório" },
+        { "short": "-e", "long": "--env", "arg": "VAR=VALOR", "description": "Variável de ambiente" },
+        { "long": "--name", "arg": "NOME", "description": "Nome do container" },
+        { "long": "--network", "arg": "REDE", "description": "Rede a usar" }
+      ],
+      "arguments": [
+        { "name": "IMAGEM", "kind": "text", "description": "Imagem (nginx, postgres:16)" },
+        { "name": "COMANDO", "kind": "command", "description": "Substitui o comando padrão da imagem", "repeat": true }
+      ],
+      "examples": [
+        { "command": "docker run -d --name web -p 8080:80 nginx", "description": "nginx acessível em localhost:8080" },
+        { "command": "docker run --rm -it ubuntu bash", "description": "Shell descartável" },
+        { "command": "docker run -d --name db -e POSTGRES_PASSWORD=segredo -v pgdata:/var/lib/postgresql/data -p 5432:5432 postgres:16", "description": "Postgres com volume" }
+      ],
+      "related": ["container", "image", "porta", "docker-volume"]
+    },
+    {
+      "id": "docker-build", "name": "docker build", "kind": "command", "parent": "docker",
+      "summary": "Constrói uma imagem a partir de um Dockerfile",
+      "usage": "docker build [OPÇÕES] CONTEXTO",
+      "aliases": ["construir imagem", "build image", "dockerfile"],
+      "tags": ["docker", "imagens"],
+      "options": [
+        { "short": "-t", "long": "--tag", "arg": "NOME:TAG", "description": "Nome da imagem" },
+        { "short": "-f", "long": "--file", "arg": "ARQUIVO", "description": "Dockerfile alternativo" },
+        { "long": "--no-cache", "description": "Ignora o cache de camadas" }
+      ],
+      "arguments": [{ "name": "CONTEXTO", "kind": "path", "description": "Diretório enviado ao build (normalmente .)" }],
+      "examples": [
+        { "command": "docker build -t minha-api:1.0 .", "description": "Build com tag" },
+        { "command": "docker build --no-cache -t minha-api .", "description": "Sem cache" }
+      ],
+      "related": ["image", "docker-images"]
+    },
+    {
+      "id": "container",
+      "name": "Container",
+      "kind": "concept",
+      "summary": "Processo isolado com seu próprio sistema de arquivos, rede e limites de recursos",
+      "description": "Não é uma VM: compartilha o kernel do host. O isolamento vem de namespaces (PID, rede, mount) e cgroups (CPU, memória). O container vive enquanto seu processo principal (PID 1) estiver rodando.",
+      "aliases": ["containers", "contêiner"],
+      "tags": ["docker", "containers"],
+      "examples": [
+        { "command": "docker ps -a", "description": "Containers e estados" },
+        { "command": "docker top container", "description": "Processos dentro do container" }
+      ],
+      "related": ["image", "docker-ps", "process"]
+    },
+    {
+      "id": "image",
+      "name": "Imagem Docker",
+      "kind": "concept",
+      "summary": "Modelo imutável em camadas a partir do qual containers são criados",
+      "aliases": ["imagem", "docker image", "camadas"],
+      "tags": ["docker", "imagens"],
+      "examples": [
+        { "command": "docker images", "description": "Imagens locais" },
+        { "command": "docker history nginx", "description": "Camadas de uma imagem" }
+      ],
+      "related": ["container", "docker-build", "docker-images"]
+    },
+    {
+      "id": "docker-enter-container",
+      "name": "Entrar em um container",
+      "kind": "recipe",
+      "summary": "Abrir um shell dentro de um container em execução",
+      "aliases": ["entrar no container", "acessar container", "shell no container", "bash no container", "exec container"],
+      "tags": ["docker", "containers"],
+      "examples": [
+        { "command": "docker exec -it container sh", "description": "Shell (sh existe em quase toda imagem)" },
+        { "command": "docker exec -it container bash", "description": "Bash, se disponível" },
+        { "command": "docker compose exec servico sh", "description": "Em um serviço do compose" }
+      ],
+      "related": ["docker-exec", "docker-ps"]
+    },
+    {
+      "id": "docker-container-logs",
+      "name": "Ver logs de um container",
+      "kind": "recipe",
+      "summary": "Ler e acompanhar a saída de um container",
+      "aliases": ["logs container", "logs do container", "ver logs do container", "container logs"],
+      "tags": ["docker", "logs"],
+      "examples": [
+        { "command": "docker logs container", "description": "Toda a saída" },
+        { "command": "docker logs -f container", "description": "Em tempo real" },
+        { "command": "docker logs -n 50 container 2>&1 | grep -i error", "description": "Erros nas últimas 50 linhas" }
+      ],
+      "related": ["docker-logs", "docker-compose"]
+    },
+    {
+      "id": "docker-container-ip",
+      "name": "Descobrir o IP de um container",
+      "kind": "recipe",
+      "summary": "Endereço de um container nas redes Docker",
+      "aliases": ["ip do container", "endereço do container", "container ip"],
+      "tags": ["docker", "rede"],
+      "examples": [
+        { "command": "docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' container", "description": "IP em cada rede" },
+        { "command": "docker network inspect bridge", "description": "IPs de todos os containers da rede" }
+      ],
+      "related": ["docker-inspect", "docker-network"]
+    },
+    {
+      "id": "docker-cleanup",
+      "name": "Liberar espaço do Docker",
+      "kind": "recipe",
+      "summary": "Remover containers parados, imagens e caches sem uso",
+      "aliases": ["limpar docker", "docker ocupando espaço", "docker prune", "liberar espaço docker"],
+      "tags": ["docker", "disco"],
+      "examples": [
+        { "command": "docker system df", "description": "Quanto espaço cada tipo ocupa" },
+        { "command": "docker container prune", "description": "Remove containers parados" },
+        { "command": "docker image prune -a", "description": "Remove imagens sem container associado" },
+        { "command": "docker system prune", "description": "Containers parados, redes e imagens órfãs" }
+      ],
+      "related": ["docker-images", "disk-usage"]
+    }
+  ]
+}

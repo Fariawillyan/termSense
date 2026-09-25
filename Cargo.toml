@@ -1,0 +1,29 @@
+[package]
+name = "termsense"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+description = "TermSense (ts): assistente de conhecimento para o terminal — comandos, shell, regex e redes, offline."
+license = "MIT"
+repository = "https://github.com/Fariawillyan/termSense"
+readme = "README.md"
+keywords = ["cli", "tui", "linux", "regex", "networking"]
+categories = ["command-line-utilities"]
+
+[[bin]]
+name = "ts"
+path = "src/main.rs"
+
+[dependencies]
+crossterm = "0.29"
+ratatui = { version = "0.30", default-features = false, features = ["crossterm", "layout-cache"] }
+regex = "1.11"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+unicode-width = "0.2"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
+panic = "unwind"

@@ -1,0 +1,780 @@
+{
+  "category": "linux",
+  "entries": [
+    {
+      "name": "ls",
+      "kind": "command",
+      "summary": "Lista arquivos e diretórios",
+      "usage": "ls [OPÇÕES] [CAMINHO...]",
+      "aliases": ["listar arquivos", "list files", "ver arquivos", "conteúdo do diretório", "dir"],
+      "tags": ["arquivos", "diretórios", "files"],
+      "options": [
+        { "short": "-l", "description": "Formato longo: permissões, dono, tamanho e data" },
+        { "short": "-a", "long": "--all", "description": "Inclui arquivos ocultos (começam com .)" },
+        { "short": "-A", "long": "--almost-all", "description": "Como -a, mas sem . e .." },
+        { "short": "-h", "long": "--human-readable", "description": "Tamanhos legíveis (K, M, G) junto com -l" },
+        { "short": "-t", "description": "Ordena por data de modificação, mais recentes primeiro" },
+        { "short": "-S", "description": "Ordena por tamanho, maiores primeiro" },
+        { "short": "-r", "long": "--reverse", "description": "Inverte a ordenação" },
+        { "short": "-R", "long": "--recursive", "description": "Lista subdiretórios recursivamente" },
+        { "short": "-d", "long": "--directory", "description": "Mostra o próprio diretório, não o conteúdo" },
+        { "short": "-1", "description": "Um arquivo por linha" },
+        { "short": "-i", "long": "--inode", "description": "Mostra o número do inode" }
+      ],
+      "arguments": [{ "name": "CAMINHO", "kind": "path", "description": "Arquivo ou diretório a listar (padrão: diretório atual)", "repeat": true }],
+      "examples": [
+        { "command": "ls -la", "description": "Tudo, inclusive ocultos, em formato longo" },
+        { "command": "ls -lh /var/log", "description": "Tamanhos legíveis em /var/log" },
+        { "command": "ls -lt", "description": "Mais recentes primeiro" },
+        { "command": "ls -lS", "description": "Maiores primeiro" },
+        { "command": "ls -ld */", "description": "Apenas os diretórios" }
+      ],
+      "related": ["cd", "stat", "find", "permissions", "du"]
+    },
+    {
+      "name": "cd",
+      "kind": "command",
+      "summary": "Muda o diretório atual",
+      "description": "Comando interno do shell (builtin). cd sem argumentos vai para o home; cd - volta ao diretório anterior.",
+      "usage": "cd [DIRETÓRIO]",
+      "aliases": ["mudar diretório", "trocar de pasta", "entrar na pasta", "change directory"],
+      "tags": ["diretórios", "navegação", "builtin"],
+      "arguments": [{ "name": "DIRETÓRIO", "kind": "path", "description": "Destino (padrão: $HOME)" }],
+      "examples": [
+        { "command": "cd /var/log", "description": "Caminho absoluto" },
+        { "command": "cd ..", "description": "Sobe um nível" },
+        { "command": "cd -", "description": "Volta ao diretório anterior" },
+        { "command": "cd ~/projetos", "description": "Relativo ao home" }
+      ],
+      "related": ["pwd", "ls", "environment-variables"]
+    },
+    {
+      "name": "pwd",
+      "kind": "command",
+      "summary": "Mostra o diretório atual",
+      "usage": "pwd [-P]",
+      "aliases": ["onde estou", "diretório atual", "print working directory", "pasta atual"],
+      "tags": ["diretórios", "navegação", "builtin"],
+      "options": [{ "short": "-P", "description": "Resolve links simbólicos e mostra o caminho físico" }],
+      "examples": [{ "command": "pwd", "description": "Caminho absoluto do diretório atual" }],
+      "related": ["cd", "ls"]
+    },
+    {
+      "name": "cp",
+      "kind": "command",
+      "summary": "Copia arquivos e diretórios",
+      "usage": "cp [OPÇÕES] ORIGEM... DESTINO",
+      "aliases": ["copiar arquivo", "copiar pasta", "copy", "duplicar arquivo"],
+      "tags": ["arquivos", "cópia"],
+      "options": [
+        { "short": "-r", "long": "--recursive", "description": "Copia diretórios recursivamente" },
+        { "short": "-a", "long": "--archive", "description": "Preserva permissões, datas e links (implica -r)" },
+        { "short": "-i", "long": "--interactive", "description": "Pergunta antes de sobrescrever" },
+        { "short": "-n", "long": "--no-clobber", "description": "Nunca sobrescreve" },
+        { "short": "-v", "long": "--verbose", "description": "Mostra cada arquivo copiado" },
+        { "short": "-u", "long": "--update", "description": "Só copia se a origem for mais nova" }
+      ],
+      "arguments": [
+        { "name": "ORIGEM", "kind": "path", "description": "O que copiar" },
+        { "name": "DESTINO", "kind": "path", "description": "Arquivo ou diretório de destino", "repeat": true }
+      ],
+      "examples": [
+        { "command": "cp app.conf app.conf.bak", "description": "Cópia de segurança de um arquivo" },
+        { "command": "cp -r src/ backup/", "description": "Copia um diretório inteiro" },
+        { "command": "cp -a /etc/nginx ~/nginx-backup", "description": "Cópia preservando permissões e datas" },
+        { "command": "cp -iv *.txt docs/", "description": "Pergunta antes de sobrescrever e mostra o progresso" }
+      ],
+      "related": ["mv", "scp", "globbing"]
+    },
+    {
+      "name": "mv",
+      "kind": "command",
+      "summary": "Move ou renomeia arquivos e diretórios",
+      "usage": "mv [OPÇÕES] ORIGEM... DESTINO",
+      "aliases": ["mover arquivo", "renomear arquivo", "rename", "move"],
+      "tags": ["arquivos"],
+      "options": [
+        { "short": "-i", "long": "--interactive", "description": "Pergunta antes de sobrescrever" },
+        { "short": "-n", "long": "--no-clobber", "description": "Nunca sobrescreve" },
+        { "short": "-v", "long": "--verbose", "description": "Mostra cada operação" }
+      ],
+      "arguments": [
+        { "name": "ORIGEM", "kind": "path", "description": "O que mover" },
+        { "name": "DESTINO", "kind": "path", "description": "Novo nome ou diretório de destino", "repeat": true }
+      ],
+      "examples": [
+        { "command": "mv relatorio.txt relatorio-2024.txt", "description": "Renomeia" },
+        { "command": "mv *.log logs/", "description": "Move vários arquivos para um diretório" },
+        { "command": "mv -i novo.conf app.conf", "description": "Confirma antes de sobrescrever" }
+      ],
+      "related": ["cp", "rm", "globbing"]
+    },
+    {
+      "name": "rm",
+      "kind": "command",
+      "summary": "Remove arquivos e diretórios",
+      "usage": "rm [OPÇÕES] ARQUIVO...",
+      "aliases": ["apagar arquivo", "deletar arquivo", "remover pasta", "excluir arquivo", "delete", "remove"],
+      "tags": ["arquivos", "perigoso"],
+      "options": [
+        { "short": "-r", "long": "--recursive", "description": "Remove diretórios e todo o conteúdo" },
+        { "short": "-f", "long": "--force", "description": "Não pergunta e ignora arquivos inexistentes" },
+        { "short": "-i", "description": "Pergunta antes de cada remoção" },
+        { "short": "-I", "description": "Pergunta uma vez antes de remover muitos arquivos" },
+        { "short": "-v", "long": "--verbose", "description": "Mostra cada arquivo removido" },
+        { "short": "-d", "long": "--dir", "description": "Remove diretórios vazios" }
+      ],
+      "arguments": [{ "name": "ARQUIVO", "kind": "path", "description": "O que remover", "repeat": true }],
+      "examples": [
+        { "command": "rm arquivo.tmp", "description": "Remove um arquivo" },
+        { "command": "rm -i *.log", "description": "Pergunta antes de cada remoção" },
+        { "command": "rm -r build/", "description": "Remove um diretório e seu conteúdo" },
+        { "command": "rm -rf node_modules/", "description": "Remove sem perguntar (cuidado)" }
+      ],
+      "warnings": ["não existe lixeira: o que é removido não volta. Confira o caminho antes de usar -rf."],
+      "related": ["mv", "find", "globbing"]
+    },
+    {
+      "name": "mkdir",
+      "kind": "command",
+      "summary": "Cria diretórios",
+      "usage": "mkdir [OPÇÕES] DIRETÓRIO...",
+      "aliases": ["criar pasta", "criar diretório", "make directory", "nova pasta"],
+      "tags": ["diretórios"],
+      "options": [
+        { "short": "-p", "long": "--parents", "description": "Cria diretórios intermediários; não falha se já existir" },
+        { "short": "-m", "long": "--mode", "arg": "MODO", "description": "Define as permissões (ex.: 700)" },
+        { "short": "-v", "long": "--verbose", "description": "Mostra cada diretório criado" }
+      ],
+      "arguments": [{ "name": "DIRETÓRIO", "kind": "path", "description": "Diretório a criar", "repeat": true }],
+      "examples": [
+        { "command": "mkdir projetos", "description": "Cria um diretório" },
+        { "command": "mkdir -p src/app/models", "description": "Cria a árvore inteira de uma vez" },
+        { "command": "mkdir -m 700 ~/.secrets", "description": "Diretório acessível só pelo dono" }
+      ],
+      "related": ["cd", "rm", "permissions"]
+    },
+    {
+      "name": "touch",
+      "kind": "command",
+      "summary": "Cria arquivo vazio ou atualiza a data de modificação",
+      "usage": "touch [OPÇÕES] ARQUIVO...",
+      "aliases": ["criar arquivo vazio", "create file", "atualizar data do arquivo"],
+      "tags": ["arquivos"],
+      "options": [
+        { "short": "-c", "long": "--no-create", "description": "Não cria o arquivo se não existir" },
+        { "short": "-d", "long": "--date", "arg": "DATA", "description": "Usa a data informada" },
+        { "short": "-r", "long": "--reference", "arg": "ARQUIVO", "description": "Copia a data de outro arquivo" }
+      ],
+      "arguments": [{ "name": "ARQUIVO", "kind": "path", "description": "Arquivo a criar/atualizar", "repeat": true }],
+      "examples": [
+        { "command": "touch notas.txt", "description": "Cria o arquivo se não existir" },
+        { "command": "touch -d '2024-01-01 10:00' marco.txt", "description": "Define uma data específica" }
+      ],
+      "related": ["stat", "find"]
+    },
+    {
+      "name": "cat",
+      "kind": "command",
+      "summary": "Mostra ou concatena o conteúdo de arquivos",
+      "usage": "cat [OPÇÕES] [ARQUIVO...]",
+      "aliases": ["ver conteúdo do arquivo", "mostrar arquivo", "ler arquivo", "concatenar", "print file"],
+      "tags": ["arquivos", "texto"],
+      "options": [
+        { "short": "-n", "long": "--number", "description": "Numera todas as linhas" },
+        { "short": "-A", "long": "--show-all", "description": "Mostra caracteres invisíveis (tabs, fim de linha)" },
+        { "short": "-s", "long": "--squeeze-blank", "description": "Junta linhas em branco repetidas" }
+      ],
+      "arguments": [{ "name": "ARQUIVO", "kind": "path", "description": "Arquivos a ler (sem arquivo: stdin)", "repeat": true }],
+      "examples": [
+        { "command": "cat /etc/os-release", "description": "Mostra a distribuição Linux" },
+        { "command": "cat -n script.sh", "description": "Com números de linha" },
+        { "command": "cat parte1.txt parte2.txt > completo.txt", "description": "Junta arquivos em um só" },
+        { "command": "cat -A config.yml", "description": "Revela tabs (^I) e finais de linha ($)" }
+      ],
+      "related": ["less", "head", "tail", "redirect", "stdout"]
+    },
+    {
+      "name": "less",
+      "kind": "command",
+      "summary": "Visualiza arquivos longos com rolagem e busca",
+      "description": "Dentro do less: / busca, n próxima ocorrência, g início, G fim, F segue o arquivo (como tail -f), q sai.",
+      "usage": "less [OPÇÕES] ARQUIVO",
+      "aliases": ["paginar arquivo", "ler arquivo grande", "pager", "more"],
+      "tags": ["arquivos", "texto", "pager"],
+      "options": [
+        { "short": "-N", "long": "--LINE-NUMBERS", "description": "Mostra números de linha" },
+        { "short": "-S", "long": "--chop-long-lines", "description": "Não quebra linhas longas" },
+        { "short": "-R", "long": "--RAW-CONTROL-CHARS", "description": "Interpreta cores ANSI" },
+        { "short": "-i", "long": "--ignore-case", "description": "Busca sem diferenciar maiúsculas" }
+      ],
+      "arguments": [{ "name": "ARQUIVO", "kind": "path", "description": "Arquivo a visualizar" }],
+      "examples": [
+        { "command": "less /var/log/syslog", "description": "Navega pelo log com rolagem" },
+        { "command": "less +F app.log", "description": "Segue o arquivo em tempo real (Ctrl+C para parar)" },
+        { "command": "journalctl -u nginx | less -S", "description": "Paginação sem quebrar linhas" }
+      ],
+      "related": ["cat", "tail", "head", "pipe"]
+    },
+    {
+      "name": "head",
+      "kind": "command",
+      "summary": "Mostra o início de arquivos",
+      "usage": "head [OPÇÕES] [ARQUIVO...]",
+      "aliases": ["primeiras linhas", "início do arquivo", "first lines"],
+      "tags": ["arquivos", "texto"],
+      "options": [
+        { "short": "-n", "long": "--lines", "arg": "N", "description": "Quantidade de linhas (padrão 10)" },
+        { "short": "-c", "long": "--bytes", "arg": "N", "description": "Quantidade de bytes" }
+      ],
+      "arguments": [{ "name": "ARQUIVO", "kind": "path", "description": "Arquivos (sem arquivo: stdin)", "repeat": true }],
+      "examples": [
+        { "command": "head app.log", "description": "10 primeiras linhas" },
+        { "command": "head -n 50 app.log", "description": "50 primeiras linhas" },
+        { "command": "ps aux --sort=-%mem | head -n 5", "description": "Cabeçalho e 4 processos que mais usam memória" }
+      ],
+      "related": ["tail", "cat", "less"]
+    },
+    {
+      "name": "tail",
+      "kind": "command",
+      "summary": "Mostra o final de arquivos e acompanha logs em tempo real",
+      "usage": "tail [OPÇÕES] [ARQUIVO...]",
+      "aliases": ["últimas linhas", "acompanhar log", "seguir log", "follow log", "log em tempo real", "fim do arquivo"],
+      "tags": ["arquivos", "texto", "logs"],
+      "options": [
+        { "short": "-n", "long": "--lines", "arg": "N", "description": "Quantidade de linhas (padrão 10); +N começa na linha N" },
+        { "short": "-f", "long": "--follow", "description": "Continua mostrando o que for adicionado" },
+        { "short": "-F", "description": "Como -f, mas reabre o arquivo se ele for rotacionado" },
+        { "short": "-c", "long": "--bytes", "arg": "N", "description": "Quantidade de bytes" }
+      ],
+      "arguments": [{ "name": "ARQUIVO", "kind": "path", "description": "Arquivos (sem arquivo: stdin)", "repeat": true }],
+      "examples": [
+        { "command": "tail -n 100 app.log", "description": "Últimas 100 linhas" },
+        { "command": "tail -f /var/log/syslog", "description": "Acompanha o log em tempo real" },
+        { "command": "tail -F app.log | grep --line-buffered ERROR", "description": "Segue o log mostrando só erros" }
+      ],
+      "related": ["head", "less", "grep", "journalctl"]
+    },
+    {
+      "name": "file",
+      "kind": "command",
+      "summary": "Identifica o tipo de um arquivo pelo conteúdo",
+      "usage": "file [OPÇÕES] ARQUIVO...",
+      "aliases": ["tipo de arquivo", "que arquivo é esse", "file type"],
+      "tags": ["arquivos"],
+      "options": [
+        { "short": "-i", "long": "--mime", "description": "Mostra o tipo MIME e a codificação" },
+        { "short": "-b", "long": "--brief", "description": "Não repete o nome do arquivo" }
+      ],
+      "arguments": [{ "name": "ARQUIVO", "kind": "path", "description": "Arquivos a identificar", "repeat": true }],
+      "examples": [
+        { "command": "file /usr/bin/ls", "description": "Executável ELF, arquitetura, ligação" },
+        { "command": "file -i dados.csv", "description": "Tipo MIME e charset (ex.: utf-8)" }
+      ],
+      "related": ["stat", "ls"]
+    },
+    {
+      "name": "stat",
+      "kind": "command",
+      "summary": "Mostra metadados de um arquivo: tamanho, permissões, inode e datas",
+      "usage": "stat [OPÇÕES] ARQUIVO...",
+      "aliases": ["informações do arquivo", "data de modificação", "metadados", "file info"],
+      "tags": ["arquivos", "permissões"],
+      "options": [
+        { "short": "-c", "long": "--format", "arg": "FORMATO", "description": "Formato personalizado (%s tamanho, %a permissões, %y modificação)" },
+        { "short": "-L", "long": "--dereference", "description": "Segue links simbólicos" }
+      ],
+      "arguments": [{ "name": "ARQUIVO", "kind": "path", "description": "Arquivos", "repeat": true }],
+      "examples": [
+        { "command": "stat app.log", "description": "Todos os metadados" },
+        { "command": "stat -c '%a %U %n' script.sh", "description": "Permissão em octal, dono e nome" }
+      ],
+      "related": ["ls", "permissions", "touch", "file"]
+    },
+    {
+      "name": "find",
+      "kind": "command",
+      "summary": "Procura arquivos por nome, tipo, tamanho, data e permissões",
+      "description": "Percorre a árvore de diretórios a partir de CAMINHO avaliando expressões. As opções de find usam um único hífen (-name, -type). N em -mtime: -1 = menos de 1 dia, +7 = mais de 7 dias.",
+      "usage": "find [CAMINHO...] [EXPRESSÃO]",
+      "aliases": ["procurar arquivo", "encontrar arquivos", "buscar arquivo", "localizar arquivo", "find files", "search files"],
+      "tags": ["arquivos", "busca"],
+      "options": [
+        { "short": "-name", "arg": "PADRÃO", "description": "Nome com glob (ex.: '*.log'); use aspas" },
+        { "short": "-iname", "arg": "PADRÃO", "description": "Como -name, sem diferenciar maiúsculas" },
+        { "short": "-type", "arg": "TIPO", "description": "f arquivo, d diretório, l link simbólico" },
+        { "short": "-mtime", "arg": "N", "description": "Modificado há N dias (-1 menos de um dia, +7 mais de sete)" },
+        { "short": "-mmin", "arg": "N", "description": "Modificado há N minutos" },
+        { "short": "-newer", "arg": "ARQUIVO", "description": "Modificado depois de ARQUIVO" },
+        { "short": "-size", "arg": "N", "description": "Tamanho (+100M maior que 100 MiB, -1k menor que 1 KiB)" },
+        { "short": "-user", "arg": "USUÁRIO", "description": "Pertence ao usuário" },
+        { "short": "-perm", "arg": "MODO", "description": "Com as permissões informadas" },
+        { "short": "-maxdepth", "arg": "N", "description": "Desce no máximo N níveis" },
+        { "short": "-empty", "description": "Arquivos ou diretórios vazios" },
+        { "short": "-path", "arg": "PADRÃO", "description": "Caminho completo casa com o glob" },
+        { "short": "-not", "description": "Nega o teste seguinte (equivale a !)" },
+        { "short": "-o", "description": "OU lógico entre testes" },
+        { "short": "-exec", "arg": "COMANDO", "description": "Executa COMANDO para cada resultado ({} é o arquivo; termina com \\; ou +)" },
+        { "short": "-delete", "description": "Apaga os arquivos encontrados (cuidado)" },
+        { "short": "-print0", "description": "Separa resultados com NUL, para xargs -0" },
+        { "short": "-prune", "description": "Não desce no diretório que casou" },
+        { "short": "-xdev", "description": "Não atravessa para outros sistemas de arquivos" }
+      ],
+      "arguments": [{ "name": "CAMINHO", "kind": "path", "description": "Onde começar a busca (padrão: .)", "repeat": true }],
+      "examples": [
+        { "command": "find . -name '*.log'", "description": "Arquivos .log a partir do diretório atual" },
+        { "command": "find . -type f -mtime -1", "description": "Arquivos modificados nas últimas 24 horas" },
+        { "command": "find /var/log -type f -size +100M", "description": "Arquivos maiores que 100 MiB" },
+        { "command": "find . -type d -name node_modules -prune", "description": "Localiza diretórios node_modules" },
+        { "command": "find . -type f -name '*.tmp' -delete", "description": "Apaga temporários (confira antes sem -delete)" },
+        { "command": "find . -name '*.sh' -exec chmod +x {} +", "description": "Executa um comando para os resultados" },
+        { "command": "find . -type f -print0 | xargs -0 grep -l TODO", "description": "Combina com xargs de forma segura para espaços" }
+      ],
+      "related": ["locate", "xargs", "grep", "globbing", "find-modified-files"]
+    },
+    {
+      "name": "xargs",
+      "kind": "command",
+      "summary": "Constrói e executa comandos com itens lidos da entrada padrão",
+      "description": "Transforma linhas do stdin em argumentos de outro comando. Útil depois de find, grep -l e ls.",
+      "usage": "xargs [OPÇÕES] [COMANDO [ARGUMENTOS]]",
+      "wrapper": true,
+      "aliases": ["argumentos da entrada", "executar para cada linha", "for each line"],
+      "tags": ["shell", "pipe"],
+      "options": [
+        { "short": "-0", "long": "--null", "description": "Itens separados por NUL (par de find -print0)" },
+        { "short": "-n", "long": "--max-args", "arg": "N", "description": "No máximo N argumentos por execução" },
+        { "short": "-I", "arg": "MARCADOR", "description": "Substitui MARCADOR (ex.: {}) por cada item" },
+        { "short": "-P", "long": "--max-procs", "arg": "N", "description": "Executa até N processos em paralelo" },
+        { "short": "-r", "long": "--no-run-if-empty", "description": "Não executa se não houver entrada" },
+        { "short": "-t", "long": "--verbose", "description": "Mostra cada comando antes de executar" }
+      ],
+      "examples": [
+        { "command": "find . -name '*.log' -print0 | xargs -0 rm", "description": "Remove os arquivos encontrados" },
+        { "command": "grep -l TODO -r src | xargs -r wc -l", "description": "Conta linhas dos arquivos com TODO" },
+        { "command": "cat hosts.txt | xargs -I{} ping -c1 {}", "description": "Um ping por host da lista" },
+        { "command": "ls *.png | xargs -P 4 -I{} convert {} {}.jpg", "description": "Converte em paralelo (4 processos)" }
+      ],
+      "related": ["find", "pipe", "stdin"]
+    },
+    {
+      "name": "chmod",
+      "kind": "command",
+      "summary": "Altera permissões de arquivos e diretórios",
+      "description": "Modo simbólico: u (dono), g (grupo), o (outros), a (todos) com + - = e r w x. Modo octal: r=4, w=2, x=1 somados por dono/grupo/outros (755 = rwxr-xr-x).",
+      "usage": "chmod [OPÇÕES] MODO ARQUIVO...",
+      "aliases": ["mudar permissão", "alterar permissões", "dar permissão de execução", "tornar executável", "change mode"],
+      "tags": ["permissões", "arquivos", "segurança"],
+      "options": [
+        { "short": "-R", "long": "--recursive", "description": "Aplica em diretórios recursivamente" },
+        { "short": "-v", "long": "--verbose", "description": "Mostra cada alteração" }
+      ],
+      "arguments": [
+        { "name": "MODO", "kind": "text", "description": "Permissões em octal (644) ou simbólicas (u+x)" },
+        { "name": "ARQUIVO", "kind": "path", "description": "Arquivos a alterar", "repeat": true }
+      ],
+      "examples": [
+        { "command": "chmod +x script.sh", "description": "Torna o script executável" },
+        { "command": "chmod 644 index.html", "description": "rw-r--r--: dono escreve, todos leem" },
+        { "command": "chmod 600 ~/.ssh/id_ed25519", "description": "Chave privada legível só pelo dono" },
+        { "command": "chmod -R u=rwX,go=rX site/", "description": "X dá execução só a diretórios" }
+      ],
+      "related": ["chown", "permissions", "stat", "ls"]
+    },
+    {
+      "name": "chown",
+      "kind": "command",
+      "summary": "Altera o dono e o grupo de arquivos",
+      "usage": "chown [OPÇÕES] DONO[:GRUPO] ARQUIVO...",
+      "aliases": ["mudar dono", "alterar proprietário", "change owner"],
+      "tags": ["permissões", "arquivos", "usuários"],
+      "options": [
+        { "short": "-R", "long": "--recursive", "description": "Aplica recursivamente" },
+        { "short": "-v", "long": "--verbose", "description": "Mostra cada alteração" }
+      ],
+      "arguments": [
+        { "name": "DONO", "kind": "user", "description": "Usuário e opcionalmente :grupo" },
+        { "name": "ARQUIVO", "kind": "path", "description": "Arquivos a alterar", "repeat": true }
+      ],
+      "examples": [
+        { "command": "sudo chown www-data:www-data /var/www -R", "description": "Entrega o site ao usuário do servidor web" },
+        { "command": "sudo chown $USER arquivo.txt", "description": "Torna você o dono" }
+      ],
+      "related": ["chmod", "permissions", "groups", "sudo"]
+    },
+    {
+      "name": "ln",
+      "kind": "command",
+      "summary": "Cria links (atalhos) entre arquivos",
+      "description": "Sem -s cria um hard link (outro nome para o mesmo inode). Com -s cria um link simbólico (um arquivo que aponta para um caminho).",
+      "usage": "ln [OPÇÕES] ALVO NOME_DO_LINK",
+      "aliases": ["criar atalho", "link simbólico", "symlink", "symbolic link"],
+      "tags": ["arquivos", "links"],
+      "options": [
+        { "short": "-s", "long": "--symbolic", "description": "Cria link simbólico" },
+        { "short": "-f", "long": "--force", "description": "Substitui o link se já existir" },
+        { "short": "-n", "long": "--no-dereference", "description": "Trata link para diretório como arquivo (use com -f)" },
+        { "short": "-v", "long": "--verbose", "description": "Mostra o link criado" }
+      ],
+      "arguments": [
+        { "name": "ALVO", "kind": "path", "description": "Para onde o link aponta" },
+        { "name": "NOME_DO_LINK", "kind": "path", "description": "Caminho do link" }
+      ],
+      "examples": [
+        { "command": "ln -s /opt/app/current app", "description": "Link simbólico chamado app" },
+        { "command": "ln -sfn releases/v2 current", "description": "Troca para onde current aponta" }
+      ],
+      "related": ["ls", "stat"]
+    },
+    {
+      "name": "df",
+      "kind": "command",
+      "summary": "Mostra o espaço livre e usado dos sistemas de arquivos",
+      "usage": "df [OPÇÕES] [CAMINHO]",
+      "aliases": ["espaço em disco", "disco cheio", "espaço livre", "disk free", "partições"],
+      "tags": ["disco", "sistema"],
+      "options": [
+        { "short": "-h", "long": "--human-readable", "description": "Tamanhos legíveis (K, M, G)" },
+        { "short": "-T", "long": "--print-type", "description": "Mostra o tipo do sistema de arquivos" },
+        { "short": "-i", "long": "--inodes", "description": "Uso de inodes (disco pode encher de inodes)" },
+        { "short": "-x", "long": "--exclude-type", "arg": "TIPO", "description": "Ignora um tipo (ex.: tmpfs)" }
+      ],
+      "arguments": [{ "name": "CAMINHO", "kind": "path", "description": "Mostra só o sistema de arquivos que contém o caminho" }],
+      "examples": [
+        { "command": "df -h", "description": "Uso de todos os discos" },
+        { "command": "df -h /", "description": "Só a partição raiz" },
+        { "command": "df -hT -x tmpfs", "description": "Com tipo, sem sistemas em memória" },
+        { "command": "df -i", "description": "Uso de inodes" }
+      ],
+      "related": ["du", "mount", "disk-usage"]
+    },
+    {
+      "name": "du",
+      "kind": "command",
+      "summary": "Mostra quanto espaço arquivos e diretórios ocupam",
+      "usage": "du [OPÇÕES] [CAMINHO...]",
+      "aliases": ["tamanho da pasta", "tamanho do diretório", "o que ocupa espaço", "disk usage"],
+      "tags": ["disco", "arquivos"],
+      "options": [
+        { "short": "-h", "long": "--human-readable", "description": "Tamanhos legíveis" },
+        { "short": "-s", "long": "--summarize", "description": "Só o total de cada argumento" },
+        { "short": "-d", "long": "--max-depth", "arg": "N", "description": "Profundidade máxima do relatório" },
+        { "short": "-a", "long": "--all", "description": "Inclui arquivos, não só diretórios" },
+        { "short": "-x", "long": "--one-file-system", "description": "Não atravessa outros sistemas de arquivos" }
+      ],
+      "arguments": [{ "name": "CAMINHO", "kind": "path", "description": "O que medir (padrão: .)", "repeat": true }],
+      "examples": [
+        { "command": "du -sh .", "description": "Tamanho total do diretório atual" },
+        { "command": "du -h -d 1 /var | sort -h", "description": "Subdiretórios de /var ordenados por tamanho" },
+        { "command": "du -sh * | sort -rh | head", "description": "Os 10 itens maiores aqui" }
+      ],
+      "related": ["df", "sort", "find-large-files", "disk-usage"]
+    },
+    {
+      "name": "mount",
+      "kind": "command",
+      "summary": "Monta sistemas de arquivos ou lista os montados",
+      "usage": "mount [OPÇÕES] [DISPOSITIVO] [PONTO_DE_MONTAGEM]",
+      "aliases": ["montar disco", "montar partição", "pendrive", "sistemas montados"],
+      "tags": ["disco", "sistema"],
+      "options": [
+        { "short": "-t", "long": "--types", "arg": "TIPO", "description": "Tipo do sistema de arquivos (ext4, vfat, nfs)" },
+        { "short": "-o", "long": "--options", "arg": "OPÇÕES", "description": "Opções: ro, rw, noexec, remount..." },
+        { "short": "-a", "long": "--all", "description": "Monta tudo o que está em /etc/fstab" }
+      ],
+      "arguments": [
+        { "name": "DISPOSITIVO", "kind": "path", "description": "Dispositivo ou origem (/dev/sdb1)" },
+        { "name": "PONTO_DE_MONTAGEM", "kind": "path", "description": "Diretório onde o conteúdo aparece" }
+      ],
+      "examples": [
+        { "command": "mount | column -t", "description": "Lista o que está montado" },
+        { "command": "sudo mount /dev/sdb1 /mnt/usb", "description": "Monta uma partição" },
+        { "command": "sudo mount -o remount,rw /", "description": "Remonta a raiz como leitura e escrita" },
+        { "command": "findmnt", "description": "Árvore de montagens (alternativa moderna)" }
+      ],
+      "related": ["df", "sudo"]
+    },
+    {
+      "name": "which",
+      "kind": "command",
+      "summary": "Mostra qual executável será usado para um comando",
+      "usage": "which [-a] COMANDO...",
+      "aliases": ["onde está o comando", "caminho do executável", "qual binário"],
+      "tags": ["path", "comandos"],
+      "options": [{ "short": "-a", "description": "Mostra todas as ocorrências no PATH" }],
+      "arguments": [{ "name": "COMANDO", "kind": "command", "description": "Nome do comando", "repeat": true }],
+      "examples": [
+        { "command": "which python3", "description": "Caminho do python3 usado" },
+        { "command": "which -a java", "description": "Todas as versões no PATH, na ordem" },
+        { "command": "type -a ls", "description": "Builtin do shell: mostra aliases e funções também" }
+      ],
+      "related": ["whereis", "locate", "environment-variables"]
+    },
+    {
+      "name": "whereis",
+      "kind": "command",
+      "summary": "Localiza binário, código-fonte e manual de um comando",
+      "usage": "whereis [OPÇÕES] NOME...",
+      "aliases": ["onde fica o manual", "localizar binário"],
+      "tags": ["path", "comandos"],
+      "options": [
+        { "short": "-b", "description": "Só binários" },
+        { "short": "-m", "description": "Só manuais" }
+      ],
+      "arguments": [{ "name": "NOME", "kind": "command", "description": "Nome a localizar", "repeat": true }],
+      "examples": [{ "command": "whereis ssh", "description": "Binário, configuração e manual do ssh" }],
+      "related": ["which", "locate", "man"]
+    },
+    {
+      "name": "locate",
+      "kind": "command",
+      "summary": "Encontra arquivos pelo nome usando um índice (muito rápido)",
+      "description": "Consulta um banco de dados atualizado periodicamente por updatedb; arquivos recém-criados podem não aparecer.",
+      "usage": "locate [OPÇÕES] PADRÃO",
+      "aliases": ["procurar arquivo rápido", "localizar arquivo por nome"],
+      "tags": ["arquivos", "busca"],
+      "install": "Pode não estar instalado. Debian/Ubuntu: sudo apt install plocate. Fedora: sudo dnf install plocate. Depois: sudo updatedb.",
+      "options": [
+        { "short": "-i", "long": "--ignore-case", "description": "Sem diferenciar maiúsculas" },
+        { "short": "-c", "long": "--count", "description": "Só conta os resultados" },
+        { "short": "-r", "long": "--regex", "arg": "REGEX", "description": "Usa expressão regular" }
+      ],
+      "arguments": [{ "name": "PADRÃO", "kind": "text", "description": "Parte do nome ou caminho" }],
+      "examples": [
+        { "command": "locate nginx.conf", "description": "Onde está o nginx.conf" },
+        { "command": "sudo updatedb", "description": "Atualiza o índice" }
+      ],
+      "related": ["find", "which", "whereis"]
+    },
+    {
+      "name": "groups",
+      "kind": "command",
+      "summary": "Mostra os grupos de um usuário",
+      "description": "Grupos definem permissões compartilhadas (docker, sudo, wheel). Após adicionar alguém a um grupo, é preciso sair e entrar de novo na sessão.",
+      "usage": "groups [USUÁRIO]",
+      "aliases": ["meus grupos", "grupos do usuário", "user groups"],
+      "tags": ["usuários", "permissões"],
+      "arguments": [{ "name": "USUÁRIO", "kind": "user", "description": "Usuário (padrão: você)" }],
+      "examples": [
+        { "command": "groups", "description": "Seus grupos" },
+        { "command": "sudo usermod -aG docker $USER", "description": "Adiciona você ao grupo docker (relogue depois)" }
+      ],
+      "related": ["id", "whoami", "chown", "permissions"]
+    },
+    {
+      "name": "id",
+      "kind": "command",
+      "summary": "Mostra UID, GID e grupos de um usuário",
+      "usage": "id [OPÇÕES] [USUÁRIO]",
+      "aliases": ["uid", "gid", "identidade do usuário"],
+      "tags": ["usuários"],
+      "options": [
+        { "short": "-u", "long": "--user", "description": "Só o UID" },
+        { "short": "-g", "long": "--group", "description": "Só o GID principal" },
+        { "short": "-n", "long": "--name", "description": "Nomes em vez de números (com -u/-g)" }
+      ],
+      "examples": [
+        { "command": "id", "description": "UID, GID e grupos" },
+        { "command": "id -un", "description": "Seu nome de usuário" }
+      ],
+      "related": ["groups", "whoami"]
+    },
+    {
+      "name": "whoami",
+      "kind": "command",
+      "summary": "Mostra o nome do usuário atual",
+      "usage": "whoami",
+      "aliases": ["quem sou eu", "usuário atual", "current user"],
+      "tags": ["usuários"],
+      "examples": [
+        { "command": "whoami", "description": "Seu usuário" },
+        { "command": "sudo whoami", "description": "Mostra root: prova que o sudo funciona" }
+      ],
+      "related": ["id", "groups", "sudo"]
+    },
+    {
+      "name": "sudo",
+      "kind": "command",
+      "summary": "Executa um comando como outro usuário (por padrão, root)",
+      "usage": "sudo [OPÇÕES] COMANDO",
+      "wrapper": true,
+      "aliases": ["como root", "administrador", "superusuário", "permissão negada", "permission denied"],
+      "tags": ["usuários", "permissões", "segurança"],
+      "options": [
+        { "short": "-u", "long": "--user", "arg": "USUÁRIO", "description": "Executa como outro usuário" },
+        { "short": "-i", "long": "--login", "description": "Abre um shell de login do usuário alvo" },
+        { "short": "-E", "long": "--preserve-env", "description": "Preserva variáveis de ambiente" },
+        { "short": "-l", "long": "--list", "description": "Lista o que você pode executar" },
+        { "short": "-k", "long": "--reset-timestamp", "description": "Esquece a senha em cache" }
+      ],
+      "examples": [
+        { "command": "sudo apt update", "description": "Executa como root" },
+        { "command": "sudo -u postgres psql", "description": "Executa como o usuário postgres" },
+        { "command": "sudo -l", "description": "O que você tem permissão de executar" },
+        { "command": "sudo !!", "description": "Repete o último comando com sudo" }
+      ],
+      "related": ["whoami", "groups", "permissions"]
+    },
+    {
+      "name": "tar",
+      "kind": "command",
+      "summary": "Cria e extrai arquivos compactados .tar, .tar.gz e .tar.xz",
+      "description": "Letras mais usadas: c cria, x extrai, t lista, v detalhado, f arquivo, z gzip, J xz.",
+      "usage": "tar [OPÇÕES] [ARQUIVO...]",
+      "aliases": ["compactar", "descompactar", "extrair tar.gz", "zipar pasta", "backup", "unzip tar"],
+      "tags": ["arquivos", "compressão"],
+      "options": [
+        { "short": "-c", "long": "--create", "description": "Cria um arquivo" },
+        { "short": "-x", "long": "--extract", "description": "Extrai" },
+        { "short": "-t", "long": "--list", "description": "Lista o conteúdo" },
+        { "short": "-v", "long": "--verbose", "description": "Mostra cada arquivo" },
+        { "short": "-z", "long": "--gzip", "description": "Compressão gzip (.tar.gz)" },
+        { "short": "-J", "long": "--xz", "description": "Compressão xz (.tar.xz)" },
+        { "short": "-f", "long": "--file", "arg": "ARQUIVO", "description": "Nome do arquivo .tar (sempre por último no grupo de letras)" },
+        { "short": "-C", "long": "--directory", "arg": "DIR", "description": "Muda para DIR antes de operar" }
+      ],
+      "arguments": [{ "name": "ARQUIVO", "kind": "path", "description": "Arquivos a incluir ou extrair", "repeat": true }],
+      "examples": [
+        { "command": "tar -czvf backup.tar.gz projeto/", "description": "Compacta um diretório" },
+        { "command": "tar -xzvf backup.tar.gz", "description": "Extrai aqui" },
+        { "command": "tar -xzf app.tar.gz -C /opt", "description": "Extrai em /opt" },
+        { "command": "tar -tzf backup.tar.gz", "description": "Lista sem extrair" }
+      ],
+      "related": ["find", "du"]
+    },
+    {
+      "name": "man",
+      "kind": "command",
+      "summary": "Abre o manual de um comando",
+      "usage": "man [SEÇÃO] NOME",
+      "aliases": ["manual", "documentação", "ajuda do comando", "help"],
+      "tags": ["documentação"],
+      "options": [{ "short": "-k", "arg": "PALAVRA", "description": "Procura manuais pela descrição (como apropos)" }],
+      "arguments": [{ "name": "NOME", "kind": "command", "description": "Comando ou tópico" }],
+      "examples": [
+        { "command": "man grep", "description": "Manual do grep (/ busca, q sai)" },
+        { "command": "man 5 crontab", "description": "Seção 5: formato de arquivos" },
+        { "command": "man -k network", "description": "Manuais que falam de rede" }
+      ],
+      "related": ["whereis", "less"]
+    },
+    {
+      "name": "free",
+      "kind": "command",
+      "summary": "Mostra o uso de memória RAM e swap",
+      "description": "A coluna available é a estimativa real de memória disponível; buff/cache é liberado quando necessário.",
+      "usage": "free [OPÇÕES]",
+      "aliases": ["memória livre", "uso de memória", "ram", "memory usage"],
+      "tags": ["memória", "sistema", "desempenho"],
+      "options": [
+        { "short": "-h", "long": "--human", "description": "Valores legíveis" },
+        { "short": "-s", "long": "--seconds", "arg": "N", "description": "Repete a cada N segundos" }
+      ],
+      "examples": [
+        { "command": "free -h", "description": "Uso de memória legível" },
+        { "command": "free -h -s 2", "description": "Atualiza a cada 2 segundos" }
+      ],
+      "related": ["top", "ps", "memory-usage"]
+    },
+    {
+      "name": "uname",
+      "kind": "command",
+      "summary": "Mostra informações do kernel e da arquitetura",
+      "usage": "uname [OPÇÕES]",
+      "aliases": ["versão do kernel", "arquitetura", "kernel version", "sistema operacional"],
+      "tags": ["sistema"],
+      "options": [
+        { "short": "-a", "long": "--all", "description": "Tudo" },
+        { "short": "-r", "long": "--kernel-release", "description": "Versão do kernel" },
+        { "short": "-m", "long": "--machine", "description": "Arquitetura (x86_64, aarch64)" }
+      ],
+      "examples": [
+        { "command": "uname -a", "description": "Kernel, host, arquitetura" },
+        { "command": "uname -r", "description": "Só a versão do kernel (WSL mostra microsoft-standard)" },
+        { "command": "cat /etc/os-release", "description": "Distribuição e versão" }
+      ],
+      "related": ["hostname", "free"]
+    },
+    {
+      "id": "permissions",
+      "name": "Permissões",
+      "kind": "concept",
+      "summary": "Quem pode ler, escrever e executar cada arquivo",
+      "description": "Cada arquivo tem dono, grupo e permissões para três classes: dono (u), grupo (g) e outros (o). Em ls -l, -rwxr-xr-- significa: arquivo comum, dono rwx, grupo r-x, outros r--. Em diretórios, x permite entrar e r permite listar.",
+      "aliases": ["permissions", "rwx", "permissão negada", "permission denied", "755", "644", "octal"],
+      "tags": ["permissões", "segurança", "arquivos"],
+      "sections": [
+        {
+          "title": "Octal",
+          "rows": [["4", "r — leitura"], ["2", "w — escrita"], ["1", "x — execução"], ["755", "rwxr-xr-x: programas e diretórios"], ["644", "rw-r--r--: arquivos comuns"], ["600", "rw-------: segredos e chaves privadas"]]
+        }
+      ],
+      "examples": [
+        { "command": "ls -l script.sh", "description": "Lê as permissões" },
+        { "command": "chmod 755 script.sh", "description": "Executável por todos, editável só pelo dono" },
+        { "command": "stat -c '%a %n' *", "description": "Permissões em octal" }
+      ],
+      "related": ["chmod", "chown", "groups", "sudo", "ls"]
+    },
+    {
+      "id": "find-modified-files",
+      "name": "Encontrar arquivos modificados recentemente",
+      "kind": "recipe",
+      "summary": "Lista arquivos alterados nas últimas horas ou dias",
+      "aliases": ["encontrar arquivos modificados", "arquivos modificados", "arquivos alterados recentemente", "o que mudou hoje", "recently modified files", "find modified files"],
+      "tags": ["arquivos", "busca", "find"],
+      "examples": [
+        { "command": "find . -type f -mtime -1", "description": "Modificados nas últimas 24 horas" },
+        { "command": "find . -type f -mmin -60", "description": "Modificados na última hora" },
+        { "command": "find . -type f -newer referencia.txt", "description": "Mais novos que outro arquivo" },
+        { "command": "ls -lt | head", "description": "Os mais recentes do diretório atual" }
+      ],
+      "related": ["find", "ls", "stat"]
+    },
+    {
+      "id": "find-large-files",
+      "name": "Encontrar arquivos grandes",
+      "kind": "recipe",
+      "summary": "Descobre o que está ocupando espaço em disco",
+      "aliases": ["arquivos grandes", "o que ocupa espaço", "maiores arquivos", "large files", "liberar espaço"],
+      "tags": ["disco", "arquivos", "find"],
+      "examples": [
+        { "command": "find / -xdev -type f -size +500M 2>/dev/null", "description": "Arquivos maiores que 500 MiB no disco raiz" },
+        { "command": "du -ah . | sort -rh | head -n 20", "description": "Os 20 maiores itens aqui" },
+        { "command": "du -h -d 1 / 2>/dev/null | sort -h", "description": "Tamanho de cada diretório da raiz" }
+      ],
+      "related": ["du", "find", "df", "disk-usage"]
+    },
+    {
+      "id": "disk-usage",
+      "name": "Verificar espaço em disco",
+      "kind": "recipe",
+      "summary": "Quanto espaço resta e onde ele está sendo usado",
+      "aliases": ["disco cheio", "espaço em disco", "no space left on device", "sem espaço", "verificar disco"],
+      "tags": ["disco", "troubleshooting"],
+      "examples": [
+        { "command": "df -h", "description": "Espaço livre por partição" },
+        { "command": "df -i", "description": "Inodes: disco pode 'encher' com muitos arquivos pequenos" },
+        { "command": "du -sh /var/log/*", "description": "Tamanho dos logs" },
+        { "command": "sudo journalctl --vacuum-size=200M", "description": "Reduz o journal do systemd para 200 MB" }
+      ],
+      "related": ["df", "du", "find-large-files"]
+    },
+    {
+      "id": "follow-log",
+      "name": "Acompanhar um log em tempo real",
+      "kind": "recipe",
+      "summary": "Ver novas linhas de log conforme são escritas",
+      "aliases": ["acompanhar log", "ver log em tempo real", "tail log", "monitorar log", "watch log"],
+      "tags": ["logs", "texto"],
+      "examples": [
+        { "command": "tail -f /var/log/syslog", "description": "Segue o arquivo" },
+        { "command": "tail -F app.log | grep --line-buffered -i error", "description": "Só as linhas com erro" },
+        { "command": "journalctl -f -u nginx", "description": "Logs de um serviço systemd" },
+        { "command": "docker logs -f container", "description": "Logs de um container" }
+      ],
+      "related": ["tail", "journalctl", "docker-logs", "grep"]
+    }
+  ]
+}

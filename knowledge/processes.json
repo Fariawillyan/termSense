@@ -1,0 +1,368 @@
+{
+  "category": "processes",
+  "entries": [
+    {
+      "name": "ps",
+      "kind": "command",
+      "summary": "Lista processos em execução",
+      "description": "ps aux usa a sintaxe BSD (sem hífen): a = todos os usuários, u = formato orientado a usuário, x = inclui processos sem terminal. Colunas: USER dono, PID identificador, %CPU e %MEM uso, VSZ/RSS memória virtual/residente, STAT estado (R rodando, S dormindo, Z zumbi, D espera de I/O), COMMAND o comando.",
+      "usage": "ps [OPÇÕES]",
+      "aliases": ["listar processos", "ver processos", "processos rodando", "process list", "pid"],
+      "tags": ["processos", "sistema"],
+      "options": [
+        { "short": "-e", "description": "Todos os processos" },
+        { "short": "-f", "description": "Formato completo (PPID, horário, comando)" },
+        { "short": "-u", "arg": "USUÁRIO", "description": "Processos do usuário" },
+        { "short": "-p", "arg": "PID", "description": "Processo específico" },
+        { "short": "-o", "arg": "CAMPOS", "description": "Colunas personalizadas (pid,ppid,cmd,%cpu)" },
+        { "long": "--sort", "arg": "CAMPO", "description": "Ordena (ex.: --sort=-%cpu decrescente)" },
+        { "long": "--forest", "description": "Mostra a árvore pai/filho" }
+      ],
+      "examples": [
+        { "command": "ps aux", "description": "Todos os processos, estilo BSD" },
+        { "command": "ps -ef --forest", "description": "Árvore de processos" },
+        { "command": "ps aux --sort=-%cpu | head", "description": "Os que mais usam CPU" },
+        { "command": "ps aux --sort=-%mem | head", "description": "Os que mais usam memória" },
+        { "command": "ps -o pid,ppid,etime,cmd -p 1234", "description": "Detalhes de um PID" }
+      ],
+      "related": ["top", "htop", "kill", "pgrep", "process"]
+    },
+    {
+      "name": "top",
+      "kind": "command",
+      "summary": "Monitor de processos em tempo real",
+      "description": "Teclas: P ordena por CPU, M por memória, k mata um processo, 1 mostra cada núcleo, q sai. load average mostra a fila de processos em 1, 5 e 15 minutos.",
+      "usage": "top [OPÇÕES]",
+      "aliases": ["monitor de processos", "uso de cpu", "gerenciador de tarefas", "task manager"],
+      "tags": ["processos", "desempenho", "cpu", "memória"],
+      "options": [
+        { "short": "-o", "arg": "CAMPO", "description": "Ordena pelo campo (%CPU, %MEM)" },
+        { "short": "-u", "arg": "USUÁRIO", "description": "Só processos do usuário" },
+        { "short": "-p", "arg": "PID", "description": "Só os PIDs informados" },
+        { "short": "-b", "description": "Modo batch (texto, para scripts)" },
+        { "short": "-n", "arg": "N", "description": "Número de atualizações antes de sair" }
+      ],
+      "examples": [
+        { "command": "top", "description": "Monitor interativo" },
+        { "command": "top -o %MEM", "description": "Ordenado por memória" },
+        { "command": "top -b -n 1 | head -n 15", "description": "Uma foto em texto" }
+      ],
+      "related": ["htop", "ps", "free", "kill"]
+    },
+    {
+      "name": "htop",
+      "kind": "command",
+      "summary": "Monitor de processos interativo e colorido",
+      "description": "Versão amigável do top: navegação com setas, F3 busca, F4 filtra, F5 árvore, F6 ordena, F9 envia sinal.",
+      "usage": "htop [OPÇÕES]",
+      "install": "Normalmente não vem instalado. Debian/Ubuntu: sudo apt install htop. Fedora: sudo dnf install htop.",
+      "aliases": ["monitor de processos", "top colorido"],
+      "tags": ["processos", "desempenho", "cpu", "memória"],
+      "options": [
+        { "short": "-u", "long": "--user", "arg": "USUÁRIO", "description": "Só processos do usuário" },
+        { "short": "-p", "long": "--pid", "arg": "PID", "description": "Só os PIDs informados" },
+        { "short": "-t", "long": "--tree", "description": "Começa em modo árvore" }
+      ],
+      "examples": [
+        { "command": "htop", "description": "Monitor interativo" },
+        { "command": "htop -u www-data", "description": "Processos do servidor web" }
+      ],
+      "related": ["top", "ps", "kill"]
+    },
+    {
+      "name": "kill",
+      "kind": "command",
+      "summary": "Envia um sinal a um processo (por padrão, pede para encerrar)",
+      "description": "Sem opção envia SIGTERM (15), que permite ao programa encerrar de forma limpa. SIGKILL (9) mata imediatamente, sem limpeza: use como último recurso.",
+      "usage": "kill [-SINAL] PID...",
+      "aliases": ["matar processo", "encerrar processo", "finalizar processo", "kill process", "parar processo"],
+      "tags": ["processos", "sinais"],
+      "options": [
+        { "short": "-9", "description": "SIGKILL: mata imediatamente (não pode ser ignorado)" },
+        { "short": "-15", "description": "SIGTERM: pede encerramento limpo (padrão)" },
+        { "short": "-1", "description": "SIGHUP: muitos daemons recarregam a configuração" },
+        { "short": "-l", "description": "Lista os sinais" },
+        { "short": "-s", "arg": "SINAL", "description": "Sinal pelo nome (TERM, KILL, HUP)" }
+      ],
+      "arguments": [{ "name": "PID", "kind": "number", "description": "Identificador do processo (veja com ps ou pgrep)", "repeat": true }],
+      "examples": [
+        { "command": "kill 1234", "description": "Pede para o processo 1234 encerrar" },
+        { "command": "kill -9 1234", "description": "Força o encerramento" },
+        { "command": "kill -HUP $(pgrep nginx)", "description": "Recarrega o nginx" },
+        { "command": "kill %1", "description": "Encerra o job 1 do shell" }
+      ],
+      "related": ["pkill", "pgrep", "ps", "signals", "jobs"]
+    },
+    {
+      "name": "pkill",
+      "kind": "command",
+      "summary": "Envia sinal a processos pelo nome",
+      "usage": "pkill [OPÇÕES] PADRÃO",
+      "aliases": ["matar processo pelo nome", "kill by name", "killall"],
+      "tags": ["processos", "sinais"],
+      "options": [
+        { "short": "-f", "long": "--full", "description": "Casa com a linha de comando completa" },
+        { "short": "-u", "long": "--euid", "arg": "USUÁRIO", "description": "Só processos do usuário" },
+        { "short": "-9", "description": "Envia SIGKILL" },
+        { "short": "-x", "long": "--exact", "description": "Nome exato" }
+      ],
+      "arguments": [{ "name": "PADRÃO", "kind": "regex", "description": "Nome (ou parte) do processo" }],
+      "examples": [
+        { "command": "pkill firefox", "description": "Encerra processos chamados firefox" },
+        { "command": "pkill -f 'python app.py'", "description": "Pela linha de comando completa" },
+        { "command": "pgrep -a python", "description": "Confira antes o que será atingido" }
+      ],
+      "related": ["kill", "pgrep", "signals"]
+    },
+    {
+      "name": "pgrep",
+      "kind": "command",
+      "summary": "Encontra PIDs de processos pelo nome",
+      "usage": "pgrep [OPÇÕES] PADRÃO",
+      "aliases": ["pid pelo nome", "achar processo", "find process"],
+      "tags": ["processos"],
+      "options": [
+        { "short": "-a", "long": "--list-full", "description": "Mostra também a linha de comando" },
+        { "short": "-f", "long": "--full", "description": "Casa com a linha de comando completa" },
+        { "short": "-u", "long": "--euid", "arg": "USUÁRIO", "description": "Só processos do usuário" },
+        { "short": "-l", "long": "--list-name", "description": "Mostra o nome junto do PID" }
+      ],
+      "arguments": [{ "name": "PADRÃO", "kind": "regex", "description": "Nome (ou parte) do processo" }],
+      "examples": [
+        { "command": "pgrep -a nginx", "description": "PIDs e comandos do nginx" },
+        { "command": "pgrep -f app.py", "description": "Pelo script executado" }
+      ],
+      "related": ["pkill", "ps", "kill"]
+    },
+    {
+      "name": "jobs",
+      "kind": "command",
+      "summary": "Lista os jobs (tarefas em segundo plano) do shell atual",
+      "description": "Ctrl+Z suspende o processo em primeiro plano; bg continua em segundo plano; fg traz de volta. Jobs pertencem ao shell: somem ao fechá-lo, a menos que use nohup ou disown.",
+      "usage": "jobs [-l]",
+      "aliases": ["tarefas em segundo plano", "background jobs", "processos do terminal"],
+      "tags": ["processos", "shell", "builtin"],
+      "options": [{ "short": "-l", "description": "Inclui o PID" }],
+      "examples": [
+        { "command": "sleep 100 &", "description": "Inicia em segundo plano" },
+        { "command": "jobs -l", "description": "Lista jobs com PID" }
+      ],
+      "related": ["fg", "bg", "nohup", "kill"]
+    },
+    {
+      "name": "fg",
+      "kind": "command",
+      "summary": "Traz um job para o primeiro plano",
+      "usage": "fg [%JOB]",
+      "aliases": ["primeiro plano", "foreground"],
+      "tags": ["processos", "shell", "builtin"],
+      "examples": [
+        { "command": "fg", "description": "Traz o job mais recente" },
+        { "command": "fg %2", "description": "Traz o job 2" }
+      ],
+      "related": ["bg", "jobs"]
+    },
+    {
+      "name": "bg",
+      "kind": "command",
+      "summary": "Continua um job suspenso em segundo plano",
+      "usage": "bg [%JOB]",
+      "aliases": ["segundo plano", "background", "continuar em background"],
+      "tags": ["processos", "shell", "builtin"],
+      "examples": [
+        { "command": "bg", "description": "Depois de Ctrl+Z, continua rodando em segundo plano" },
+        { "command": "bg %1", "description": "Continua o job 1" }
+      ],
+      "related": ["fg", "jobs", "nohup"]
+    },
+    {
+      "name": "nohup",
+      "kind": "command",
+      "summary": "Executa um comando imune ao fechamento do terminal",
+      "description": "Ignora o SIGHUP enviado quando a sessão termina. A saída vai para nohup.out se não for redirecionada. Para serviços de verdade, prefira systemd.",
+      "usage": "nohup COMANDO [ARGUMENTOS]",
+      "wrapper": true,
+      "aliases": ["rodar depois de fechar o terminal", "manter processo rodando", "background permanente"],
+      "tags": ["processos", "sinais"],
+      "examples": [
+        { "command": "nohup ./servidor > servidor.log 2>&1 &", "description": "Roda em segundo plano, com log, mesmo após sair" },
+        { "command": "nohup python treino.py &", "description": "Saída em nohup.out" }
+      ],
+      "related": ["jobs", "bg", "signals", "systemctl"]
+    },
+    {
+      "name": "nice",
+      "kind": "command",
+      "summary": "Inicia um comando com prioridade de CPU ajustada",
+      "description": "Niceness vai de -20 (maior prioridade) a 19 (menor). Usuários comuns só podem aumentar o valor (ser mais 'gentis').",
+      "usage": "nice [-n AJUSTE] COMANDO",
+      "wrapper": true,
+      "aliases": ["prioridade de processo", "baixa prioridade", "priority"],
+      "tags": ["processos", "cpu", "desempenho"],
+      "options": [{ "short": "-n", "long": "--adjustment", "arg": "N", "description": "Ajuste de prioridade (padrão 10)" }],
+      "examples": [
+        { "command": "nice -n 19 tar -czf backup.tar.gz /home", "description": "Backup sem atrapalhar o resto" }
+      ],
+      "related": ["renice", "top", "ps"]
+    },
+    {
+      "name": "renice",
+      "kind": "command",
+      "summary": "Altera a prioridade de processos já em execução",
+      "usage": "renice [-n] PRIORIDADE -p PID",
+      "aliases": ["mudar prioridade", "change priority"],
+      "tags": ["processos", "cpu", "desempenho"],
+      "options": [
+        { "short": "-n", "long": "--priority", "arg": "N", "description": "Nova niceness" },
+        { "short": "-p", "long": "--pid", "description": "Os argumentos são PIDs" },
+        { "short": "-u", "long": "--user", "description": "Os argumentos são usuários" }
+      ],
+      "examples": [
+        { "command": "renice -n 10 -p 1234", "description": "Diminui a prioridade do PID 1234" },
+        { "command": "sudo renice -n -5 -p 1234", "description": "Aumentar prioridade exige root" }
+      ],
+      "related": ["nice", "top"]
+    },
+    {
+      "name": "systemctl",
+      "kind": "command",
+      "summary": "Controla serviços do systemd: iniciar, parar, habilitar e ver status",
+      "usage": "systemctl COMANDO [SERVIÇO]",
+      "install": "No WSL o systemd só funciona se estiver habilitado em /etc/wsl.conf ([boot] systemd=true).",
+      "aliases": ["serviço", "iniciar serviço", "reiniciar serviço", "status do serviço", "daemon", "service"],
+      "tags": ["serviços", "sistema", "systemd"],
+      "options": [
+        { "long": "--now", "description": "Com enable/disable: também inicia/para" },
+        { "long": "--failed", "description": "Lista unidades com falha" },
+        { "long": "--user", "description": "Serviços do usuário" }
+      ],
+      "examples": [
+        { "command": "systemctl status nginx", "description": "Estado, PID e últimas linhas de log" },
+        { "command": "sudo systemctl restart nginx", "description": "Reinicia" },
+        { "command": "sudo systemctl enable --now docker", "description": "Inicia agora e no boot" },
+        { "command": "systemctl --failed", "description": "O que falhou" },
+        { "command": "systemctl list-units --type=service --state=running", "description": "Serviços rodando" }
+      ],
+      "related": ["journalctl", "ps", "nohup"]
+    },
+    {
+      "name": "journalctl",
+      "kind": "command",
+      "summary": "Lê os logs do systemd (journal)",
+      "usage": "journalctl [OPÇÕES]",
+      "aliases": ["logs do sistema", "log do serviço", "system logs", "ver logs"],
+      "tags": ["logs", "serviços", "systemd"],
+      "options": [
+        { "short": "-u", "long": "--unit", "arg": "SERVIÇO", "description": "Logs de um serviço" },
+        { "short": "-f", "long": "--follow", "description": "Acompanha em tempo real" },
+        { "short": "-n", "long": "--lines", "arg": "N", "description": "Últimas N linhas" },
+        { "short": "-b", "long": "--boot", "description": "Desde o último boot" },
+        { "short": "-p", "long": "--priority", "arg": "NÍVEL", "description": "Filtra por prioridade (err, warning)" },
+        { "long": "--since", "arg": "QUANDO", "description": "A partir de (\"1 hour ago\", \"2024-01-01\")" },
+        { "short": "-e", "long": "--pager-end", "description": "Começa pelo fim" }
+      ],
+      "examples": [
+        { "command": "journalctl -u nginx -f", "description": "Segue o log do nginx" },
+        { "command": "journalctl -p err -b", "description": "Erros desde o boot" },
+        { "command": "journalctl --since '1 hour ago'", "description": "Última hora" }
+      ],
+      "related": ["systemctl", "tail", "follow-log"]
+    },
+    {
+      "id": "signals",
+      "name": "Sinais",
+      "kind": "concept",
+      "summary": "Mensagens assíncronas que o kernel entrega a processos",
+      "description": "Um processo pode tratar ou ignorar a maioria dos sinais, exceto SIGKILL e SIGSTOP.",
+      "aliases": ["signals", "sigterm", "sigkill", "sighup", "sigint", "ctrl+c"],
+      "tags": ["processos"],
+      "sections": [
+        {
+          "title": "Mais comuns",
+          "rows": [
+            ["1 SIGHUP", "terminal fechou; daemons costumam recarregar a configuração"],
+            ["2 SIGINT", "Ctrl+C: interrupção"],
+            ["9 SIGKILL", "morte imediata, não pode ser tratado"],
+            ["15 SIGTERM", "pedido de encerramento limpo (padrão do kill)"],
+            ["19 SIGSTOP", "pausa (não pode ser tratado)"],
+            ["20 SIGTSTP", "Ctrl+Z: suspende"]
+          ]
+        }
+      ],
+      "examples": [{ "command": "kill -l", "description": "Lista todos os sinais" }],
+      "related": ["kill", "pkill", "nohup", "process"]
+    },
+    {
+      "id": "process",
+      "name": "Processo",
+      "kind": "concept",
+      "summary": "Programa em execução, com PID, memória, dono e descritores próprios",
+      "description": "Todo processo tem um pai (PPID), herda ambiente e descritores (stdin, stdout, stderr) e termina com um exit code. Um zumbi (Z) já terminou mas o pai ainda não leu o status.",
+      "aliases": ["processes", "pid", "ppid", "zumbi", "zombie"],
+      "tags": ["processos", "sistema"],
+      "examples": [
+        { "command": "ps -ef --forest", "description": "Árvore de processos" },
+        { "command": "ls -l /proc/$$/fd", "description": "Descritores abertos do shell atual" }
+      ],
+      "related": ["ps", "signals", "exit-code", "stdin", "socket"]
+    },
+    {
+      "id": "see-processes",
+      "name": "Ver processos em execução",
+      "kind": "recipe",
+      "summary": "Listar e monitorar o que está rodando no sistema",
+      "aliases": ["ver processos", "listar processos", "processos rodando", "o que está rodando", "list processes"],
+      "tags": ["processos"],
+      "examples": [
+        { "command": "ps aux", "description": "Foto de todos os processos" },
+        { "command": "top", "description": "Monitor em tempo real" },
+        { "command": "htop", "description": "Monitor interativo (se instalado)" },
+        { "command": "ps -ef --forest", "description": "Quem iniciou quem" }
+      ],
+      "related": ["ps", "top", "htop", "pgrep"]
+    },
+    {
+      "id": "cpu-usage",
+      "name": "Quem está usando CPU",
+      "kind": "recipe",
+      "summary": "Descobrir os processos que mais consomem processador",
+      "aliases": ["quem está usando cpu", "uso de cpu", "cpu alta", "processo consumindo cpu", "high cpu", "máquina lenta"],
+      "tags": ["processos", "cpu", "desempenho", "troubleshooting"],
+      "examples": [
+        { "command": "top", "description": "Tempo real; P ordena por CPU" },
+        { "command": "ps aux --sort=-%cpu | head", "description": "Os 10 que mais usam CPU agora" },
+        { "command": "uptime", "description": "Load average: fila média de processos" }
+      ],
+      "related": ["top", "ps", "htop", "nice"]
+    },
+    {
+      "id": "memory-usage",
+      "name": "Quem está usando memória",
+      "kind": "recipe",
+      "summary": "Ver a memória disponível e os processos que mais consomem RAM",
+      "aliases": ["uso de memória", "memória cheia", "quem está usando memória", "ram alta", "out of memory", "memory usage"],
+      "tags": ["processos", "memória", "desempenho", "troubleshooting"],
+      "examples": [
+        { "command": "free -h", "description": "Memória total, usada e disponível" },
+        { "command": "ps aux --sort=-%mem | head", "description": "Processos que mais usam RAM" },
+        { "command": "sudo dmesg | grep -i 'out of memory'", "description": "Processos mortos pelo OOM killer" }
+      ],
+      "related": ["free", "ps", "top"]
+    },
+    {
+      "id": "kill-process-on-port",
+      "name": "Liberar uma porta em uso",
+      "kind": "recipe",
+      "summary": "Encontrar e encerrar o processo que ocupa uma porta",
+      "aliases": ["liberar porta", "porta em uso", "address already in use", "matar processo na porta", "kill port"],
+      "tags": ["processos", "portas", "rede"],
+      "examples": [
+        { "command": "sudo ss -ltnp 'sport = :{{port:8080}}'", "description": "Mostra o processo dono da porta" },
+        { "command": "sudo lsof -ti :{{port:8080}}", "description": "Só o PID" },
+        { "command": "kill $(sudo lsof -ti :{{port:8080}})", "description": "Pede para encerrar o processo" },
+        { "command": "sudo fuser -k {{port:8080}}/tcp", "description": "Alternativa com fuser" }
+      ],
+      "related": ["ss", "lsof", "kill", "porta"]
+    }
+  ]
+}

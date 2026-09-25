@@ -1,0 +1,298 @@
+{
+  "category": "text",
+  "entries": [
+    {
+      "name": "grep",
+      "kind": "command",
+      "summary": "Busca padrões de texto em arquivos",
+      "description": "Mostra as linhas que casam com um padrão (expressão regular). Sem -E usa regex básica (BRE), com -E estendida (ERE), com -P compatível com Perl (PCRE).",
+      "usage": "grep [OPÇÕES] PADRÃO [ARQUIVO...]",
+      "aliases": ["buscar texto", "procurar texto", "pesquisar em arquivos", "search text", "filtrar linhas", "encontrar palavra no arquivo"],
+      "tags": ["texto", "busca", "regex", "logs"],
+      "options": [
+        { "short": "-i", "long": "--ignore-case", "description": "Ignora maiúsculas/minúsculas" },
+        { "short": "-r", "long": "--recursive", "description": "Busca recursivamente em diretórios" },
+        { "short": "-R", "long": "--dereference-recursive", "description": "Recursivo seguindo links simbólicos" },
+        { "short": "-n", "long": "--line-number", "description": "Mostra o número da linha" },
+        { "short": "-v", "long": "--invert-match", "description": "Inverte a busca: linhas que NÃO casam" },
+        { "short": "-E", "long": "--extended-regexp", "description": "Usa regex estendida (+ ? | () {} sem escape)" },
+        { "short": "-F", "long": "--fixed-strings", "description": "Padrão é texto literal, não regex" },
+        { "short": "-P", "long": "--perl-regexp", "description": "Regex compatível com Perl (\\d, lookaround)" },
+        { "short": "-o", "long": "--only-matching", "description": "Mostra apenas a parte correspondente" },
+        { "short": "-c", "long": "--count", "description": "Conta as linhas que casam" },
+        { "short": "-l", "long": "--files-with-matches", "description": "Lista só os nomes dos arquivos com ocorrência" },
+        { "short": "-L", "long": "--files-without-match", "description": "Lista arquivos sem ocorrência" },
+        { "short": "-w", "long": "--word-regexp", "description": "Casa só palavras inteiras" },
+        { "short": "-x", "long": "--line-regexp", "description": "O padrão precisa casar a linha inteira" },
+        { "short": "-A", "long": "--after-context", "arg": "N", "description": "Mostra N linhas depois de cada ocorrência" },
+        { "short": "-B", "long": "--before-context", "arg": "N", "description": "Mostra N linhas antes" },
+        { "short": "-C", "long": "--context", "arg": "N", "description": "Mostra N linhas antes e depois" },
+        { "short": "-e", "long": "--regexp", "arg": "PADRÃO", "description": "Define um padrão (repita para vários)" },
+        { "short": "-h", "long": "--no-filename", "description": "Não mostra o nome do arquivo" },
+        { "short": "-q", "long": "--quiet", "description": "Não imprime nada; só o exit code indica se achou" },
+        { "long": "--include", "arg": "GLOB", "description": "Só arquivos cujo nome casa com o glob" },
+        { "long": "--exclude-dir", "arg": "DIR", "description": "Ignora diretórios com esse nome" },
+        { "long": "--color", "description": "Destaca as ocorrências (--color=auto)" },
+        { "long": "--line-buffered", "description": "Libera cada linha imediatamente (útil com tail -f)" }
+      ],
+      "arguments": [
+        { "name": "PADRÃO", "kind": "regex", "description": "Expressão regular a procurar" },
+        { "name": "ARQUIVO", "kind": "path", "description": "Arquivos ou diretórios (sem arquivo: lê stdin)", "repeat": true }
+      ],
+      "examples": [
+        { "command": "grep \"ERROR\" app.log", "description": "Linhas que contêm ERROR" },
+        { "command": "grep -i \"error\" app.log", "description": "Sem diferenciar maiúsculas" },
+        { "command": "grep -rin \"ERROR\" ./logs", "description": "Recursivo, sem diferenciar maiúsculas, com número da linha" },
+        { "command": "grep -r \"TODO\" src/", "description": "Todos os TODO do código" },
+        { "command": "grep -rn --include='*.rs' \"fn main\" .", "description": "Só em arquivos .rs" },
+        { "command": "grep -v \"DEBUG\" app.log", "description": "Tudo menos DEBUG" },
+        { "command": "grep -c \"ERROR\" app.log", "description": "Quantas linhas têm ERROR" },
+        { "command": "grep -E \"^[0-9]+$\" arquivo.txt", "description": "Linhas formadas só por números" },
+        { "command": "grep -oE \"[0-9]{1,3}(\\.[0-9]{1,3}){3}\" access.log", "description": "Extrai endereços IPv4" },
+        { "command": "grep -B 1 -A 3 \"Exception\" app.log", "description": "Contexto: 1 linha antes e 3 depois" },
+        { "command": "grep -l \"password\" *.conf", "description": "Arquivos .conf que mencionam password" },
+        { "command": "ps aux | grep nginx", "description": "Filtra a saída de outro comando" }
+      ],
+      "related": ["regex", "pipe", "stdout", "find", "sed", "awk"]
+    },
+    {
+      "name": "sed",
+      "kind": "command",
+      "summary": "Editor de fluxo: substitui, apaga e transforma linhas de texto",
+      "description": "O uso mais comum é s/PADRÃO/SUBSTITUTO/FLAGS. A flag g substitui todas as ocorrências da linha. Com -i altera o arquivo no lugar.",
+      "usage": "sed [OPÇÕES] SCRIPT [ARQUIVO...]",
+      "aliases": ["substituir texto", "trocar texto", "replace text", "find and replace", "editar arquivo pela linha de comando"],
+      "tags": ["texto", "regex", "substituição"],
+      "options": [
+        { "short": "-i", "long": "--in-place", "description": "Edita o arquivo no lugar (-i.bak guarda backup)" },
+        { "short": "-E", "long": "--regexp-extended", "description": "Usa regex estendida" },
+        { "short": "-n", "long": "--quiet", "description": "Não imprime linhas automaticamente (use com p)" },
+        { "short": "-e", "long": "--expression", "arg": "SCRIPT", "description": "Adiciona um comando ao script" }
+      ],
+      "arguments": [
+        { "name": "SCRIPT", "kind": "text", "description": "Comandos sed, ex.: 's/antigo/novo/g'" },
+        { "name": "ARQUIVO", "kind": "path", "description": "Arquivos (sem arquivo: stdin)", "repeat": true }
+      ],
+      "examples": [
+        { "command": "sed 's/http:/https:/g' config.txt", "description": "Troca todas as ocorrências (mostra na tela)" },
+        { "command": "sed -i.bak 's/localhost/127.0.0.1/g' app.conf", "description": "Altera o arquivo, guardando app.conf.bak" },
+        { "command": "sed -n '10,20p' arquivo.txt", "description": "Imprime só as linhas 10 a 20" },
+        { "command": "sed '/^#/d' config.ini", "description": "Remove linhas de comentário" },
+        { "command": "sed -E 's/([0-9]{4})-([0-9]{2})-([0-9]{2})/\\3\\/\\2\\/\\1/' datas.txt", "description": "Reordena datas com grupos de captura" }
+      ],
+      "related": ["grep", "awk", "regex", "tr"]
+    },
+    {
+      "name": "awk",
+      "kind": "command",
+      "summary": "Processa texto em colunas: filtra, soma e formata campos",
+      "description": "Cada linha é dividida em campos $1, $2... ($0 é a linha inteira). Estrutura: 'padrão { ação }'. NR é o número da linha e NF o número de campos.",
+      "usage": "awk [OPÇÕES] 'PROGRAMA' [ARQUIVO...]",
+      "aliases": ["colunas", "somar coluna", "extrair coluna", "processar csv", "campos"],
+      "tags": ["texto", "colunas"],
+      "options": [
+        { "short": "-F", "arg": "SEPARADOR", "description": "Separador de campos (padrão: espaços)" },
+        { "short": "-v", "arg": "VAR=VALOR", "description": "Define uma variável" }
+      ],
+      "arguments": [
+        { "name": "PROGRAMA", "kind": "text", "description": "Programa awk, ex.: '{print $1}'" },
+        { "name": "ARQUIVO", "kind": "path", "description": "Arquivos (sem arquivo: stdin)", "repeat": true }
+      ],
+      "examples": [
+        { "command": "awk '{print $1}' access.log", "description": "Primeira coluna (IP do cliente)" },
+        { "command": "awk -F: '{print $1}' /etc/passwd", "description": "Usuários do sistema" },
+        { "command": "awk '{s += $5} END {print s}' dados.txt", "description": "Soma a quinta coluna" },
+        { "command": "awk '$9 >= 500' access.log", "description": "Linhas com status HTTP 5xx" },
+        { "command": "ps aux | awk '$3 > 50 {print $2, $11}'", "description": "PID e comando de processos acima de 50% de CPU" }
+      ],
+      "related": ["cut", "sed", "grep", "sort"]
+    },
+    {
+      "name": "sort",
+      "kind": "command",
+      "summary": "Ordena linhas de texto",
+      "usage": "sort [OPÇÕES] [ARQUIVO...]",
+      "aliases": ["ordenar linhas", "ordenar", "sort lines"],
+      "tags": ["texto", "pipe"],
+      "options": [
+        { "short": "-n", "long": "--numeric-sort", "description": "Ordem numérica" },
+        { "short": "-h", "long": "--human-numeric-sort", "description": "Entende tamanhos como 2K, 1G" },
+        { "short": "-r", "long": "--reverse", "description": "Ordem decrescente" },
+        { "short": "-u", "long": "--unique", "description": "Remove linhas repetidas" },
+        { "short": "-k", "long": "--key", "arg": "CAMPO", "description": "Ordena pelo campo informado (ex.: -k2)" },
+        { "short": "-t", "long": "--field-separator", "arg": "SEP", "description": "Separador de campos" }
+      ],
+      "arguments": [{ "name": "ARQUIVO", "kind": "path", "description": "Arquivos (sem arquivo: stdin)", "repeat": true }],
+      "examples": [
+        { "command": "sort nomes.txt", "description": "Ordem alfabética" },
+        { "command": "sort -n numeros.txt", "description": "Ordem numérica" },
+        { "command": "du -sh * | sort -h", "description": "Ordena tamanhos legíveis" },
+        { "command": "sort -t, -k3 -n dados.csv", "description": "CSV pela terceira coluna" },
+        { "command": "grep ERROR app.log | sort | uniq -c | sort -rn", "description": "Erros mais frequentes primeiro" }
+      ],
+      "related": ["uniq", "pipe", "awk", "cut"]
+    },
+    {
+      "name": "uniq",
+      "kind": "command",
+      "summary": "Remove ou conta linhas repetidas consecutivas",
+      "description": "Só compara linhas vizinhas: normalmente vem depois de sort.",
+      "usage": "uniq [OPÇÕES] [ENTRADA [SAÍDA]]",
+      "aliases": ["remover duplicadas", "linhas repetidas", "contar repetições", "duplicates"],
+      "tags": ["texto", "pipe"],
+      "options": [
+        { "short": "-c", "long": "--count", "description": "Prefixa cada linha com a quantidade" },
+        { "short": "-d", "long": "--repeated", "description": "Só as linhas repetidas" },
+        { "short": "-u", "long": "--unique", "description": "Só as linhas que aparecem uma vez" },
+        { "short": "-i", "long": "--ignore-case", "description": "Ignora maiúsculas/minúsculas" }
+      ],
+      "examples": [
+        { "command": "sort nomes.txt | uniq", "description": "Sem repetições" },
+        { "command": "sort nomes.txt | uniq -c | sort -rn", "description": "Frequência de cada linha" },
+        { "command": "grep ERROR app.log | sort | uniq", "description": "Erros distintos" }
+      ],
+      "related": ["sort", "pipe", "wc"]
+    },
+    {
+      "name": "wc",
+      "kind": "command",
+      "summary": "Conta linhas, palavras e bytes",
+      "usage": "wc [OPÇÕES] [ARQUIVO...]",
+      "aliases": ["contar linhas", "contar palavras", "quantas linhas", "word count", "count lines"],
+      "tags": ["texto", "pipe"],
+      "options": [
+        { "short": "-l", "long": "--lines", "description": "Só linhas" },
+        { "short": "-w", "long": "--words", "description": "Só palavras" },
+        { "short": "-c", "long": "--bytes", "description": "Só bytes" },
+        { "short": "-m", "long": "--chars", "description": "Só caracteres" }
+      ],
+      "arguments": [{ "name": "ARQUIVO", "kind": "path", "description": "Arquivos (sem arquivo: stdin)", "repeat": true }],
+      "examples": [
+        { "command": "wc -l app.log", "description": "Quantidade de linhas" },
+        { "command": "grep -c ERROR app.log", "description": "Alternativa: grep já conta" },
+        { "command": "ls | wc -l", "description": "Quantos itens há no diretório" }
+      ],
+      "related": ["grep", "uniq", "pipe"]
+    },
+    {
+      "name": "cut",
+      "kind": "command",
+      "summary": "Extrai colunas ou trechos de cada linha",
+      "usage": "cut OPÇÃO [ARQUIVO...]",
+      "aliases": ["extrair coluna", "cortar texto", "separar campos"],
+      "tags": ["texto", "colunas"],
+      "options": [
+        { "short": "-d", "long": "--delimiter", "arg": "SEP", "description": "Separador de campos (um caractere)" },
+        { "short": "-f", "long": "--fields", "arg": "LISTA", "description": "Campos a extrair (1,3 ou 2-4)" },
+        { "short": "-c", "long": "--characters", "arg": "LISTA", "description": "Posições de caracteres" }
+      ],
+      "arguments": [{ "name": "ARQUIVO", "kind": "path", "description": "Arquivos (sem arquivo: stdin)", "repeat": true }],
+      "examples": [
+        { "command": "cut -d: -f1 /etc/passwd", "description": "Nomes de usuário" },
+        { "command": "cut -d, -f2,4 dados.csv", "description": "Colunas 2 e 4 de um CSV simples" },
+        { "command": "echo $PATH | tr ':' '\\n'", "description": "Alternativa com tr para listas" }
+      ],
+      "related": ["awk", "tr", "sort"]
+    },
+    {
+      "name": "tr",
+      "kind": "command",
+      "summary": "Troca ou remove caracteres",
+      "usage": "tr [OPÇÕES] CONJUNTO1 [CONJUNTO2]",
+      "aliases": ["trocar caracteres", "maiúsculas", "minúsculas", "uppercase", "remover caracteres"],
+      "tags": ["texto"],
+      "options": [
+        { "short": "-d", "long": "--delete", "description": "Remove os caracteres de CONJUNTO1" },
+        { "short": "-s", "long": "--squeeze-repeats", "description": "Junta repetições em uma só" }
+      ],
+      "examples": [
+        { "command": "echo 'olá' | tr 'a-z' 'A-Z'", "description": "Converte para maiúsculas (ASCII)" },
+        { "command": "tr -d '\\r' < windows.txt > unix.txt", "description": "Remove CR de arquivos do Windows" },
+        { "command": "echo $PATH | tr ':' '\\n'", "description": "Um diretório do PATH por linha" }
+      ],
+      "related": ["sed", "cut"]
+    },
+    {
+      "name": "tee",
+      "kind": "command",
+      "summary": "Grava a entrada em arquivo e também a repassa para a saída",
+      "usage": "tee [OPÇÕES] ARQUIVO...",
+      "aliases": ["salvar e mostrar", "duplicar saída", "gravar saída em arquivo"],
+      "tags": ["shell", "pipe", "redirecionamento"],
+      "options": [{ "short": "-a", "long": "--append", "description": "Acrescenta em vez de sobrescrever" }],
+      "arguments": [{ "name": "ARQUIVO", "kind": "path", "description": "Arquivos de destino", "repeat": true }],
+      "examples": [
+        { "command": "make 2>&1 | tee build.log", "description": "Vê a saída e guarda em arquivo" },
+        { "command": "echo 'nameserver 1.1.1.1' | sudo tee -a /etc/resolv.conf", "description": "Escreve em arquivo de root (sudo echo > não funciona)" }
+      ],
+      "related": ["redirect", "pipe", "stdout"]
+    },
+    {
+      "name": "diff",
+      "kind": "command",
+      "summary": "Mostra as diferenças entre arquivos",
+      "usage": "diff [OPÇÕES] ARQUIVO1 ARQUIVO2",
+      "aliases": ["comparar arquivos", "diferença entre arquivos", "compare files"],
+      "tags": ["texto", "arquivos"],
+      "options": [
+        { "short": "-u", "long": "--unified", "description": "Formato unificado (como git diff)" },
+        { "short": "-r", "long": "--recursive", "description": "Compara diretórios" },
+        { "short": "-q", "long": "--brief", "description": "Só diz se são diferentes" },
+        { "short": "-y", "long": "--side-by-side", "description": "Lado a lado" }
+      ],
+      "arguments": [
+        { "name": "ARQUIVO1", "kind": "path", "description": "Original" },
+        { "name": "ARQUIVO2", "kind": "path", "description": "Modificado" }
+      ],
+      "examples": [
+        { "command": "diff -u antigo.conf novo.conf", "description": "Diferenças em formato unificado" },
+        { "command": "diff -rq pasta1/ pasta2/", "description": "Quais arquivos diferem entre dois diretórios" },
+        { "command": "diff <(sort a.txt) <(sort b.txt)", "description": "Compara saídas usando process substitution" }
+      ],
+      "related": ["git-diff", "process-substitution"]
+    },
+    {
+      "id": "search-text-in-files",
+      "name": "Procurar texto dentro de arquivos",
+      "kind": "recipe",
+      "summary": "Encontra em quais arquivos (e linhas) um texto aparece",
+      "aliases": ["procurar texto em arquivos", "buscar palavra em arquivos", "onde está esse texto", "search text in files", "grep recursivo"],
+      "tags": ["texto", "busca", "grep"],
+      "examples": [
+        { "command": "grep -rn \"texto\" .", "description": "Arquivo e linha de cada ocorrência" },
+        { "command": "grep -rl \"texto\" .", "description": "Só os nomes dos arquivos" },
+        { "command": "grep -rni --exclude-dir=.git \"texto\" .", "description": "Ignorando .git e maiúsculas" },
+        { "command": "grep -rn --include='*.py' \"import os\" .", "description": "Só em arquivos .py" }
+      ],
+      "related": ["grep", "find", "regex"]
+    },
+    {
+      "id": "replace-text",
+      "name": "Substituir texto em arquivos",
+      "kind": "recipe",
+      "summary": "Trocar uma palavra por outra em um ou vários arquivos",
+      "aliases": ["substituir texto", "trocar palavra em arquivos", "find and replace", "replace in files", "substituir em vários arquivos"],
+      "tags": ["texto", "sed", "substituição"],
+      "examples": [
+        { "command": "sed 's/antigo/novo/g' arquivo.txt", "description": "Mostra o resultado sem alterar" },
+        { "command": "sed -i 's/antigo/novo/g' arquivo.txt", "description": "Altera o arquivo" },
+        { "command": "grep -rl 'antigo' src/ | xargs sed -i 's/antigo/novo/g'", "description": "Em todos os arquivos que contêm o texto" }
+      ],
+      "related": ["sed", "grep", "xargs"]
+    },
+    {
+      "id": "count-occurrences",
+      "name": "Contar ocorrências",
+      "kind": "recipe",
+      "summary": "Quantas vezes algo aparece e quais valores são mais frequentes",
+      "aliases": ["contar ocorrências", "quantas vezes aparece", "mais frequentes", "top ips", "ranking de linhas"],
+      "tags": ["texto", "logs", "pipe"],
+      "examples": [
+        { "command": "grep -c \"ERROR\" app.log", "description": "Linhas com ERROR" },
+        { "command": "grep -o \"ERROR\" app.log | wc -l", "description": "Ocorrências (mesmo várias por linha)" },
+        { "command": "awk '{print $1}' access.log | sort | uniq -c | sort -rn | head", "description": "IPs com mais requisições" }
+      ],
+      "related": ["grep", "wc", "uniq", "sort", "awk"]
+    }
+  ]
+}

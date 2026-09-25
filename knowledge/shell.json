@@ -1,0 +1,314 @@
+{
+  "category": "shell",
+  "entries": [
+    {
+      "id": "pipe",
+      "name": "Pipe",
+      "kind": "concept",
+      "summary": "Liga a saída de um comando à entrada do próximo com |",
+      "description": "Em a | b, o stdout de a vira o stdin de b. Os comandos rodam ao mesmo tempo e os dados fluem sem arquivos temporários. O stderr não passa pelo pipe (use 2>&1 ou |& para incluí-lo). O exit code do pipeline é o do último comando, a menos que set -o pipefail esteja ativo.",
+      "aliases": ["pipeline", "|", "encadear comandos", "cano", "juntar comandos"],
+      "tags": ["shell", "stdout", "stdin"],
+      "sections": [
+        {
+          "title": "Fluxo de grep ERROR app.log | sort | uniq",
+          "items": ["grep → stdout → pipe → stdin de sort", "sort → stdout → pipe → stdin de uniq", "uniq → stdout → terminal"]
+        }
+      ],
+      "examples": [
+        { "command": "grep ERROR app.log | sort | uniq", "description": "Erros distintos: filtra, ordena e remove repetidos" },
+        { "command": "ps aux | grep nginx", "description": "Filtra a lista de processos" },
+        { "command": "cat access.log | awk '{print $1}' | sort | uniq -c | sort -rn | head", "description": "Ranking de IPs" },
+        { "command": "make 2>&1 | tee build.log", "description": "Inclui stderr no pipe e grava em arquivo" }
+      ],
+      "related": ["stdout", "stdin", "stderr", "redirect", "xargs", "tee"]
+    },
+    {
+      "id": "redirect",
+      "name": "Redirecionamento",
+      "kind": "concept",
+      "summary": "Envia a entrada ou a saída de um comando para arquivos",
+      "description": "Todo processo tem três fluxos: 0 stdin, 1 stdout e 2 stderr. Operadores de redirecionamento mudam para onde eles apontam antes de o comando rodar.",
+      "aliases": ["redirect", "redirecionar saída", "salvar saída em arquivo", ">", ">>", "2>&1", "/dev/null"],
+      "tags": ["shell", "stdout", "stderr", "arquivos"],
+      "sections": [
+        {
+          "title": "Operadores",
+          "rows": [
+            [">", "stdout para arquivo (sobrescreve)"],
+            [">>", "stdout para arquivo (acrescenta)"],
+            ["<", "stdin a partir de arquivo"],
+            ["2>", "stderr para arquivo"],
+            ["2>&1", "stderr para onde o stdout aponta"],
+            ["&>", "stdout e stderr para arquivo"],
+            ["> /dev/null", "descarta a saída"]
+          ]
+        }
+      ],
+      "examples": [
+        { "command": "ls -la > lista.txt", "description": "Salva a saída" },
+        { "command": "echo 'nova linha' >> notas.txt", "description": "Acrescenta ao final" },
+        { "command": "comando > saida.log 2>&1", "description": "Saída e erros no mesmo arquivo (a ordem importa)" },
+        { "command": "find / -name '*.conf' 2>/dev/null", "description": "Esconde mensagens de permissão negada" },
+        { "command": "sort < nomes.txt", "description": "stdin vindo de arquivo" }
+      ],
+      "related": ["stdout", "stderr", "stdin", "pipe", "tee"]
+    },
+    {
+      "id": "stdin",
+      "name": "stdin",
+      "kind": "concept",
+      "summary": "Entrada padrão (descritor 0) de onde um programa lê dados",
+      "description": "Por padrão é o teclado. Pode vir de um pipe (a | b) ou de um arquivo (b < arquivo). Muitos comandos leem o stdin quando nenhum arquivo é informado ou quando o arquivo é -.",
+      "aliases": ["entrada padrão", "standard input", "fd 0"],
+      "tags": ["shell", "fluxos"],
+      "examples": [
+        { "command": "sort < nomes.txt", "description": "stdin a partir de arquivo" },
+        { "command": "echo 'hello' | wc -c", "description": "stdin a partir de um pipe" }
+      ],
+      "related": ["stdout", "stderr", "pipe", "redirect"]
+    },
+    {
+      "id": "stdout",
+      "name": "stdout",
+      "kind": "concept",
+      "summary": "Saída padrão (descritor 1) onde um programa escreve seus resultados",
+      "description": "Por padrão é o terminal. É o que passa por um pipe e o que > redireciona.",
+      "aliases": ["saída padrão", "standard output", "fd 1"],
+      "tags": ["shell", "fluxos"],
+      "examples": [
+        { "command": "ls > lista.txt", "description": "stdout para arquivo" },
+        { "command": "ls | wc -l", "description": "stdout para outro comando" }
+      ],
+      "related": ["stdin", "stderr", "pipe", "redirect"]
+    },
+    {
+      "id": "stderr",
+      "name": "stderr",
+      "kind": "concept",
+      "summary": "Saída de erros (descritor 2), separada da saída normal",
+      "description": "Mensagens de erro e diagnóstico vão para o stderr, então não contaminam dados enviados por pipe. Redirecione com 2> ou junte ao stdout com 2>&1.",
+      "aliases": ["saída de erro", "standard error", "fd 2", "mensagens de erro"],
+      "tags": ["shell", "fluxos", "erros"],
+      "examples": [
+        { "command": "comando 2> erros.log", "description": "Só os erros em arquivo" },
+        { "command": "comando 2>/dev/null", "description": "Descarta os erros" },
+        { "command": "comando 2>&1 | grep -i error", "description": "Procura também nos erros" }
+      ],
+      "related": ["stdout", "stdin", "redirect", "exit-code"]
+    },
+    {
+      "id": "environment-variables",
+      "name": "Variáveis de ambiente",
+      "kind": "concept",
+      "summary": "Pares NOME=valor herdados pelos processos filhos",
+      "description": "Variáveis do shell só existem no shell atual; com export elas passam para os programas executados. PATH define onde os comandos são procurados, HOME o diretório pessoal. VAR=valor comando define a variável só para aquele comando.",
+      "aliases": ["environment variables", "variáveis", "env vars", "$PATH", "PATH", "$HOME", "export"],
+      "tags": ["shell", "configuração"],
+      "examples": [
+        { "command": "echo $PATH", "description": "Mostra o PATH" },
+        { "command": "export EDITOR=vim", "description": "Define e exporta para os processos filhos" },
+        { "command": "LANG=C sort arquivo.txt", "description": "Variável só para este comando" },
+        { "command": "env | grep -i proxy", "description": "Variáveis de proxy definidas" },
+        { "command": "export PATH=\"$HOME/.local/bin:$PATH\"", "description": "Adiciona um diretório ao PATH (coloque no ~/.bashrc para persistir)" }
+      ],
+      "related": ["export", "env", "quotes", "subshell"]
+    },
+    {
+      "id": "command-substitution",
+      "name": "Substituição de comando",
+      "kind": "concept",
+      "summary": "Usa a saída de um comando como parte de outro com $(...)",
+      "description": "O shell executa o comando interno, captura o stdout (sem a quebra de linha final) e o insere no lugar. Prefira $(...) às crases `...`: aninha melhor e é mais legível. Use aspas: \"$(comando)\" preserva espaços.",
+      "aliases": ["command substitution", "$()", "crase", "backticks", "saída de comando em variável"],
+      "tags": ["shell", "expansão"],
+      "examples": [
+        { "command": "echo \"Hoje é $(date +%F)\"", "description": "Insere a data" },
+        { "command": "kill $(pgrep -f app.py)", "description": "Usa PIDs encontrados por outro comando" },
+        { "command": "arquivos=$(ls *.log | wc -l)", "description": "Guarda a saída em uma variável" }
+      ],
+      "related": ["subshell", "process-substitution", "quotes", "stdout"]
+    },
+    {
+      "id": "globbing",
+      "name": "Globbing (curingas)",
+      "kind": "concept",
+      "summary": "Expansão de * ? e [...] em nomes de arquivos feita pelo shell",
+      "description": "Antes de executar o comando, o shell troca o padrão pela lista de arquivos que casam. O comando nunca vê o *. Entre aspas não há expansão, por isso find -name '*.log' usa aspas: quem interpreta o padrão é o find.",
+      "aliases": ["wildcards", "curingas", "glob", "asterisco", "*", "expansão de nomes"],
+      "tags": ["shell", "expansão", "arquivos"],
+      "sections": [
+        {
+          "title": "Padrões",
+          "rows": [["*", "qualquer sequência (inclusive vazia)"], ["?", "exatamente um caractere"], ["[abc]", "um dos caracteres"], ["[0-9]", "um dígito"], ["{a,b}", "expansão de chaves: gera a e b (não é glob)"], ["**", "recursivo (bash com shopt -s globstar)"]]
+        }
+      ],
+      "examples": [
+        { "command": "ls *.log", "description": "Todos os .log do diretório" },
+        { "command": "rm arquivo?.tmp", "description": "arquivo1.tmp, arquivoA.tmp..." },
+        { "command": "cp relatorio-{jan,fev}.pdf backup/", "description": "Expansão de chaves" },
+        { "command": "echo *", "description": "Mostra no que o * se transforma" }
+      ],
+      "related": ["quotes", "escaping", "find", "regex"]
+    },
+    {
+      "id": "quotes",
+      "name": "Aspas",
+      "kind": "concept",
+      "summary": "Controlam o que o shell expande: aspas simples, duplas ou nenhuma",
+      "description": "Aspas simples '...' preservam tudo literalmente. Aspas duplas \"...\" mantêm espaços mas expandem $VAR, $(...) e \\. Sem aspas, o shell separa palavras por espaços e expande globs. Regra prática: coloque variáveis entre aspas duplas.",
+      "aliases": ["quotes", "aspas simples", "aspas duplas", "quoting", "single quotes", "double quotes"],
+      "tags": ["shell", "expansão"],
+      "examples": [
+        { "command": "echo '$HOME'", "description": "Imprime literalmente $HOME" },
+        { "command": "echo \"$HOME\"", "description": "Imprime o caminho do home" },
+        { "command": "rm \"meu arquivo.txt\"", "description": "Nome com espaço é um único argumento" },
+        { "command": "grep 'a.*b' arquivo", "description": "Protege a regex da expansão do shell" }
+      ],
+      "related": ["escaping", "globbing", "environment-variables", "command-substitution"]
+    },
+    {
+      "id": "escaping",
+      "name": "Escape",
+      "kind": "concept",
+      "summary": "Barra invertida remove o significado especial do próximo caractere",
+      "description": "\\ antes de espaço, $, *, aspas ou outro caractere especial faz o shell tratá-lo como texto. No fim de uma linha, \\ continua o comando na linha seguinte.",
+      "aliases": ["escaping", "barra invertida", "backslash", "caracteres especiais"],
+      "tags": ["shell", "expansão"],
+      "examples": [
+        { "command": "echo \\$HOME", "description": "Imprime $HOME literal" },
+        { "command": "ls meu\\ arquivo.txt", "description": "Espaço escapado" },
+        { "command": "find . -name '*.sh' -exec chmod +x {} \\;", "description": "\\; chega ao find como ;" }
+      ],
+      "related": ["quotes", "globbing", "regex"]
+    },
+    {
+      "id": "exit-code",
+      "name": "Exit code",
+      "kind": "concept",
+      "summary": "Número que um comando devolve ao terminar: 0 é sucesso",
+      "description": "Qualquer valor diferente de 0 indica falha (1 erro genérico, 2 uso incorreto, 126 sem permissão de execução, 127 comando não encontrado, 128+N morto pelo sinal N, 130 Ctrl+C). $? guarda o código do último comando. && e || usam o exit code para decidir.",
+      "aliases": ["exit status", "código de saída", "status de saída", "$?", "return code"],
+      "tags": ["shell", "erros", "scripts"],
+      "examples": [
+        { "command": "ls /inexistente; echo $?", "description": "Mostra o código (2)" },
+        { "command": "make && ./app", "description": "Só executa se a compilação passar" },
+        { "command": "ping -c1 host >/dev/null || echo 'fora do ar'", "description": "Age na falha" },
+        { "command": "grep -q ERROR app.log && echo 'há erros'", "description": "grep -q só devolve o código" }
+      ],
+      "related": ["stderr", "subshell", "pipe"]
+    },
+    {
+      "id": "process-substitution",
+      "name": "Process substitution",
+      "kind": "concept",
+      "summary": "Usa a saída de um comando como se fosse um arquivo com <(...)",
+      "description": "O bash cria um caminho temporário (/dev/fd/N) ligado à saída do comando. Útil para comandos que exigem arquivos, como diff e comm. Não existe no sh POSIX.",
+      "aliases": ["<()", "process substitution", "substituição de processo", "comparar saídas"],
+      "tags": ["shell", "bash", "expansão"],
+      "examples": [
+        { "command": "diff <(sort a.txt) <(sort b.txt)", "description": "Compara arquivos já ordenados" },
+        { "command": "diff <(ssh srv1 cat /etc/hosts) <(ssh srv2 cat /etc/hosts)", "description": "Compara arquivos de dois servidores" }
+      ],
+      "related": ["command-substitution", "pipe", "diff"]
+    },
+    {
+      "id": "subshell",
+      "name": "Subshell",
+      "kind": "concept",
+      "summary": "Cópia do shell que executa comandos entre parênteses sem afetar o atual",
+      "description": "( ... ) roda em um processo filho: cd, variáveis e exports feitos lá dentro somem ao sair. Pipes e $(...) também usam subshells. Já { ...; } agrupa comandos no shell atual.",
+      "aliases": ["subshell", "parênteses", "( )", "shell filho"],
+      "tags": ["shell", "processos"],
+      "examples": [
+        { "command": "(cd /tmp && ls)", "description": "Muda de diretório só dentro do subshell" },
+        { "command": "(export DEBUG=1; ./app)", "description": "Variável só para este bloco" },
+        { "command": "{ date; uptime; } > status.txt", "description": "Agrupa no shell atual e redireciona tudo" }
+      ],
+      "related": ["command-substitution", "environment-variables", "exit-code"]
+    },
+    {
+      "name": "echo",
+      "kind": "command",
+      "summary": "Imprime texto na saída padrão",
+      "usage": "echo [OPÇÕES] [TEXTO...]",
+      "aliases": ["imprimir texto", "print", "mostrar variável"],
+      "tags": ["shell", "builtin"],
+      "options": [
+        { "short": "-n", "description": "Não adiciona quebra de linha no final" },
+        { "short": "-e", "description": "Interpreta escapes como \\n e \\t" }
+      ],
+      "examples": [
+        { "command": "echo \"Olá, $USER\"", "description": "Texto com variável" },
+        { "command": "echo -e 'linha1\\nlinha2'", "description": "Quebra de linha com -e" },
+        { "command": "printf '%s\\n' \"$HOME\"", "description": "printf é mais previsível entre sistemas" }
+      ],
+      "related": ["stdout", "quotes", "environment-variables"]
+    },
+    {
+      "name": "export",
+      "kind": "command",
+      "summary": "Marca variáveis para serem herdadas pelos processos filhos",
+      "usage": "export NOME[=VALOR]...",
+      "aliases": ["exportar variável", "definir variável de ambiente"],
+      "tags": ["shell", "builtin", "variáveis"],
+      "options": [
+        { "short": "-n", "description": "Remove a marca de exportação" },
+        { "short": "-p", "description": "Lista as variáveis exportadas" }
+      ],
+      "examples": [
+        { "command": "export JAVA_HOME=/opt/jdk", "description": "Define para os programas executados daqui" },
+        { "command": "export PATH=\"$HOME/.local/bin:$PATH\"", "description": "Prepend no PATH" }
+      ],
+      "related": ["environment-variables", "env"]
+    },
+    {
+      "name": "env",
+      "kind": "command",
+      "summary": "Mostra o ambiente ou executa um comando com ambiente modificado",
+      "usage": "env [OPÇÕES] [NOME=VALOR]... [COMANDO]",
+      "wrapper": true,
+      "aliases": ["listar variáveis", "ambiente", "printenv"],
+      "tags": ["shell", "variáveis"],
+      "options": [
+        { "short": "-i", "long": "--ignore-environment", "description": "Começa com ambiente vazio" },
+        { "short": "-u", "long": "--unset", "arg": "NOME", "description": "Remove uma variável" }
+      ],
+      "examples": [
+        { "command": "env", "description": "Todas as variáveis exportadas" },
+        { "command": "env -i bash --norc", "description": "Shell com ambiente limpo" },
+        { "command": "env | sort", "description": "Ambiente em ordem alfabética" }
+      ],
+      "related": ["environment-variables", "export"]
+    },
+    {
+      "id": "alias",
+      "name": "alias",
+      "kind": "command",
+      "summary": "Cria atalhos para comandos no shell",
+      "usage": "alias [NOME='COMANDO']",
+      "aliases": ["atalho de comando", "apelido", "shortcut"],
+      "tags": ["shell", "builtin", "produtividade"],
+      "examples": [
+        { "command": "alias ll='ls -lah'", "description": "Cria o atalho ll (vale para a sessão; salve no ~/.bashrc)" },
+        { "command": "alias", "description": "Lista os atalhos" },
+        { "command": "unalias ll", "description": "Remove o atalho" }
+      ],
+      "related": ["history", "environment-variables"]
+    },
+    {
+      "name": "history",
+      "kind": "command",
+      "summary": "Mostra o histórico de comandos do shell",
+      "description": "Ctrl+R busca no histórico; !! repete o último comando; !N executa o comando número N.",
+      "usage": "history [N]",
+      "aliases": ["comandos anteriores", "histórico", "ctrl+r"],
+      "tags": ["shell", "builtin", "produtividade"],
+      "examples": [
+        { "command": "history | grep ssh", "description": "Comandos ssh já usados" },
+        { "command": "history 20", "description": "Últimos 20" }
+      ],
+      "related": ["alias", "grep"]
+    }
+  ]
+}
